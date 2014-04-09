@@ -10,7 +10,7 @@ exists_if = "uri-conduit.cma"
 package "lwt" (
  version = "@VERSION@"
  description = "Resolve URIs into Lwt channels"
- requires = "@LWT_REQUIRES@"
+ requires = "uri-conduit @LWT_REQUIRES@"
  archive(byte) = "uri-conduit-lwt.cma"
  archive(byte, plugin) = "uri-conduit-lwt.cma"
  archive(native) = "uri-conduit-lwt.cmxa"
@@ -21,7 +21,7 @@ package "lwt" (
 package "async" (
  version = "@VERSION@"
  description = "Resolve URIs into Async channels"
- requires = "@LWT_REQUIRES@"
+ requires = "uri-conduit @LWT_REQUIRES@"
  archive(byte) = "uri-conduit-async.cma"
  archive(byte, plugin) = "uri-conduit-async.cma"
  archive(native) = "uri-conduit-async.cmxa"

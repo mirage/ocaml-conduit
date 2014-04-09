@@ -3,7 +3,7 @@
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
-BASE_PKG="uri.services camlp4.macro"
+BASE_PKG="uri uri.services camlp4.macro"
 LWT_PKG=lwt.unix
 LWT_SSL_PKG=lwt.ssl
 SYNTAX_PKG="lwt.syntax camlp4.macro"
@@ -75,5 +75,5 @@ sed \
 if [ "$1" = "true" ]; then
   B=_build/lib/
   ocamlfind remove uri-conduit || true
-  ocamlfind install uri-conduit META $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs
+  ocamlfind install uri-conduit META $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a
 fi

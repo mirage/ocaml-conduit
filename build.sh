@@ -58,8 +58,6 @@ if [ "$HAVE_LWT" != "" ]; then
   fi
 fi
 
-set -x
-echo $PKG
 ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} -syntax camlp4o \
   -pkgs `echo $PKG | tr ' ' ','` \
   -pkgs `echo $ASYNC_REQUIRES | tr ' ' ','` \

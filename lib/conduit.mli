@@ -13,9 +13,23 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *)
+*)
 
-include Uri_conduit.T
-  with type 'a io = 'a Lwt.t
-  and  type ic    = Lwt_io.input_channel
-  and  type oc    = Lwt_io.output_channel
+module type LWT = sig
+
+  type ic
+
+  type oc
+
+  val connect : 
+    ?mode: [`SSL | `TCP] -> 
+    host:string -> 
+    service:string -> 
+    unit -> (ic * oc) Lwt.t
+
+  val close_in : ic -> unit
+  val close_out : oc -> unit
+  val close : ic -> oc -> unit
+end
+
+val has_async_ssl : bool

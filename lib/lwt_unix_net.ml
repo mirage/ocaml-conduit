@@ -47,15 +47,14 @@ module Tcp_server = struct
     try_lwt Lwt_io.close ic with _ -> return ()
 
   let init_socket sockaddr =
-    Unix.handle_unix_error
-      (fun () ->
-         let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
-         Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
-         Lwt_unix.bind sock sockaddr;
-         Lwt_unix.listen sock 15;
-         sock) ()
+    Unix.handle_unix_error (fun () ->
+      let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+      Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
+      Lwt_unix.bind sock sockaddr;
+      Lwt_unix.listen sock 15;
+      sock) ()
 
-  let process_accept ~timeout callback (client,_) =
+  let process_accept ?timeout callback (client,_) =
     Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
     let ic = Lwt_io.of_fd Lwt_io.input client in
     let oc = Lwt_io.of_fd Lwt_io.output client in
@@ -67,10 +66,10 @@ module Tcp_server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
   
-  let init ~sockaddr ~timeout callback =
+  let init ~sockaddr ?timeout callback =
     let s = init_socket sockaddr in
     while_lwt true do
       Lwt_unix.accept s >>=
-      process_accept ~timeout callback
+      process_accept ?timeout callback
     done
 end

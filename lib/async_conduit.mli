@@ -15,9 +15,33 @@
  *
 *)
 
+open Core.Std
 open Async.Std
 
-include Uri_conduit.T
-  with type 'a io = 'a Deferred.t
-  and  type ic    = Reader.t
-  and  type oc    = Writer.t
+type +'a io = 'a Deferred.t
+type ic = Reader.t
+type oc = Writer.t
+
+val connect :
+  ?interrupt:unit io ->
+  mode:[< `SSL | `TCP ] ->
+  host:string -> port:int -> unit -> (ic * oc) io
+
+module Server : sig
+  type mode = [
+    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+    | `TCP
+  ]
+
+  val create :
+    ?max_connections:int ->
+    ?max_pending_connections:int ->
+    ?buffer_age_limit:Writer.buffer_age_limit ->
+    ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
+                      | `Ignore
+                      | `Raise ] ->
+    mode ->
+    ('a, 'b) Tcp.Where_to_listen.t ->
+    ('a -> ic -> oc -> unit io) -> 
+    ('a, 'b) Tcp.Server.t io
+end

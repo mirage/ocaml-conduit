@@ -51,3 +51,19 @@ let listen ?(nconn=20) ?password ~certfile ~keyfile sa =
    | Some fn -> Ssl.set_password_callback sslctx fn);
   Ssl.use_certificate sslctx certfile keyfile;
   fd
+
+let process_accept ~timeout callback (ic,oc) =
+  let c = callback ic oc in
+  let events = match timeout with
+    |None -> [c]
+    |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
+  let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
+  return ()
+
+let init ?(nconn=20) ?password ~certfile ~keyfile ?timeout sa callback =
+  let s = listen ~nconn ?password ~certfile ~keyfile sa in
+  while_lwt true do
+    accept s >>=
+    process_accept ~timeout callback
+  done
+

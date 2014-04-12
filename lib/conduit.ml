@@ -15,22 +15,17 @@
  *
 *)
 
-module type T = sig
+module type LWT = sig
 
-  type +'a io
   type ic
+
   type oc
 
-  val connect_uri :
-    ?interrupt:unit io ->
-    Uri.t -> (ic * oc) io
-
   val connect :
-    ?interrupt:unit io ->
-    ?ssl:bool ->
+    ?mode: [`SSL | `TCP] ->
     host:string ->
     service:string ->
-    unit -> (ic * oc) io
+    unit -> (ic * oc) Lwt.t
 
   val close_in : ic -> unit
   val close_out : oc -> unit

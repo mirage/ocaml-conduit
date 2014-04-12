@@ -21,25 +21,33 @@ type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
+type server_mode = [
+ | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+ | `TCP
+]
+
 module LUN = Lwt_unix_net
 module LUNS = Lwt_unix_net_ssl
 
-let connect_uri ?interrupt uri =
-  (match Uri_services.tcp_port_of_uri uri with
-    |None -> Lwt.fail (Invalid_argument "unknown scheme")
-    |Some p -> Lwt.return (string_of_int p))
-  >>= fun service ->
-  LUN.build_sockaddr (Uri.host_with_default uri) service >>= fun sa ->
-  match Uri.scheme uri with
-  | Some "https" -> LUNS.connect sa
-  | Some "http" -> LUN.Tcp_client.connect sa
-  | Some _ | None -> fail (Failure "unknown scheme")
+let build_sockaddr host service =
+  let open Lwt_unix in
+  getprotobyname "tcp" >>= fun pe ->
+  getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
+  | [] ->
+    Lwt.fail (Invalid_argument (Printf.sprintf "No socket address for %s/%s" host service))
+  | ai::_ -> Lwt.return ai.ai_addr
 
-let connect ?interrupt ?(ssl=false) ~host ~service () =
+let connect ~mode ~host ~service () =
   lwt sa = LUN.build_sockaddr host service in
-  match ssl with
-  | true -> LUNS.connect sa
-  | false -> LUN.Tcp_client.connect sa
+  match mode with
+  | `SSL -> LUNS.connect sa
+  | `TCP -> LUN.Tcp_client.connect sa
+
+let serve ~mode ~sockaddr ?timeout callback =
+  match mode with
+  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
+  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
+    LUNS.init ~certfile ~keyfile ?timeout sockaddr callback
 
 let close_in ic =
   ignore_result (try_lwt Lwt_io.close ic with _ -> return ())

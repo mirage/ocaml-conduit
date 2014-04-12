@@ -29,6 +29,16 @@ val listen :
   certfile:string ->
   keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
+val init :
+  ?nconn:int ->
+  ?password:(bool -> string) ->
+  certfile:string ->
+  keyfile:string ->
+  ?timeout:int ->
+  Lwt_unix.sockaddr ->
+  (Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
+  unit Lwt.t
+
 val close : 
   Lwt_io.input_channel * Lwt_io.output_channel ->
   unit Lwt.t

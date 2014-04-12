@@ -32,7 +32,7 @@ module Tcp_server : sig
 
   val init :
     sockaddr:Lwt_unix.sockaddr ->
-    timeout:int option ->
+    ?timeout:int ->
     (input channel -> output channel -> unit Lwt.t) ->
     unit Lwt.t
 

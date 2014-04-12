@@ -6,7 +6,7 @@ J_FLAG=2
 BASE_PKG="sexplib"
 LWT_PKG=lwt.unix
 LWT_SSL_PKG=lwt.ssl
-SYNTAX_PKG="lwt.syntax camlp4.macro sexplib.syntax"
+SYNTAX_PKG="camlp4.macro sexplib.syntax"
 ASYNC_PKG=async
 ASYNC_SSL_PKG=async_ssl
 
@@ -49,6 +49,7 @@ if [ "$HAVE_LWT" != "" ]; then
   cat lib/conduit-lwt-base.mllib >> lib/conduit-lwt.mllib
   add_target "conduit-lwt"
   LWT_REQUIRES=lwt.unix
+  LWT_SYNTAX=lwt.syntax
 
   if [ "$HAVE_LWT_SSL" != "" ]; then
     echo "Building with Lwt/SSL support."
@@ -58,7 +59,7 @@ if [ "$HAVE_LWT" != "" ]; then
   fi
 fi
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES | tr -s ' '`
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_SYNTAX | tr -s ' '`
 
 ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} -syntax camlp4o \
   -cflags "-w A-4-33-40-41-42-43-34-44" \

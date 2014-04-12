@@ -16,15 +16,16 @@
  *)
 
 open Lwt
+open Sexplib.Std
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type server_mode = [
- | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
- | `TCP
-]
+  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+  | `TCP
+] with sexp
 
 module LUN = Lwt_unix_net
 module LUNS = Lwt_unix_net_ssl
@@ -57,7 +58,7 @@ let close_out oc =
 
 let close' ic oc =
   try_lwt Lwt_io.close oc with _ -> return () >>= fun () ->
-  try_lwt Lwt_io.close ic with _ -> return ()
+    try_lwt Lwt_io.close ic with _ -> return ()
 
 let close ic oc =
   ignore_result (close' ic oc)

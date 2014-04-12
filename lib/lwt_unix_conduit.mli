@@ -15,8 +15,6 @@
  *
  *)
 
-open Sexplib.Std
-
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel

@@ -50,7 +50,8 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
-  | `SSL -> fail (Failure "No SSL support compiled into Conduit")
+  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
+      fail (Failure "No SSL support compiled into Conduit")
 END
 
 let close_in ic =

@@ -35,8 +35,8 @@ let build_sockaddr host service =
   getprotobyname "tcp" >>= fun pe ->
   getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
   | [] ->
-    Lwt.fail (Invalid_argument (Printf.sprintf "No socket address for %s/%s" host service))
-  | ai::_ -> Lwt.return ai.ai_addr
+    fail (Invalid_argument (Printf.sprintf "No socket address for %s/%s" host service))
+  | ai::_ -> return ai.ai_addr
 
 let connect ~mode ~host ~service () =
   lwt sa = LUN.build_sockaddr host service in

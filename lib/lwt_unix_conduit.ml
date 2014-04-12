@@ -29,14 +29,6 @@ type server_mode = [
 
 module LUN = Lwt_unix_net
 
-let build_sockaddr host port =
-  let open Lwt_unix in
-  getaddrinfo host (string_of_int port) [AI_PROTOCOL port]
-  >>= function
-  | [] ->
-    fail (Invalid_argument (Printf.sprintf "No socket address for %s/%d" host port))
-  | ai::_ -> return ai.ai_addr
-
 let connect ~mode ~host ~service () =
   lwt sa = LUN.build_sockaddr host service in
 IFDEF HAVE_LWT_SSL THEN

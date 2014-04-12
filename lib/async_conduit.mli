@@ -22,10 +22,19 @@ type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
-val connect :
-  ?interrupt:unit io ->
-  mode:[< `SSL | `TCP ] ->
-  host:string -> port:int -> unit -> (ic * oc) io
+module Client : sig
+
+  type t = [
+    | `SSL
+    | `TCP
+  ]
+
+  val connect :
+    ?interrupt:unit io ->
+    mode:t ->
+    host:string -> port:int -> unit -> (ic * oc) io
+
+end
 
 module Server : sig
   type mode = [

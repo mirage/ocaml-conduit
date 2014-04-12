@@ -26,19 +26,26 @@ type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
+module Client = struct
 
-let connect ?interrupt ~mode ~host ~port () =
-  Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
-  >>= fun (_, rd, wr) ->
+  type t = [
+    | `SSL
+    | `TCP
+  ]
+
+  let connect ?interrupt ~mode ~host ~port () =
+    Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+    >>= fun (_, rd, wr) ->
 IFDEF HAVE_ASYNC_SSL THEN
-  match mode with
-  | `SSL -> Async_net_ssl.ssl_connect rd wr
-  | `TCP -> return (rd,wr)
+    match mode with
+    | `SSL -> Async_net_ssl.ssl_connect rd wr
+    | `TCP -> return (rd,wr)
 ELSE
-  match ssl with
-  | `SSL -> raise (Failure "SSL unsupported")
-  | `TCP -> return (rd,wr)
+    match ssl with
+    | `SSL -> raise (Failure "SSL unsupported")
+    | `TCP -> return (rd,wr)
 END
+end
 
 module Server = struct
 

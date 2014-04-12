@@ -49,8 +49,8 @@ IFDEF HAVE_LWT_SSL THEN
     Lwt_unix_net_ssl.init ~certfile ~keyfile ?timeout sockaddr callback
 ELSE
   match mode with
+  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
   | `SSL -> fail (Failure "No SSL support compiled into Conduit")
-  | `TCP -> LUN.Tcp_client.connect sa
 END
 
 let close_in ic =

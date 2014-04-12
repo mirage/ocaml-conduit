@@ -28,7 +28,6 @@ type server_mode = [
 ] with sexp
 
 module LUN = Lwt_unix_net
-module LUNS = Lwt_unix_net_ssl
 
 let build_sockaddr host port =
   let open Lwt_unix in
@@ -40,15 +39,27 @@ let build_sockaddr host port =
 
 let connect ~mode ~host ~service () =
   lwt sa = LUN.build_sockaddr host service in
+IFDEF HAVE_LWT_SSL THEN
   match mode with
-  | `SSL -> LUNS.connect sa
+  | `SSL -> Lwt_unix_net_ssl.connect sa
   | `TCP -> LUN.Tcp_client.connect sa
+ELSE
+  match mode with
+  | `SSL -> fail (Failure "No SSL support compiled into Conduit")
+  | `TCP -> LUN.Tcp_client.connect sa
+END
 
 let serve ~mode ~sockaddr ?timeout callback =
+IFDEF HAVE_LWT_SSL THEN
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
   | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
-    LUNS.init ~certfile ~keyfile ?timeout sockaddr callback
+    Lwt_unix_net_ssl.init ~certfile ~keyfile ?timeout sockaddr callback
+ELSE
+  match mode with
+  | `SSL -> fail (Failure "No SSL support compiled into Conduit")
+  | `TCP -> LUN.Tcp_client.connect sa
+END
 
 let close_in ic =
   ignore_result (try_lwt Lwt_io.close ic with _ -> return ())

@@ -56,8 +56,8 @@ module Tcp_server = struct
 
   let process_accept ?timeout callback (client,_) =
     Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
-    let ic = Lwt_io.of_fd Lwt_io.input client in
-    let oc = Lwt_io.of_fd Lwt_io.output client in
+    let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
+    let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
  
     let c = callback ic oc in
     let events = match timeout with

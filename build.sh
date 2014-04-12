@@ -59,6 +59,7 @@ if [ "$HAVE_LWT" != "" ]; then
 fi
 
 ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} -syntax camlp4o \
+  -cflags "-w A-4-33-40-41-42-43-34-44" \
   -pkgs `echo $PKG | tr ' ' ','` \
   -pkgs `echo $ASYNC_REQUIRES | tr ' ' ','` \
   -pkgs `echo $LWT_REQUIRES | tr ' ' ','` ${TARGETS}

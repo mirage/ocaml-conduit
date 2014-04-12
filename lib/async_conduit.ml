@@ -31,7 +31,7 @@ module Client = struct
   type t = [
     | `SSL
     | `TCP
-  ]
+  ] with sexp
 
   let connect ?interrupt ~mode ~host ~port () =
     Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
@@ -45,25 +45,27 @@ ELSE
     | `SSL -> raise (Failure "SSL unsupported")
     | `TCP -> return (rd,wr)
 END
+
 end
 
 module Server = struct
 
-type mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
-  | `TCP
-]
-let create ?max_connections ?max_pending_connections
+  type mode = [
+    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+    | `TCP
+  ] with sexp
+
+  let create ?max_connections ?max_pending_connections
       ?buffer_age_limit ?on_handler_error mode where_to_listen handle_request =
-  let handle_client handle_request sock rd wr =
-    match mode with
-    | `TCP -> handle_request sock rd wr
-    | `SSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
+    let handle_client handle_request sock rd wr =
+      match mode with
+      | `TCP -> handle_request sock rd wr
+      | `SSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
         Async_net_ssl.ssl_listen ~crt_file ~key_file rd wr
         >>= fun (rd,wr) -> handle_request sock rd wr
-  in
-  Tcp.Server.create ?max_connections ?max_pending_connections
-    ?buffer_age_limit ?on_handler_error
-    where_to_listen (handle_client handle_request)
+    in
+    Tcp.Server.create ?max_connections ?max_pending_connections
+      ?buffer_age_limit ?on_handler_error
+      where_to_listen (handle_client handle_request)
 
 end

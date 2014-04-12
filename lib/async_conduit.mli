@@ -27,7 +27,7 @@ module Client : sig
   type t = [
     | `SSL
     | `TCP
-  ]
+  ] with sexp
 
   val connect :
     ?interrupt:unit io ->
@@ -40,7 +40,7 @@ module Server : sig
   type mode = [
     | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
     | `TCP
-  ]
+  ] with sexp
 
   val create :
     ?max_connections:int ->

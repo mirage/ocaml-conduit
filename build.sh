@@ -3,10 +3,10 @@
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
-BASE_PKG="camlp4.macro"
+BASE_PKG="sexplib"
 LWT_PKG=lwt.unix
 LWT_SSL_PKG=lwt.ssl
-SYNTAX_PKG="lwt.syntax camlp4.macro"
+SYNTAX_PKG="lwt.syntax camlp4.macro sexplib.syntax"
 ASYNC_PKG=async
 ASYNC_SSL_PKG=async_ssl
 

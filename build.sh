@@ -15,11 +15,11 @@ HAVE_ASYNC_SSL=`ocamlfind query async_ssl 2>/dev/null || true`
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 
-function add_target {
+add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
 }
 
-function add_pkg {
+add_pkg () {
   PKG="$PKG $1"
 }
 

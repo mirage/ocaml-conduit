@@ -19,6 +19,16 @@ val connect :
   Lwt_unix.sockaddr ->
   (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
+val accept :
+  Lwt_unix.file_descr ->
+  (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+
+val listen :
+  ?nconn:int ->
+  ?password:(bool -> string) ->
+  certfile:string ->
+  keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
+
 val close : 
   Lwt_io.input_channel * Lwt_io.output_channel ->
   unit Lwt.t

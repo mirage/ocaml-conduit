@@ -22,14 +22,32 @@ let sslctx =
   Ssl.init ();
   Ssl.create_context Ssl.SSLv23 Ssl.Client_context
 
+let chans_of_fd sock =
+  let ic = Lwt_ssl.in_channel_of_descr sock in
+  let oc = Lwt_ssl.out_channel_of_descr sock in
+  (ic, oc)
+
 let connect sa =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
   lwt () = Lwt_unix.connect fd sa in
   lwt sock = Lwt_ssl.ssl_connect fd sslctx in
-  let ic = Lwt_ssl.in_channel_of_descr sock in
-  let oc = Lwt_ssl.out_channel_of_descr sock in
-  return (ic,oc)
+  return (chans_of_fd sock)
 
 let close (ic,oc) =
   let _ = try_lwt Lwt_io.close oc with _ -> return () in
   try_lwt Lwt_io.close ic with _ -> return ()
+
+let accept fd =
+  lwt sock = Lwt_ssl.ssl_accept fd sslctx in
+  return (chans_of_fd sock)
+
+let listen ?(nconn=20) ?password ~certfile ~keyfile sa =
+  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+  Lwt_unix.(setsockopt fd SO_REUSEADDR true);
+  Lwt_unix.bind fd sa;
+  Lwt_unix.listen fd nconn;
+  (match password with
+   | None -> ()
+   | Some fn -> Ssl.set_password_callback sslctx fn);
+  Ssl.use_certificate sslctx certfile keyfile;
+  fd

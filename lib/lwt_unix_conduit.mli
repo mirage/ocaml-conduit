@@ -24,7 +24,7 @@ type server_mode = [
   | `TCP 
 ] with sexp
 
-val build_sockaddr : string -> string -> Lwt_unix.sockaddr io
+val build_sockaddr : string -> int -> Lwt_unix.sockaddr io
 
 val connect :
   mode:[< `SSL | `TCP ] ->

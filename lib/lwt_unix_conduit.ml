@@ -30,12 +30,12 @@ type server_mode = [
 module LUN = Lwt_unix_net
 module LUNS = Lwt_unix_net_ssl
 
-let build_sockaddr host service =
+let build_sockaddr host port =
   let open Lwt_unix in
-  getprotobyname "tcp" >>= fun pe ->
-  getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
+  getaddrinfo host (string_of_int port) [AI_PROTOCOL port]
+  >>= function
   | [] ->
-    fail (Invalid_argument (Printf.sprintf "No socket address for %s/%s" host service))
+    fail (Invalid_argument (Printf.sprintf "No socket address for %s/%d" host port))
   | ai::_ -> return ai.ai_addr
 
 let connect ~mode ~host ~service () =

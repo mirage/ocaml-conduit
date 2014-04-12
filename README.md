@@ -9,7 +9,6 @@ from the precise SSL library used, since there are a variety of ways
 to bind to a library (e.g. the C FFI, or the Ctypes library), as well
 as well as which library is used (just OpenSSL for now).
 
---
-WWW    : https://github.com/mirage/ocaml-conduit
-E-mail : <mirageos-devel@lists.xenproject.org>
-Bugs   : https://github.com/mirage/ocaml-conduit/issues
+* **WWW:** https://github.com/mirage/ocaml-conduit
+* **E-mail:** <mirageos-devel@lists.xenproject.org>
+* **Bugs:** https://github.com/mirage/ocaml-conduit/issues

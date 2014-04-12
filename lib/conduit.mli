@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,21 +15,10 @@
  *
 *)
 
-module type LWT = sig
-
-  type ic
-
-  type oc
-
-  val connect : 
-    ?mode: [`SSL | `TCP] -> 
-    host:string -> 
-    service:string -> 
-    unit -> (ic * oc) Lwt.t
-
-  val close_in : ic -> unit
-  val close_out : oc -> unit
-  val close : ic -> oc -> unit
-end
-
 val has_async_ssl : bool
+(** [has_async_ssl] is [true] if Async SSL support has been compiled into
+    this library. *)
+
+val has_lwt_unix_ssl : bool
+(** [has_lwt_ssl] is [true] if Lwt SSL support has been compiled into
+    this library. *)

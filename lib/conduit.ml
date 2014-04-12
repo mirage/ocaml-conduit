@@ -15,25 +15,14 @@
  *
 *)
 
-module type LWT = sig
-
-  type ic
-
-  type oc
-
-  val connect :
-    ?mode: [`SSL | `TCP] ->
-    host:string ->
-    service:string ->
-    unit -> (ic * oc) Lwt.t
-
-  val close_in : ic -> unit
-  val close_out : oc -> unit
-  val close : ic -> oc -> unit
-end
-
 IFDEF HAVE_ASYNC_SSL THEN
 let has_async_ssl = true
 ELSE
 let has_async_ssl = false
+END
+
+IFDEF HAVE_LWT_SSL THEN
+let has_lwt_unix_ssl = true
+ELSE
+let has_lwt_unix_ssl = false
 END

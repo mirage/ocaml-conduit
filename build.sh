@@ -29,6 +29,7 @@ add_target "conduit"
 rm -f _tags
 
 echo 'true: syntax(camlp4o)' >> _tags
+echo '<lib/async_*>: thread' >> _tags
 
 if [ "$HAVE_ASYNC" != "" ]; then
   echo "Building with Async support."

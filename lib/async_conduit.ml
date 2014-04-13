@@ -41,7 +41,7 @@ IFDEF HAVE_ASYNC_SSL THEN
     | `SSL -> Async_net_ssl.ssl_connect rd wr
     | `TCP -> return (rd,wr)
 ELSE
-    match ssl with
+    match mode with
     | `SSL -> raise (Failure "SSL unsupported")
     | `TCP -> return (rd,wr)
 END
@@ -61,8 +61,12 @@ module Server = struct
       match mode with
       | `TCP -> handle_request sock rd wr
       | `SSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
+IFDEF HAVE_ASYNC_SSL THEN
         Async_net_ssl.ssl_listen ~crt_file ~key_file rd wr
         >>= fun (rd,wr) -> handle_request sock rd wr
+ELSE
+        raise (Failure "SSL unsupported in Conduit")
+END
     in
     Tcp.Server.create ?max_connections ?max_pending_connections
       ?buffer_age_limit ?on_handler_error

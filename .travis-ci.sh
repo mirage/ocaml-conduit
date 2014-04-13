@@ -30,10 +30,15 @@ opam install lwt
 make clean
 make
 
+opam remove lwt
 opam install async
 make clean
 make
 
 opam install async_ssl
+make clean
+make
+
+opam install lwt
 make clean
 make

@@ -1,10 +1,10 @@
 .PHONY: all install clean
 
 all:
-	./build.sh
+	@./build.sh
 
 install:
-	./build.sh true
+	@./build.sh true
 
 clean:
 	rm -rf _build

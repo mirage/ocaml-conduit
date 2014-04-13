@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/sh -e
 
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2

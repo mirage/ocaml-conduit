@@ -21,7 +21,7 @@ package "lwt" (
 package "async" (
  version = "@VERSION@"
  description = "Resolve URIs into Async channels"
- requires = "conduit @LWT_REQUIRES@"
+ requires = "conduit @ASYNC_REQUIRES@"
  archive(byte) = "conduit-async.cma"
  archive(byte, plugin) = "conduit-async.cma"
  archive(native) = "conduit-async.cmxa"

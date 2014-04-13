@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/mirage/ocaml-conduit.svg?branch=master)](https://travis-ci.org/mirage/ocaml-conduit)
+
 ## OCaml network conduit library
 
 The `conduit` library takes care of establishing and listening for 

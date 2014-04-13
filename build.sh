@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/sh -e
 
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
@@ -10,8 +10,18 @@ SYNTAX_PKG="camlp4.macro sexplib.syntax"
 ASYNC_PKG=async
 ASYNC_SSL_PKG=async_ssl
 
+# The Async backend is only supported in OCaml 4.01.0+
+OCAML_VERSION=`ocamlc -version`
+case $OCAML_VERSION in
+4.00.*|3.*)
+  echo Async backend only supported in OCaml 4.01.0 or higher
+  ;;
+*)
 HAVE_ASYNC=`ocamlfind query async 2>/dev/null || true`
 HAVE_ASYNC_SSL=`ocamlfind query async_ssl 2>/dev/null || true`
+;;
+esac
+
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 
@@ -29,7 +39,6 @@ add_target "conduit"
 rm -f _tags
 
 echo 'true: syntax(camlp4o)' >> _tags
-echo '<lib/async_*>: thread' >> _tags
 
 if [ "$HAVE_ASYNC" != "" ]; then
   echo "Building with Async support."

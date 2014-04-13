@@ -90,5 +90,6 @@ sed \
 if [ "$1" = "true" ]; then
   B=_build/lib/
   ocamlfind remove conduit || true
-  ocamlfind install conduit META $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a
+  FILES=`ls -1 $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a 2>/dev/null`
+  ocamlfind install conduit META $FILES
 fi

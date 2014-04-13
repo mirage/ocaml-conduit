@@ -29,16 +29,25 @@ make
 opam install lwt
 make clean
 make
+make install
 
 opam remove lwt
 opam install async
 make clean
 make
+make install
 
 opam install async_ssl
 make clean
 make
+make install
 
 opam install lwt
 make clean
 make
+make install
+
+opam install ssl
+make clean
+make
+make install

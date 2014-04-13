@@ -33,7 +33,7 @@ let connect ~mode ~host ~service () =
   lwt sa = LUN.build_sockaddr host service in
 IFDEF HAVE_LWT_SSL THEN
   match mode with
-  | `SSL -> Lwt_unix_net_ssl.connect sa
+  | `SSL -> Lwt_unix_net_ssl.Client.connect sa
   | `TCP -> LUN.Tcp_client.connect sa
 ELSE
   match mode with
@@ -46,7 +46,7 @@ IFDEF HAVE_LWT_SSL THEN
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
   | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
-    Lwt_unix_net_ssl.init ~certfile ~keyfile ?timeout sockaddr callback
+    Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
 ELSE
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback

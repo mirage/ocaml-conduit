@@ -21,6 +21,7 @@ HAVE_ASYNC=`ocamlfind query async 2>/dev/null || true`
 HAVE_ASYNC_SSL=`ocamlfind query async_ssl 2>/dev/null || true`
 echo Async SSL requires a stub-generation version due to
 echo a linking order bug. This release has it temporarily disabled.
+HAVE_ASYNC_SSL=
 ;;
 esac
 

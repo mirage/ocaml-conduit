@@ -31,7 +31,7 @@ val connect :
 val serve :
   mode:server_mode ->
   sockaddr:Lwt_unix.sockaddr ->
-  ?timeout:int -> (ic -> oc -> unit io) -> unit io
+  ?timeout:int -> (Lwt_unix.sockaddr -> ic -> oc -> unit io) -> unit io
 
 val close_in : 'a Lwt_io.channel -> unit
 val close_out : 'a Lwt_io.channel -> unit

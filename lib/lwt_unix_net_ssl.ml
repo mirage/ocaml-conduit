@@ -44,9 +44,9 @@ module Server = struct
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Server_context
 
   let accept fd =
-    lwt (afd,_) = Lwt_unix.accept fd in
+    lwt (afd,sockaddr) = Lwt_unix.accept fd in
     lwt sock = Lwt_ssl.ssl_accept afd t in
-    return (chans_of_fd sock)
+    return (sockaddr,chans_of_fd sock)
 
   let listen ?(nconn=20) ?password ~certfile ~keyfile sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
@@ -59,8 +59,8 @@ module Server = struct
     Ssl.use_certificate t certfile keyfile;
     fd
 
-  let process_accept ~timeout callback (ic,oc) =
-    let c = callback ic oc in
+  let process_accept ~timeout callback (sockaddr,(ic,oc)) =
+    let c = callback sockaddr ic oc in
     let events = match timeout with
       | None -> [c]
       | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in

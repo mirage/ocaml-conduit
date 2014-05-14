@@ -46,6 +46,11 @@ ELSE
     | `TCP -> return (rd,wr)
 END
 
+  let connect_unix ?interrupt ~path () =
+    Tcp.connect ?interrupt (Tcp.to_file path)
+    >>= fun (_, rd, wr) ->
+    return (rd,wr)
+
 end
 
 module Server = struct

@@ -34,6 +34,10 @@ module Client : sig
     mode:t ->
     host:string -> port:int -> unit -> (ic * oc) io
 
+  val connect_unix :
+    ?interrupt:unit io ->
+    path:string -> unit -> (ic * oc) io
+
 end
 
 module Server : sig

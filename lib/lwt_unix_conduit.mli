@@ -20,7 +20,10 @@ type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type server_mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+  | `SSL of
+    [ `Crt_file_path of string ] *
+    [ `Key_file_path of string ] *
+    (bool -> string) option
   | `TCP 
 ] with sexp
 

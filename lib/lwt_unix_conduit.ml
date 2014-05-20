@@ -23,7 +23,10 @@ type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type server_mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+  | `SSL of
+      [ `Crt_file_path of string ] *
+      [ `Key_file_path of string ] *
+      (bool -> string) option (* Add `Password ? *)
   | `TCP
 ] with sexp
 
@@ -45,12 +48,12 @@ let serve ~mode ~sockaddr ?timeout callback =
 IFDEF HAVE_LWT_SSL THEN
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
-  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
-    Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
+  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, password) ->
+    Lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout sockaddr callback
 ELSE
   match mode with
   | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
-  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
+  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, password) ->
       fail (Failure "No SSL support compiled into Conduit")
 END
 

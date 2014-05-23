@@ -41,15 +41,16 @@ ELSE
   | `TCP -> LUN.Tcp_client.connect sa
 END
 
-let serve ~mode ~sockaddr ?timeout callback =
+let serve ~mode ~sockaddr ?stop ?timeout callback =
 IFDEF HAVE_LWT_SSL THEN
   match mode with
-  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
+  | `TCP -> LUN.Tcp_server.init ~sockaddr ?stop ?timeout callback
   | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
-    Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
+    Lwt_unix_net_ssl.Server.init ~certfile ~keyfile
+      ?stop ?timeout sockaddr callback
 ELSE
   match mode with
-  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
+  | `TCP -> LUN.Tcp_server.init ~sockaddr ?stop ?timeout callback
   | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
       fail (Failure "No SSL support compiled into Conduit")
 END

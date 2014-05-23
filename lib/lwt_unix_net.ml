@@ -58,17 +58,17 @@ module Tcp_server = struct
     Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
- 
+
     let c = callback ic oc in
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
-  
-  let init ~sockaddr ?timeout callback =
+
+  let init ~sockaddr ?(stop = (fun () -> true)) ?timeout callback =
     let s = init_socket sockaddr in
-    while_lwt true do
+    while_lwt (stop ()) do
       Lwt_unix.accept s >>=
       process_accept ?timeout callback
     done

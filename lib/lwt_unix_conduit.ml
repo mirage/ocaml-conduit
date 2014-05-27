@@ -36,6 +36,10 @@ let init ?src () =
       | [] -> fail (Failure "Invalid conduit source address specified")
       | {ai_addr;_}::_ -> return { src=ai_addr }
 
+let default_ctx =
+  let open Unix in
+  { src = ADDR_INET (inet_addr_any, 0) }
+
 type conn = [
   | `TCP of Unix.file_descr
 ]
@@ -52,13 +56,7 @@ let sockname conn =
 
 module Client = struct
 
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Domain_socket of string
-  ] with sexp
-
-  let connect ctx (mode:t) =
+  let connect ?(ctx=default_ctx) (mode:Conduit.Client.t) =
     match mode with
     | `SSL (host,port) -> 
 IFDEF HAVE_LWT_SSL THEN
@@ -81,7 +79,7 @@ module Server = struct
     | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
     | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
 
-  let serve ?timeout ctx (mode:Conduit.Server.t) callback =
+  let serve ?timeout ?(ctx=default_ctx) (mode:Conduit.Server.t) callback =
     match mode with
     | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in

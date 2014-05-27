@@ -30,10 +30,10 @@ val peername : conn -> endp
 val sockname : conn -> endp
 
 module Client : sig
-  val connect : ctx -> Conduit.Client.t -> (conn * ic * oc) io
+  val connect : ?ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
 end
 
 module Server : sig
-  val serve : ?timeout:int -> ctx -> Conduit.Server.t -> 
+  val serve : ?timeout:int -> ?ctx:ctx -> Conduit.Server.t -> 
     (conn -> ic -> oc -> unit io) -> unit io
 end

@@ -30,27 +30,10 @@ val peername : conn -> endp
 val sockname : conn -> endp
 
 module Client : sig
-
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Domain_socket of string
-  ]
-
-  val connect : ctx -> t -> (conn * ic * oc) io
+  val connect : ctx -> Conduit.Client.t -> (conn * ic * oc) io
 end
 
 module Server : sig
-
-  type t = [
-    | `SSL of 
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ] *
-       [ `Password of bool -> string | `No_password ] *
-       [ `Port of int]
-    | `TCP of [ `Port of int ]
-  ] with sexp
-
-  val serve : ?timeout:int -> ctx -> t -> 
+  val serve : ?timeout:int -> ctx -> Conduit.Server.t -> 
     (conn -> ic -> oc -> unit io) -> unit io
 end

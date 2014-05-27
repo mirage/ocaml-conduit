@@ -76,21 +76,12 @@ end
 
 module Server = struct
 
-  type t = [
-    | `SSL of 
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ] *
-       [ `Password of bool -> string | `No_password ] *
-       [ `Port of int]
-    | `TCP of [ `Port of int ]
-  ] with sexp
-
   let sockaddr_on_tcp_port ctx port =
     match ctx.src with
     | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
     | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
 
-  let serve ?timeout ctx (mode:t) callback =
+  let serve ?timeout ctx (mode:Conduit.Server.t) callback =
     match mode with
     | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in

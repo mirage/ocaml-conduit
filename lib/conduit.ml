@@ -15,6 +15,31 @@
  *
 *)
 
+open Sexplib.Std
+
+module Client = struct
+
+  type t = [
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Domain_socket of string
+  ] with sexp
+
+end
+
+module Server = struct
+
+  type t = [
+    | `SSL of 
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ] *
+       [ `Password of bool -> string | `No_password ] *
+       [ `Port of int]
+    | `TCP of [ `Port of int ]
+  ] with sexp
+
+end
+
 IFDEF HAVE_ASYNC_SSL THEN
 let has_async_ssl = true
 ELSE

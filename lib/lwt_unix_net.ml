@@ -66,9 +66,12 @@ module Tcp_server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
 
-  let init ~sockaddr ?(stop = (fun () -> true)) ?timeout callback =
+  let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
+    let cont = ref true in
     let s = init_socket sockaddr in
-    while_lwt (stop ()) do
+
+    Lwt.async (fun () -> stop >>= fun () -> cont := false; Lwt.return ());
+    while_lwt !cont do
       Lwt_unix.accept s >>=
       process_accept ?timeout callback
     done

@@ -68,10 +68,12 @@ module Server = struct
     return ()
 
   let init ?(nconn=20) ?password ~certfile ~keyfile
-    ?(stop = (fun () -> true)) ?timeout sa callback =
+    ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     let s = listen ~nconn ?password ~certfile ~keyfile sa in
     let cont = ref true in
-    while_lwt !cont && (stop ()) do
+
+    Lwt.async (fun () -> stop >>= fun () -> cont := false; Lwt.return ());
+    while_lwt !cont do
       try_lwt begin
         accept s >>= process_accept ~timeout callback
       end with

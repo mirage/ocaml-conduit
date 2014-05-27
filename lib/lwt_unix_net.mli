@@ -21,7 +21,7 @@ module Sockaddr_client : sig
   open Lwt_io
 
   val connect : ?src:Lwt_unix.sockaddr -> Lwt_unix.sockaddr ->
-   (input channel * output channel) Lwt.t
+   ([`TCP of Unix.file_descr] * input channel * output channel) Lwt.t
 
   val close : input channel * output channel -> unit Lwt.t
 end
@@ -34,7 +34,7 @@ module Sockaddr_server : sig
   val init :
     sockaddr:Lwt_unix.sockaddr ->
     ?timeout:int ->
-    (input channel -> output channel -> unit Lwt.t) ->
+    ([`TCP of Unix.file_descr] -> input channel -> output channel -> unit Lwt.t) ->
     unit Lwt.t
 
   val close : input channel * output channel -> unit Lwt.t

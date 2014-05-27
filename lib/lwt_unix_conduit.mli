@@ -18,9 +18,16 @@
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
+type endp = Lwt_unix.sockaddr
 
 type ctx
 val init : ?src:string -> unit -> ctx io
+
+(** An individual connection *)
+
+type conn
+val peername : conn -> endp
+val sockname : conn -> endp
 
 module Client : sig
 
@@ -30,7 +37,7 @@ module Client : sig
     | `Domain_socket of string
   ]
 
-  val connect : ctx -> t -> (ic * oc) io
+  val connect : ctx -> t -> (conn * ic * oc) io
 end
 
 module Server : sig
@@ -44,9 +51,5 @@ module Server : sig
     | `TCP of [ `Port of int ]
   ] with sexp
 
-  val serve : ?timeout:int -> ctx -> t -> (ic -> oc -> unit io) -> unit io
+  val serve : ?timeout:int -> ctx -> t -> (conn -> ic -> oc -> unit io) -> unit io
 end
-
-val close_in : 'a Lwt_io.channel -> unit
-val close_out : 'a Lwt_io.channel -> unit
-val close : 'a Lwt_io.channel -> 'b Lwt_io.channel -> unit

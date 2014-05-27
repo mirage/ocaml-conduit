@@ -23,18 +23,32 @@ type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type ctx = {
-  src: Unix.sockaddr
+  src: Unix.sockaddr;
 }
 
 let init ?src () =
-  let open Unix in
-  match src with
-  | None -> return { src=(ADDR_INET (inet_addr_any, 0)) }
-  | Some host ->
-     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
-     >>= function
-     | [] -> fail (Failure "Invalid conduit source address specified")
-     | {ai_addr;_}::_ -> return { src=ai_addr }
+   let open Unix in
+   match src with
+   | None -> return { src=(ADDR_INET (inet_addr_any, 0)) }
+   | Some host ->
+      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
+      >>= function
+      | [] -> fail (Failure "Invalid conduit source address specified")
+      | {ai_addr;_}::_ -> return { src=ai_addr }
+
+type conn = [
+  | `TCP of Unix.file_descr
+]
+
+type endp = Lwt_unix.sockaddr
+
+let peername conn =
+  match conn with
+  | `TCP fd -> Unix.getpeername fd
+
+let sockname conn =
+  match conn with
+  | `TCP fd -> Unix.getsockname fd
 
 module Client = struct
 
@@ -90,16 +104,3 @@ ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END
 end
-
-let close_in ic =
-  ignore_result (try_lwt Lwt_io.close ic with _ -> return ())
-
-let close_out oc =
-  ignore_result (try_lwt Lwt_io.close oc with _ -> return ())
-
-let close' ic oc =
-  try_lwt Lwt_io.close oc with _ -> return () >>= fun () ->
-    try_lwt Lwt_io.close ic with _ -> return ()
-
-let close ic oc =
-  ignore_result (close' ic oc)

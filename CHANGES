@@ -3,6 +3,7 @@
 * Add an explicit `ctx` content to track every conduit's runtime state.
 * Allow the source interface for a conduit to be set.
 * Support a `password` callback for the SSL layer (#4).
+* Add a `conn` value to the callback to query more information about the current connection (#2).
 
 0.5.0 (2014-04-13):
 * First public release.

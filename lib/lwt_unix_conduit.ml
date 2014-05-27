@@ -63,7 +63,11 @@ end
 module Server = struct
 
   type t = [
-    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ] * [`Port of int]
+    | `SSL of 
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ] *
+       [ `Password of bool -> string | `No_password ] *
+       [ `Port of int]
     | `TCP of [ `Port of int ]
   ] with sexp
 
@@ -77,10 +81,11 @@ module Server = struct
     | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout callback
-    | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, `Port port) -> 
+    | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
-       Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
+       let password = match pass with |`No_password -> None |`Password fn -> Some fn in
+       Lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout sockaddr callback
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END

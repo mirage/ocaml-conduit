@@ -36,7 +36,11 @@ end
 module Server : sig
 
   type t = [
-    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ] * [`Port of int]
+    | `SSL of 
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ] *
+       [ `Password of bool -> string | `No_password ] *
+       [ `Port of int]
     | `TCP of [ `Port of int ]
   ] with sexp
 

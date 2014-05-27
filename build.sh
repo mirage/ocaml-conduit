@@ -3,12 +3,8 @@
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
-BASE_PKG="sexplib"
-LWT_PKG=lwt.unix
-LWT_SSL_PKG=lwt.ssl
+BASE_PKG="sexplib ipaddr"
 SYNTAX_PKG="camlp4.macro sexplib.syntax"
-ASYNC_PKG=async
-ASYNC_SSL_PKG=async_ssl
 
 # The Async backend is only supported in OCaml 4.01.0+
 OCAML_VERSION=`ocamlc -version`

@@ -17,6 +17,7 @@
 
 module Client : sig
   val connect :
+    ?src:Lwt_unix.sockaddr ->
     Lwt_unix.sockaddr ->
     (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 

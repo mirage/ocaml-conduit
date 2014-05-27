@@ -17,15 +17,16 @@
 
 val build_sockaddr : string -> string -> Lwt_unix.sockaddr Lwt.t
 
-module Tcp_client : sig
+module Sockaddr_client : sig
   open Lwt_io
 
-  val connect : Lwt_unix.sockaddr -> (input channel * output channel) Lwt.t
+  val connect : ?src:Lwt_unix.sockaddr -> Lwt_unix.sockaddr ->
+   (input channel * output channel) Lwt.t
 
   val close : input channel * output channel -> unit Lwt.t
 end
 
-module Tcp_server : sig
+module Sockaddr_server : sig
   open Lwt_io
 
   val init_socket : Lwt_unix.sockaddr -> Lwt_unix.file_descr

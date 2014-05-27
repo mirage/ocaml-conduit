@@ -26,10 +26,18 @@ let build_sockaddr host service =
     Lwt.fail (Invalid_argument (Printf.sprintf "No socket address for %s/%s" host service))
   | ai::_ -> Lwt.return ai.ai_addr
 
-(* Vanilla TCP connection *)
-module Tcp_client = struct
-  let connect sa =
+let default_sockaddr port =
+  Unix.ADDR_INET (Unix.inet_addr_any, port)
+  
+(* Vanilla sockaddr connection *)
+module Sockaddr_client = struct
+  let connect ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+    let () = 
+      match src with
+      | None -> ()
+      | Some src_sa -> Lwt_unix.bind fd src_sa
+    in
     lwt () = Lwt_unix.connect fd sa in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
@@ -40,7 +48,7 @@ module Tcp_client = struct
     try_lwt Lwt_io.close ic with _ -> return ()
 end
 
-module Tcp_server = struct
+module Sockaddr_server = struct
 
   let close (ic,oc) =
     try_lwt Lwt_io.close oc with _ -> return () >>= fun () ->

@@ -32,8 +32,13 @@ module Client = struct
   (* SSL TCP connection *)
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Client_context
 
-  let connect sa =
+  let connect ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+    let () =
+      match src with
+      | None -> ()
+      | Some src_sa -> Lwt_unix.bind fd src_sa
+    in
     lwt () = Lwt_unix.connect fd sa in
     lwt sock = Lwt_ssl.ssl_connect fd t in
     return (chans_of_fd sock)

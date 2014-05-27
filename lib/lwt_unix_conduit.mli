@@ -19,19 +19,29 @@ type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
-type server_mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
-  | `TCP 
-] with sexp
+type ctx
+val init : ?src:string -> unit -> ctx io
 
-val connect :
-  mode:[< `SSL | `TCP ] ->
-  host:string -> service:string -> unit -> (ic * oc) io
+module Client : sig
 
-val serve :
-  mode:server_mode ->
-  sockaddr:Lwt_unix.sockaddr ->
-  ?timeout:int -> (ic -> oc -> unit io) -> unit io
+  type t = [
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Domain_socket of string
+  ]
+
+  val connect : ctx -> t -> (ic * oc) io
+end
+
+module Server : sig
+
+  type t = [
+    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ] * [`Port of int]
+    | `TCP of [ `Port of int ]
+  ] with sexp
+
+  val serve : ?timeout:int -> ctx -> t -> (ic -> oc -> unit io) -> unit io
+end
 
 val close_in : 'a Lwt_io.channel -> unit
 val close_out : 'a Lwt_io.channel -> unit

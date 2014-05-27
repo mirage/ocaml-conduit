@@ -22,37 +22,69 @@ type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
-type server_mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
-  | `TCP
-] with sexp
+type ctx = {
+  src: Unix.sockaddr
+}
 
-module LUN = Lwt_unix_net
+let init ?src () =
+  let open Unix in
+  match src with
+  | None -> return { src=(ADDR_INET (inet_addr_any, 0)) }
+  | Some host ->
+     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
+     >>= function
+     | [] -> fail (Failure "Invalid conduit source address specified")
+     | {ai_addr;_}::_ -> return { src=ai_addr }
 
-let connect ~mode ~host ~service () =
-  lwt sa = LUN.build_sockaddr host service in
+module Client = struct
+
+  type t = [
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Domain_socket of string
+  ] with sexp
+
+  let connect ctx (mode:t) =
+    match mode with
+    | `SSL (host,port) -> 
 IFDEF HAVE_LWT_SSL THEN
-  match mode with
-  | `SSL -> Lwt_unix_net_ssl.Client.connect sa
-  | `TCP -> LUN.Tcp_client.connect sa
+      lwt sa = Lwt_unix_net.build_sockaddr host (string_of_int port) in
+      Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
 ELSE
-  match mode with
-  | `SSL -> fail (Failure "No SSL support compiled into Conduit")
-  | `TCP -> LUN.Tcp_client.connect sa
-END
-
-let serve ~mode ~sockaddr ?timeout callback =
-IFDEF HAVE_LWT_SSL THEN
-  match mode with
-  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
-  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
-    Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
-ELSE
-  match mode with
-  | `TCP -> LUN.Tcp_server.init ~sockaddr ?timeout callback
-  | `SSL (`Crt_file_path certfile, `Key_file_path keyfile) -> 
       fail (Failure "No SSL support compiled into Conduit")
 END
+    | `TCP (host,port) ->
+       lwt sa = Lwt_unix_net.build_sockaddr host (string_of_int port) in
+       Lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
+    | `Domain_socket file ->
+       Lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
+end
+
+module Server = struct
+
+  type t = [
+    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ] * [`Port of int]
+    | `TCP of [ `Port of int ]
+  ] with sexp
+
+  let sockaddr_on_tcp_port ctx port =
+    match ctx.src with
+    | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
+    | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
+
+  let serve ?timeout ctx (mode:t) callback =
+    match mode with
+    | `TCP (`Port port) ->
+       lwt sockaddr = sockaddr_on_tcp_port ctx port in
+       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout callback
+    | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, `Port port) -> 
+IFDEF HAVE_LWT_SSL THEN
+       lwt sockaddr = sockaddr_on_tcp_port ctx port in
+       Lwt_unix_net_ssl.Server.init ~certfile ~keyfile ?timeout sockaddr callback
+ELSE
+       fail (Failure "No SSL support compiled into Conduit")
+END
+end
 
 let close_in ic =
   ignore_result (try_lwt Lwt_io.close ic with _ -> return ())

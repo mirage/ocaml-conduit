@@ -25,19 +25,12 @@ type oc = Writer.t
 module Client : sig
 
   type t = [
-    | `SSL
-    | `TCP
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Domain_socket of string
   ] with sexp
 
-  val connect :
-    ?interrupt:unit io ->
-    mode:t ->
-    host:string -> port:int -> unit -> (ic * oc) io
-
-  val connect_unix :
-    ?interrupt:unit io ->
-    path:string -> unit -> (ic * oc) io
-
+  val connect : ?interrupt:unit io -> t -> (ic * oc) io
 end
 
 module Server : sig

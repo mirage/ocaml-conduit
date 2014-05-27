@@ -1,5 +1,7 @@
 0.6.0 (trunk):
 * Reenable Async SSL by default.
+* Add an explicit `ctx` content to track every conduit's runtime state.
+* Allow the source interface for a conduit to be set.
 
 0.5.0 (2014-04-13):
 * First public release.

@@ -29,27 +29,31 @@ type oc = Writer.t
 module Client = struct
 
   type t = [
-    | `SSL
-    | `TCP
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Domain_socket of string
   ] with sexp
 
-  let connect ?interrupt ~mode ~host ~port () =
-    Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
-    >>= fun (_, rd, wr) ->
+  let connect ?interrupt dst =
+    match dst with
+    | `TCP (host, port) -> begin
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+      >>= fun (_, rd, wr) -> return (rd,wr)
+    end
+    | `SSL (host, port) -> begin
 IFDEF HAVE_ASYNC_SSL THEN
-    match mode with
-    | `SSL -> Async_net_ssl.ssl_connect rd wr
-    | `TCP -> return (rd,wr)
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+      >>= fun (_, rd, wr) ->
+      Async_net_ssl.ssl_connect rd wr
 ELSE
-    match mode with
-    | `SSL -> raise (Failure "SSL unsupported")
-    | `TCP -> return (rd,wr)
+      raise (Failure "SSL unsupported")
 END
-
-  let connect_unix ?interrupt ~path () =
-    Tcp.connect ?interrupt (Tcp.to_file path)
-    >>= fun (_, rd, wr) ->
-    return (rd,wr)
+    end
+    | `Domain_socket file -> begin
+      Tcp.connect ?interrupt (Tcp.to_file file)
+      >>= fun (_, rd, wr) ->
+      return (rd,wr)
+    end
 
 end
 

@@ -1,4 +1,4 @@
-OPAM_DEPENDS="sexplib"
+OPAM_DEPENDS="sexplib ipaddr"
 
 case "$OCAML_VERSION,$OPAM_VERSION" in
 4.00.1,1.0.0) ppa=avsm/ocaml40+opam10 ;;

@@ -20,7 +20,7 @@ module Client : sig
   type t = [
     | `SSL of string * int
     | `TCP of string * int
-    | `Domain_socket of string
+    | `Unix_domain_socket of string
   ] with sexp
 
 end
@@ -34,6 +34,7 @@ module Server : sig
        [ `Password of bool -> string | `No_password ] *
        [ `Port of int]
     | `TCP of [ `Port of int ]
+    | `Unix_domain_socket of [ `File of string ]
   ] with sexp
 
 end

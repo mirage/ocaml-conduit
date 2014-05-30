@@ -31,7 +31,7 @@ module Client = struct
   type t = [
     | `SSL of string * int
     | `TCP of string * int
-    | `Domain_socket of string
+    | `Unix_domain_socket of string
   ] with sexp
 
   let connect ?interrupt dst =
@@ -49,18 +49,19 @@ ELSE
       raise (Failure "SSL unsupported")
 END
     end
-    | `Domain_socket file -> begin
+    | `Unix_domain_socket file -> begin
       Tcp.connect ?interrupt (Tcp.to_file file)
       >>= fun (_, rd, wr) ->
       return (rd,wr)
     end
-
 end
 
 module Server = struct
 
   type mode = [
-    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+    | `SSL of
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ] 
     | `TCP
   ] with sexp
 
@@ -80,5 +81,4 @@ END
     Tcp.Server.create ?max_connections ?max_pending_connections
       ?buffer_age_limit ?on_handler_error
       where_to_listen (handle_client handle_request)
-
 end

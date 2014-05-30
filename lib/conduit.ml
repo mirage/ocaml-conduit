@@ -22,7 +22,7 @@ module Client = struct
   type t = [
     | `SSL of string * int
     | `TCP of string * int
-    | `Domain_socket of string
+    | `Unix_domain_socket of string
   ] with sexp
 
 end
@@ -30,12 +30,13 @@ end
 module Server = struct
 
   type t = [
-    | `SSL of 
+    | `SSL of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ] *
        [ `Password of bool -> string | `No_password ] *
-       [ `Port of int]
+       [ `Port of int ]
     | `TCP of [ `Port of int ]
+    | `Unix_domain_socket of [ `File of string ]
   ] with sexp
 
 end

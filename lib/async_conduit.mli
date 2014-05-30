@@ -23,19 +23,14 @@ type ic = Reader.t
 type oc = Writer.t
 
 module Client : sig
-
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Domain_socket of string
-  ] with sexp
-
-  val connect : ?interrupt:unit io -> t -> (ic * oc) io
+  val connect : ?interrupt:unit io -> Conduit.Client.t -> (ic * oc) io
 end
 
 module Server : sig
   type mode = [
-    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+    | `SSL of
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ]
     | `TCP
   ] with sexp
 

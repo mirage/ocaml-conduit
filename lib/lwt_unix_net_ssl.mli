@@ -17,15 +17,16 @@
 
 module Client : sig
   val connect :
+    ?src:Lwt_unix.sockaddr ->
     Lwt_unix.sockaddr ->
-    (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+    ([`TCP of Unix.file_descr] * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
 end
 
 module Server : sig
   val accept :
     Lwt_unix.file_descr ->
-    (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+    ([`TCP of Unix.file_descr] * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
   val listen :
     ?nconn:int ->
@@ -40,7 +41,7 @@ module Server : sig
     keyfile:string ->
     ?timeout:int ->
     Lwt_unix.sockaddr ->
-    (Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
+    ([`TCP of Unix.file_descr] -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
     unit Lwt.t
 end
 

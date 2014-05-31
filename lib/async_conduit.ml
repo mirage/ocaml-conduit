@@ -29,29 +29,39 @@ type oc = Writer.t
 module Client = struct
 
   type t = [
-    | `SSL
-    | `TCP
+    | `SSL of string * int
+    | `TCP of string * int
+    | `Unix_domain_socket of string
   ] with sexp
 
-  let connect ?interrupt ~mode ~host ~port () =
-    Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
-    >>= fun (_, rd, wr) ->
+  let connect ?interrupt dst =
+    match dst with
+    | `TCP (host, port) -> begin
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+      >>= fun (_, rd, wr) -> return (rd,wr)
+    end
+    | `SSL (host, port) -> begin
 IFDEF HAVE_ASYNC_SSL THEN
-    match mode with
-    | `SSL -> Async_net_ssl.ssl_connect rd wr
-    | `TCP -> return (rd,wr)
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+      >>= fun (_, rd, wr) ->
+      Async_net_ssl.ssl_connect rd wr
 ELSE
-    match mode with
-    | `SSL -> raise (Failure "SSL unsupported")
-    | `TCP -> return (rd,wr)
+      raise (Failure "SSL unsupported")
 END
-
+    end
+    | `Unix_domain_socket file -> begin
+      Tcp.connect ?interrupt (Tcp.to_file file)
+      >>= fun (_, rd, wr) ->
+      return (rd,wr)
+    end
 end
 
 module Server = struct
 
   type mode = [
-    | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
+    | `SSL of
+       [ `Crt_file_path of string ] * 
+       [ `Key_file_path of string ] 
     | `TCP
   ] with sexp
 
@@ -71,5 +81,4 @@ END
     Tcp.Server.create ?max_connections ?max_pending_connections
       ?buffer_age_limit ?on_handler_error
       where_to_listen (handle_client handle_request)
-
 end

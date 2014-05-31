@@ -22,7 +22,7 @@ let _ = Ssl.init ()
 let chans_of_fd sock =
   let ic = Lwt_ssl.in_channel_of_descr sock in
   let oc = Lwt_ssl.out_channel_of_descr sock in
-  (ic, oc)
+  (`TCP (Lwt_ssl.get_unix_fd sock), ic, oc)
 
 let close (ic,oc) =
   let _ = try_lwt Lwt_io.close oc with _ -> return () in
@@ -32,8 +32,13 @@ module Client = struct
   (* SSL TCP connection *)
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Client_context
 
-  let connect sa =
+  let connect ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+    let () =
+      match src with
+      | None -> ()
+      | Some src_sa -> Lwt_unix.bind fd src_sa
+    in
     lwt () = Lwt_unix.connect fd sa in
     lwt sock = Lwt_ssl.ssl_connect fd t in
     return (chans_of_fd sock)
@@ -59,8 +64,8 @@ module Server = struct
     Ssl.use_certificate t certfile keyfile;
     fd
 
-  let process_accept ~timeout callback (ic,oc) =
-    let c = callback ic oc in
+  let process_accept ~timeout callback (sa,ic,oc) =
+    let c = callback sa ic oc in
     let events = match timeout with
       | None -> [c]
       | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in

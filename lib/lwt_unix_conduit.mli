@@ -18,21 +18,22 @@
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
+type endp = Lwt_unix.sockaddr
 
-type server_mode = [
-  | `SSL of [ `Crt_file_path of string ] * [ `Key_file_path of string ]
-  | `TCP 
-] with sexp
+type ctx
+val init : ?src:string -> unit -> ctx io
 
-val connect :
-  mode:[< `SSL | `TCP ] ->
-  host:string -> service:string -> unit -> (ic * oc) io
+(** An individual connection *)
 
-val serve :
-  mode:server_mode ->
-  sockaddr:Lwt_unix.sockaddr ->
-  ?timeout:int -> (ic -> oc -> unit io) -> unit io
+type conn
+val peername : conn -> endp
+val sockname : conn -> endp
 
-val close_in : 'a Lwt_io.channel -> unit
-val close_out : 'a Lwt_io.channel -> unit
-val close : 'a Lwt_io.channel -> 'b Lwt_io.channel -> unit
+module Client : sig
+  val connect : ?ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
+end
+
+module Server : sig
+  val serve : ?timeout:int -> ?ctx:ctx -> Conduit.Server.t -> 
+    (conn -> ic -> oc -> unit io) -> unit io
+end

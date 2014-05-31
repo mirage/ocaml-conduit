@@ -65,17 +65,22 @@ module Sockaddr_server = struct
     let sa = `TCP (Lwt_unix.unix_file_descr client) in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
- 
     let c = callback sa ic oc in
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
-  
-  let init ~sockaddr ?timeout callback =
+
+  let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
+    let cont = ref true in
     let s = init_socket sockaddr in
-    while_lwt true do
+    async (fun () -> 
+      stop >>= fun () -> 
+      cont := false; 
+      return_unit
+    );
+    while_lwt !cont do
       Lwt_unix.accept s >>=
       process_accept ?timeout callback
     done

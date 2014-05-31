@@ -39,6 +39,7 @@ module Server : sig
     ?password:(bool -> string) ->
     certfile:string ->
     keyfile:string ->
+    ?stop:(unit Lwt.t) ->
     ?timeout:int ->
     Lwt_unix.sockaddr ->
     ([`TCP of Unix.file_descr] -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->

@@ -34,6 +34,6 @@ module Client : sig
 end
 
 module Server : sig
-  val serve : ?timeout:int -> ?ctx:ctx -> Conduit.Server.t -> 
-    (conn -> ic -> oc -> unit io) -> unit io
+  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit Lwt.t) ->
+    Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
 end

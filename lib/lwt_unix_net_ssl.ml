@@ -72,13 +72,19 @@ module Server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
 
-  let init ?(nconn=20) ?password ~certfile ~keyfile ?timeout sa callback =
+  let init ?(nconn=20) ?password ~certfile ~keyfile
+    ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     let s = listen ~nconn ?password ~certfile ~keyfile sa in
     let cont = ref true in
+    async (fun () ->
+      stop >>= fun () ->
+      cont := false;
+      return_unit
+    );
     while_lwt !cont do
       try_lwt begin
         accept s >>= process_accept ~timeout callback
-      end with 
+      end with
        | Lwt.Canceled -> cont := false; return ()
        | _ -> return ()
     done

@@ -33,6 +33,7 @@ module Sockaddr_server : sig
 
   val init :
     sockaddr:Lwt_unix.sockaddr ->
+    ?stop:(unit Lwt.t) ->
     ?timeout:int ->
     ([`TCP of Unix.file_descr] -> input channel -> output channel -> unit Lwt.t) ->
     unit Lwt.t

@@ -79,19 +79,19 @@ module Server = struct
     | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
     | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
 
-  let serve ?timeout ?(ctx=default_ctx) (mode:Conduit.Server.t) callback =
+  let serve ?timeout ?(ctx=default_ctx) ?stop (mode:Conduit.Server.t) callback =
     match mode with
     | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
-       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout callback
+       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
     | `Unix_domain_socket (`File file) ->
        let sockaddr = Unix.ADDR_UNIX file in
-       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout callback
+       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
     | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
-       Lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout sockaddr callback
+       Lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr callback
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END

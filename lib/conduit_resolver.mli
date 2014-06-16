@@ -41,12 +41,11 @@ val init :
   ?rewrites:(string * rewrite_fn) list ->
   unit -> t
 
-val add_domain_rewrite :
+val add_rewrite :
   host:string ->
   f:rewrite_fn -> t -> unit
 
 val resolve_uri :
   ?rewrites:(string * rewrite_fn) list -> 
   uri:Uri.t -> 
-  t ->
-  endp Lwt.t
+  t -> endp Lwt.t

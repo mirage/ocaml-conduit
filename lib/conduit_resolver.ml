@@ -62,13 +62,13 @@ let host_to_domain_list host =
   (* TODO: slow, specialise the Trie to be a rev string list instead *)
   String.concat "." (List.rev (Stringext.split ~on:'.' host))
 
-let add_domain_rewrite ~host ~f t =
+let add_rewrite ~host ~f t =
   t.domains <- Conduit_trie.insert (host_to_domain_list host) f t.domains
 
 let init ?(service=default_service) ?(rewrites=[]) () =
   let domains = Conduit_trie.empty in
   let t = { domains; default_lookup; service } in
-  List.iter (fun (host,f) -> add_domain_rewrite ~host ~f t) rewrites;
+  List.iter (fun (host,f) -> add_rewrite ~host ~f t) rewrites;
   t
 
 let resolve_uri ?rewrites ~uri t =

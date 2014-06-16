@@ -3,7 +3,7 @@
 TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
-BASE_PKG="sexplib ipaddr"
+BASE_PKG="sexplib ipaddr cstruct uri stringext"
 SYNTAX_PKG="camlp4.macro sexplib.syntax"
 
 # The Async backend is only supported in OCaml 4.01.0+
@@ -31,7 +31,9 @@ add_pkg () {
 
 add_pkg "$SYNTAX_PKG"
 add_pkg "$BASE_PKG"
+add_target "conduit_trie"
 add_target "conduit"
+add_target "conduit_resolver"
 rm -f _tags
 
 echo 'true: syntax(camlp4o)' >> _tags

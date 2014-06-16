@@ -36,12 +36,13 @@ type service = {
 
 (** A rewrite modifies an input URI with more specialization
     towards a concrete [endp] *)
-type fn = service -> Uri.t -> endp Lwt.t with sexp
+type rewrite_fn = service -> Uri.t -> endp Lwt.t with sexp
+type service_fn = string -> service option Lwt.t with sexp
 
 type t = {
-  default_lookup : fn;
-  service: string -> service option Lwt.t;
-  mutable domains: fn Conduit_trie.t;
+  default_lookup : rewrite_fn;
+  mutable domains: rewrite_fn Conduit_trie.t;
+  service: service_fn;
 } with sexp
 
 let default_lookup _ uri =

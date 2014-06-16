@@ -24,7 +24,7 @@ type endp = [
   | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
   | `Unix_domain_socket of string (** unix file path *)
   | `Vchan of string list         (** xenstore path *)
-  | `TLS of endp                  (** wrap in a TLS channel *)
+  | `TLS of string * endp         (** wrap in a TLS channel *)
   | `Unknown of string            (** failed resolution *)
 ] with sexp
 
@@ -107,7 +107,7 @@ let resolve_uri ?rewrites ~uri t =
         fn service uri
         >>= fun endp ->
         if service.tls then
-          return (`TLS endp)
+          return (`TLS (host, endp))
         else
           return endp
   end

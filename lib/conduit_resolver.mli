@@ -33,17 +33,16 @@ type service = {
 
 type t with sexp
 
-val init : unit -> t
-
 type fn = service -> Uri.t -> endp Lwt.t
 
-val add_domain_rewrite : host:string -> f:fn -> t -> unit
+val init :
+  ?service:(string -> service option Lwt.t) ->
+  ?rewrites:(string * fn) list ->
+  unit -> t
 
-val add_service : name:string -> service:service -> t -> unit
-
-val remove_service : name:string -> t -> unit
-
-val find_service : name:string -> t -> service option
+val add_domain_rewrite :
+  host:string ->
+  f:fn -> t -> unit
 
 val resolve_uri :
   ?rewrites:(string * fn) list -> 

@@ -52,8 +52,10 @@ let system =
     getaddrinfo host (string_of_int port) [AI_SOCKTYPE SOCK_STREAM]
     >>= function
     | [] -> return (`Unknown ("name resolution failed"))
-    | {ai_addr=ADDR_INET (addr,port);_}::_ -> return (`TCP (Ipaddr_unix.of_inet_addr addr, port))
-    | {ai_addr=ADDR_UNIX file;_}::_ -> return (`Unix_domain_socket file)
+    | {ai_addr=ADDR_INET (addr,port);_}::_ ->
+        return (`TCP (Ipaddr_unix.of_inet_addr addr, port))
+    | {ai_addr=ADDR_UNIX file;_}::_ ->
+        return (`Unix_domain_socket file)
   in
   let rewrites = ["", system_resolver] in
   Conduit_resolver.init ~service ~rewrites ()

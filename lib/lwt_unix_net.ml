@@ -18,14 +18,6 @@
 open Lwt
 open Printf
 
-(* Perform a DNS lookup on the addr and generate a sockaddr *)
-let build_sockaddr host service =
-  let open Lwt_unix in
-  getprotobyname "tcp" >>= fun pe ->
-  getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
-  | [] -> fail (Invalid_argument (sprintf "No socket address for %s/%s" host service))
-  | ai::_ -> Lwt.return ai.ai_addr
-
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =

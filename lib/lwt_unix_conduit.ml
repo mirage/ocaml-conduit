@@ -24,21 +24,24 @@ type oc = Lwt_io.output_channel
 
 type ctx = {
   src: Unix.sockaddr;
+  resolver: Conduit_resolver.t;
 }
 
-let init ?src () =
+let init ?src ?(resolver=Lwt_unix_resolver.system) () =
    let open Unix in
    match src with
-   | None -> return { src=(ADDR_INET (inet_addr_any, 0)) }
+   | None ->
+      return { src=(ADDR_INET (inet_addr_any, 0)); resolver }
    | Some host ->
       Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
       >>= function
       | [] -> fail (Failure "Invalid conduit source address specified")
-      | {ai_addr;_}::_ -> return { src=ai_addr }
+      | {ai_addr;_}::_ -> return { src=ai_addr; resolver }
 
 let default_ctx =
   let open Unix in
-  { src = ADDR_INET (inet_addr_any, 0) }
+  { src = ADDR_INET (inet_addr_any, 0); 
+    resolver = Lwt_unix_resolver.system }
 
 type conn = [
   | `TCP of Unix.file_descr
@@ -58,18 +61,28 @@ module Client = struct
 
   let connect ?(ctx=default_ctx) (mode:Conduit.Client.t) =
     match mode with
-    | `SSL (host,port) -> 
+    | `Lwt_ssl (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
-      lwt sa = Lwt_unix_net.build_sockaddr host (string_of_int port) in
-      Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+       Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
 ELSE
       fail (Failure "No SSL support compiled into Conduit")
 END
-    | `TCP (host,port) ->
-       lwt sa = Lwt_unix_net.build_sockaddr host (string_of_int port) in
+    | `TCP (ip,port) ->
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
        Lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
     | `Unix_domain_socket file ->
        Lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
+
+  let connect_to_uri ?(ctx=default_ctx) uri =
+    Conduit_resolver.resolve_uri ~uri ctx.resolver
+    >>= function
+    | `TCP (_ip,_port) as mode -> connect ~ctx mode
+    | `Unix_domain_socket _path as mode -> connect ~ctx mode
+    | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`Lwt_ssl (host, ip, port))
+    | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
+    | `Vchan _path -> fail (Failure "VChan not supported")
+    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 end
 
 module Server = struct

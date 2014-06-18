@@ -17,11 +17,21 @@
 
 open Sexplib.Std
 
+(** The resolver will return an [endp], which the Conduit
+    backend must interpret to make a connection. *)
+type endp = [
+  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
+  | `Unix_domain_socket of string (** unix file path *)
+  | `Vchan of string list         (** xenstore path *)
+  | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string            (** failed resolution *)
+] with sexp
+
 module Client = struct
 
   type t = [
-    | `SSL of string * int
-    | `TCP of string * int
+    | `Lwt_ssl of string * Ipaddr.t * int
+    | `TCP of Ipaddr.t * int
     | `Unix_domain_socket of string
   ] with sexp
 

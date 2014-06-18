@@ -15,11 +15,22 @@
  *
 *)
 
+
+(** End points that can potentially be connected to.
+    These are typically returned by a call to [Conduit_resolver]. *)
+type endp = [
+  | `TCP of Ipaddr.t * int        (** IP address and destination port *)
+  | `Unix_domain_socket of string (** Unix domain file path *)
+  | `Vchan of string list         (** Xenstore path *)
+  | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string            (** Failed resolution *)
+] with sexp
+
 module Client : sig
 
   type t = [
-    | `SSL of string * int
-    | `TCP of string * int
+    | `Lwt_ssl of string * Ipaddr.t * int
+    | `TCP of Ipaddr.t * int
     | `Unix_domain_socket of string
   ] with sexp
 

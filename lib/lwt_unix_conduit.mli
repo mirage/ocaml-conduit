@@ -21,7 +21,7 @@ type oc = Lwt_io.output_channel
 type endp = Lwt_unix.sockaddr
 
 type ctx
-val init : ?src:string -> unit -> ctx io
+val init : ?src:string -> ?resolver:Conduit_resolver.t -> unit -> ctx io
 
 (** An individual connection *)
 
@@ -31,6 +31,7 @@ val sockname : conn -> endp
 
 module Client : sig
   val connect : ?ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
+  val connect_to_uri : ?ctx:ctx -> Uri.t -> (conn * ic * oc) io
 end
 
 module Server : sig

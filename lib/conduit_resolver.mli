@@ -15,16 +15,6 @@
  *
  *)
 
-(** The resolver will return an [endp], which the Conduit
-    backend must interpret to make a connection. *)
-type endp = [
-  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
-  | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan of string list         (** xenstore path *)
-  | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
-  | `Unknown of string            (** failed resolution *)
-] with sexp
-
 type service = {
   name: string;
   port: int;
@@ -33,7 +23,7 @@ type service = {
 
 type t with sexp
 
-type rewrite_fn = service -> Uri.t -> endp Lwt.t
+type rewrite_fn = service -> Uri.t -> Conduit.endp Lwt.t
 type service_fn = string -> service option Lwt.t
 
 val init :
@@ -48,4 +38,4 @@ val add_rewrite :
 val resolve_uri :
   ?rewrites:(string * rewrite_fn) list -> 
   uri:Uri.t -> 
-  t -> endp Lwt.t
+  t -> Conduit.endp Lwt.t

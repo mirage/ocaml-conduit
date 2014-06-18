@@ -15,8 +15,6 @@
  *
  *)
 
-val build_sockaddr : string -> string -> Lwt_unix.sockaddr Lwt.t
-
 module Sockaddr_client : sig
   open Lwt_io
 

@@ -21,6 +21,11 @@ open Printf
 (* Perform a DNS lookup on the addr and generate a sockaddr *)
 let build_sockaddr host service =
   let open Lwt_unix in
+  (* filter out brackets, i.e. [::1] -> ::1 *)
+  let host = match Ipaddr.of_string host with
+    | Some ip -> Ipaddr.to_string ip
+    | None -> host
+  in
   getprotobyname "tcp" >>= fun pe ->
   getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
   | [] -> fail (Invalid_argument (sprintf "No socket address for %s/%s" host service))

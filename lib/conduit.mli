@@ -39,7 +39,7 @@ end
 module Server : sig
 
   type t = [
-    | `SSL of 
+    | `Lwt_ssl of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ] *
        [ `Password of bool -> string | `No_password ] *
@@ -50,10 +50,27 @@ module Server : sig
 
 end
 
-val has_async_ssl : bool
-(** [has_async_ssl] is [true] if Async SSL support has been compiled into
-    this library. *)
+module type IO = sig
+  type +'a t
+  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val return : 'a -> 'a t
+end
 
-val has_lwt_unix_ssl : bool
-(** [has_lwt_ssl] is [true] if Lwt SSL support has been compiled into
-    this library. *)
+module type RESOLVER = sig
+  type +'a io
+  type t with sexp
+  type svc
+
+  type rewrite_fn = svc -> Uri.t -> endp io
+  type service_fn = string -> svc option io
+
+  val init :
+    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
+    unit -> t
+
+  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
+
+  val resolve_uri :
+    ?rewrites:(string * rewrite_fn) list ->
+    uri:Uri.t -> t -> endp io
+end

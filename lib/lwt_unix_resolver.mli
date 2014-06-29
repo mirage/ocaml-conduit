@@ -17,4 +17,4 @@
 
 (** Use the Unix system name resolver via [getaddrinfo] and
     [getservbyname] *)
-val system : Conduit_resolver.t
+val system : Lwt_conduit_resolver.t

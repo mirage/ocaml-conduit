@@ -58,4 +58,4 @@ let system =
         return (`Unix_domain_socket file)
   in
   let rewrites = ["", system_resolver] in
-  Conduit_resolver.init ~service ~rewrites ()
+  Lwt_conduit_resolver.init ~service ~rewrites ()

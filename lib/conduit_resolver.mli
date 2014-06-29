@@ -21,21 +21,7 @@ type service = {
   tls: bool
 } with sexp
 
-type t with sexp
+module Make (IO : Conduit.IO) : Conduit.RESOLVER
+  with type svc = service
+  and  type 'a io = 'a IO.t
 
-type rewrite_fn = service -> Uri.t -> Conduit.endp Lwt.t
-type service_fn = string -> service option Lwt.t
-
-val init :
-  ?service:service_fn ->
-  ?rewrites:(string * rewrite_fn) list ->
-  unit -> t
-
-val add_rewrite :
-  host:string ->
-  f:rewrite_fn -> t -> unit
-
-val resolve_uri :
-  ?rewrites:(string * rewrite_fn) list -> 
-  uri:Uri.t -> 
-  t -> Conduit.endp Lwt.t

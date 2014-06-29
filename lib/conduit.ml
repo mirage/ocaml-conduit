@@ -40,7 +40,7 @@ end
 module Server = struct
 
   type t = [
-    | `SSL of
+    | `Lwt_ssl of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ] *
        [ `Password of bool -> string | `No_password ] *
@@ -51,14 +51,28 @@ module Server = struct
 
 end
 
-IFDEF HAVE_ASYNC_SSL THEN
-let has_async_ssl = true
-ELSE
-let has_async_ssl = false
-END
+module type IO = sig
+  type +'a t
+  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val return : 'a -> 'a t
+end
 
-IFDEF HAVE_LWT_SSL THEN
-let has_lwt_unix_ssl = true
-ELSE
-let has_lwt_unix_ssl = false
-END
+module type RESOLVER = sig
+  type +'a io
+  type t with sexp
+  type svc
+
+  type rewrite_fn = svc -> Uri.t -> endp io
+  type service_fn = string -> svc option io
+
+  val init :
+    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
+    unit -> t
+
+  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
+
+  val resolve_uri :
+    ?rewrites:(string * rewrite_fn) list ->
+    uri:Uri.t -> t -> endp io
+end
+

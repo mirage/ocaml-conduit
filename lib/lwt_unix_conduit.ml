@@ -24,7 +24,7 @@ type oc = Lwt_io.output_channel
 
 type ctx = {
   src: Unix.sockaddr;
-  resolver: Conduit_resolver.t;
+  resolver: Lwt_conduit_resolver.t;
 }
 
 let init ?src ?(resolver=Lwt_unix_resolver.system) () =
@@ -75,7 +75,7 @@ END
        Lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
 
   let connect_to_uri ?(ctx=default_ctx) uri =
-    Conduit_resolver.resolve_uri ~uri ctx.resolver
+    Lwt_conduit_resolver.resolve_uri ~uri ctx.resolver
     >>= function
     | `TCP (_ip,_port) as mode -> connect ~ctx mode
     | `Unix_domain_socket _path as mode -> connect ~ctx mode
@@ -100,7 +100,7 @@ module Server = struct
     | `Unix_domain_socket (`File file) ->
        let sockaddr = Unix.ADDR_UNIX file in
        Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
-    | `SSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
+    | `Lwt_ssl (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in

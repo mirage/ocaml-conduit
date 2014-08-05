@@ -61,7 +61,7 @@ module Client = struct
 
   let connect ?(ctx=default_ctx) (mode:Conduit.Client.t) =
     match mode with
-    | `Lwt_ssl (_host, ip, port) -> 
+    | `OpenSSL (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
        let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
        Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
@@ -79,7 +79,7 @@ END
     >>= function
     | `TCP (_ip,_port) as mode -> connect ~ctx mode
     | `Unix_domain_socket _path as mode -> connect ~ctx mode
-    | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`Lwt_ssl (host, ip, port))
+    | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`OpenSSL (host, ip, port))
     | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
     | `Vchan _path -> fail (Failure "VChan not supported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

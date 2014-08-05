@@ -28,7 +28,7 @@ end
 
 module Server : sig
   type mode = [
-    | `SSL of
+    | `OpenSSL of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ]
     | `TCP

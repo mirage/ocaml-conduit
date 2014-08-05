@@ -28,21 +28,15 @@ type oc = Writer.t
 
 module Client = struct
 
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Unix_domain_socket of string
-  ] with sexp
-
   let connect ?interrupt dst =
     match dst with
-    | `TCP (host, port) -> begin
-      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+    | `TCP (ip, port) -> begin
+      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) -> return (rd,wr)
     end
-    | `SSL (host, port) -> begin
+    | `OpenSSL (host, ip, port) -> begin
 IFDEF HAVE_ASYNC_SSL THEN
-      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
+      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       Async_net_ssl.ssl_connect rd wr
 ELSE
@@ -59,7 +53,7 @@ end
 module Server = struct
 
   type mode = [
-    | `SSL of
+    | `OpenSSL of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ] 
     | `TCP
@@ -70,7 +64,7 @@ module Server = struct
     let handle_client handle_request sock rd wr =
       match mode with
       | `TCP -> handle_request sock rd wr
-      | `SSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
+      | `OpenSSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
 IFDEF HAVE_ASYNC_SSL THEN
         Async_net_ssl.ssl_listen ~crt_file ~key_file rd wr
         >>= fun (rd,wr) -> handle_request sock rd wr

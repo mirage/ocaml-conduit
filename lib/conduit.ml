@@ -30,7 +30,7 @@ type endp = [
 module Client = struct
 
   type t = [
-    | `Lwt_ssl of string * Ipaddr.t * int
+    | `OpenSSL of string * Ipaddr.t * int
     | `TCP of Ipaddr.t * int
     | `Unix_domain_socket of string
   ] with sexp

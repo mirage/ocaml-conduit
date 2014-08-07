@@ -13,7 +13,6 @@ sudo apt-get update -qq
 sudo apt-get install -qq ocaml ocaml-native-compilers camlp4-extra opam time libssl-dev
 
 export OPAMYES=1
-export OPAMVERBOSE=1
 echo OCaml version
 ocaml -version
 echo OPAM versions
@@ -37,11 +36,13 @@ make clean
 make
 make install
 
+export OPAMVERBOSE=1
 opam install async_ssl
 make clean
 make
 make install
 
+export OPAMVERBOSE=0
 opam install lwt
 make clean
 make

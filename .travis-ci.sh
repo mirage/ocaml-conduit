@@ -51,3 +51,5 @@ opam install ssl
 make clean
 make
 make install
+
+opam install cohttp cowabloga

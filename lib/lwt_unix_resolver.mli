@@ -18,3 +18,8 @@
 (** Use the Unix system name resolver via [getaddrinfo] and
     [getservbyname] *)
 val system : Lwt_conduit_resolver.t
+
+(** [static hosts] constructs a resolver that looks up any resolution
+    requests from the static [hosts] hashtable instead of using the
+    system resolver. *)
+val static : (string, Conduit.endp) Hashtbl.t -> Lwt_conduit_resolver.t

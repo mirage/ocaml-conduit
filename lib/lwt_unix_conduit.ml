@@ -38,6 +38,10 @@ let init ?src ?(resolver=Lwt_unix_resolver.system) () =
       | [] -> fail (Failure "Invalid conduit source address specified")
       | {ai_addr;_}::_ -> return { src=ai_addr; resolver }
 
+let system =
+  { src=Unix.(ADDR_INET (inet_addr_any, 0));
+    resolver=Lwt_unix_resolver.system }
+
 let default_ctx =
   let open Unix in
   { src = ADDR_INET (inet_addr_any, 0); 

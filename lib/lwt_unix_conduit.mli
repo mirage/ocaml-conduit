@@ -21,6 +21,7 @@ type oc = Lwt_io.output_channel
 type endp = Lwt_unix.sockaddr
 
 type ctx
+val system : ctx
 val init : ?src:string -> ?resolver:Lwt_conduit_resolver.t -> unit -> ctx io
 
 (** An individual connection *)

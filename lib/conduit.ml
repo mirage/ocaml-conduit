@@ -40,7 +40,7 @@ end
 module Server = struct
 
   type t = [
-    | `Lwt_ssl of
+    | `OpenSSL of
        [ `Crt_file_path of string ] * 
        [ `Key_file_path of string ] *
        [ `Password of bool -> string | `No_password ] *

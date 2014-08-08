@@ -100,7 +100,7 @@ module Server = struct
     | `Unix_domain_socket (`File file) ->
        let sockaddr = Unix.ADDR_UNIX file in
        Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
-    | `Lwt_ssl (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
+    | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in

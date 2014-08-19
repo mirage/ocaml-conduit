@@ -34,6 +34,14 @@ let system_service name =
   with Not_found ->
     return None
 
+let static_service name =
+  match Uri_services.tcp_port_of_service name with
+  | [] -> return None
+  | port::_ ->
+     let tls = is_tls_service name in
+     let svc = { Conduit_resolver.name; port; tls } in
+     return (Some svc)
+
 let get_host uri =
   match Uri.host uri with
   | None -> "localhost"

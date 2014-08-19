@@ -73,5 +73,5 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) = s
     | `Vchan _path -> fail (Failure "VChan not supported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
-  let serve ?timeout ?ctx ?stop mode fn = fail (Failure "TODO")
+  let serve ?timeout ?ctx ?stop _mode _fn = fail (Failure "TODO")
 end

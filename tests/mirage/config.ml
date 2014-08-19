@@ -19,8 +19,8 @@ let stack console =
   | `Socket, _       -> socket_stackv4 console [Ipaddr.V4.any]
 
 let client =
-  foreign "Unikernel.Client" @@ console @-> stackv4 @-> entropy @-> job
+  foreign "Unikernel.Client" @@ console @-> stackv4 @-> job
 
 let () =
-  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage"; "mirage-entropy-unix" ] ;
-  register "dns-client" [ client $ default_console $ stack default_console $ default_entropy ]
+  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage" ]; 
+  register "conduit-client" [ client $ default_console $ stack default_console ]

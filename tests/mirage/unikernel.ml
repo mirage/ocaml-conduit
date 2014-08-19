@@ -11,14 +11,14 @@ let domain = "anil.recoil.org"
 let uri = Uri.of_string "http://anil.recoil.org"
 let ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 
-module Client (C:CONSOLE) (S:STACKV4) (E:ENTROPY) = struct
+module Client (C:CONSOLE) (S:STACKV4) = struct
 
   module U = S.UDPV4
   module DNS = Dns_resolver_mirage.Make(OS.Time)(S)
   module RES = Mirage_resolver.Make(DNS)
   module COND = Mirage_conduit.Make(S)(DNS)
 
-  let start c s e =
+  let start c s =
     Console.log_s c "Starting to resolve in 3s..." >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
     let r = RES.system ~ns s in

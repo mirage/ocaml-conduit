@@ -29,9 +29,8 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) = s
     stack: S.t;
   }
 
-  let init stack =
+  let init resolver stack =
     let dns = DNS.create stack in
-    let resolver = Lwt_conduit_resolver.init () in
     return { dns; resolver; stack }
 
   type conn = [

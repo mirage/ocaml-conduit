@@ -22,7 +22,7 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) : s
   type endp = Ipaddr.t
 
   type ctx
-  val init : S.t -> ctx io
+  val init : Lwt_conduit_resolver.t -> S.t -> ctx io
 
   (** An individual connection *)
 

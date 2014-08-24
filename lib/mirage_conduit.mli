@@ -15,6 +15,25 @@
  *
  *)
 
+module type S = sig
+  type 'a io
+  type ic
+  type oc
+  type endp
+  type ctx
+  type conn
+
+  val peername : conn -> endp
+  val sockname : conn -> endp
+
+  val connect : ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
+  val connect_to_uri : ctx:ctx -> Uri.t -> (conn * ic * oc) io
+  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit io) ->
+      Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
+end
+
+module type LWT_S = S with type 'a io = 'a Lwt.t
+
 module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) : sig
   type 'a io = 'a Lwt.t
   type ic = S.TCPV4.flow
@@ -33,6 +52,6 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) : s
   val connect : ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
   val connect_to_uri : ctx:ctx -> Uri.t -> (conn * ic * oc) io
 
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit Lwt.t) ->
+  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit io) ->
       Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
 end

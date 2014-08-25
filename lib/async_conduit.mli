@@ -22,27 +22,29 @@ type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
-module Client : sig
-  val connect : ?interrupt:unit io -> Conduit.Client.t -> (ic * oc) io
-end
+type addr = [
+  | `OpenSSL of string * Ipaddr.t * int
+  | `TCP of Ipaddr.t * int
+  | `Unix_domain_socket of string
+] with sexp
 
-module Server : sig
-  type mode = [
-    | `OpenSSL of
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ]
-    | `TCP
-  ] with sexp
+val connect : ?interrupt:unit io -> addr -> (ic * oc) io
 
-  val create :
-    ?max_connections:int ->
-    ?max_pending_connections:int ->
-    ?buffer_age_limit:Writer.buffer_age_limit ->
-    ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
-                      | `Ignore
-                      | `Raise ] ->
-    mode ->
+type server = [
+  | `OpenSSL of
+    [ `Crt_file_path of string ] * 
+    [ `Key_file_path of string ]
+  | `TCP
+] with sexp
+
+val serve :
+  ?max_connections:int ->
+  ?max_pending_connections:int ->
+  ?buffer_age_limit:Writer.buffer_age_limit ->
+  ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
+    | `Ignore
+    | `Raise ] ->
+    server ->
     ('a, 'b) Tcp.Where_to_listen.t ->
     ('a -> ic -> oc -> unit io) -> 
     ('a, 'b) Tcp.Server.t io
-end

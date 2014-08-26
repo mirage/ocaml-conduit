@@ -18,24 +18,30 @@
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
-type endp = Lwt_unix.sockaddr
+
+type client = [
+  | `OpenSSL of string * Ipaddr.t * int
+  | `TCP of Ipaddr.t * int
+  | `Unix_domain_socket of string
+] with sexp
 
 type ctx
-val system : ctx
-val init : ?src:string -> ?resolver:Lwt_conduit_resolver.t -> unit -> ctx io
+val init : ?src:string -> unit -> ctx io
 
-(** An individual connection *)
+type flow
 
-type conn
-val peername : conn -> endp
-val sockname : conn -> endp
+type server = [
+  | `OpenSSL of
+      [ `Crt_file_path of string ] * 
+      [ `Key_file_path of string ] *
+      [ `Password of bool -> string | `No_password ] *
+      [ `Port of int ]
+  | `TCP of [ `Port of int ]
+  | `Unix_domain_socket of [ `File of string ]
+] with sexp
 
-module Client : sig
-  val connect : ?ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
-  val connect_to_uri : ?ctx:ctx -> Uri.t -> (conn * ic * oc) io
-end
+val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
-module Server : sig
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit Lwt.t) ->
-    Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
-end
+val serve :
+  ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
+   mode:server -> (flow -> ic -> oc -> unit io) -> unit io

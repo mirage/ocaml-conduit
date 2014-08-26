@@ -18,60 +18,72 @@
 open Lwt
 open Sexplib.Std
 
-module type S = sig
-  type 'a io
-  type ic
-  type oc
-  type endp
-  type ctx
-  type conn
+type client = [
+  | `TCP of Ipaddr.t * int
+  | `Vchan of string list
+] with sexp
 
-  val peername : conn -> endp
-  val sockname : conn -> endp
+type server = [
+  | `TCP of [ `Port of int ]
+  | `Vchan of string list
+] with sexp
 
-  val connect : ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
-  val connect_to_uri : ctx:ctx -> Uri.t -> (conn * ic * oc) io
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit io) ->
-      Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
+(** All the possible connection types supported *)
+module Make_flow(S:V1_LWT.STACKV4) = struct
+
+  type 'a io = 'a Lwt.t
+  type error = string (* XXX *)
+  type buffer = Cstruct.t
+
+  type flow =
+    | TCPv4 of S.TCPV4.flow
+    | Vchan of string list (* TODO *)
+
+  let of_tcpv4 f = TCPv4 f
+  let of_vchan v = Vchan v
+
+  let read flow =
+    match flow with
+    | Vchan _ -> fail (Failure "TODO")
+    | TCPv4 t ->
+        S.TCPV4.read t >>= function
+        | `Ok _ | `Eof as r -> return r
+        | `Error _ -> return (`Error "read") (* XXX *)
+
+  let write flow buf =
+    match flow with
+    | Vchan _ -> fail (Failure "TODO")
+    | TCPv4 t ->
+        S.TCPV4.write t buf >>= fun () ->
+        return (`Ok ())
+
+  let writev flow bufv =
+    match flow with
+    | Vchan _ -> fail (Failure "TODO")
+    | TCPv4 t ->
+        S.TCPV4.writev t bufv >>= fun () ->
+        return (`Ok ())
 end
 
-module type LWT_S = S with type 'a io = 'a Lwt.t
+module Make(S:V1_LWT.STACKV4) = struct
 
-module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) = struct
+  module Flow = Make_flow(S)
   type +'a io = 'a Lwt.t
-  type ic = S.TCPV4.flow
-  type oc = S.TCPV4.flow
+  type ic = Flow.flow
+  type oc = Flow.flow
+  type conn = Flow.flow
 
   type ctx = {
-    resolver: Lwt_conduit_resolver.t;
-    dns: DNS.t;
     stack: S.t;
   }
 
-  let init resolver stack =
-    let dns = DNS.create stack in
-    return { dns; resolver; stack }
+  let init stack =
+    return { stack }
 
-  type conn = [
-    | `TCPv4 of S.TCPV4.flow
-  ]
-
-  type endp = Ipaddr.t
-
-  let peername conn =
-    match conn with
-    | `TCPv4 _fd -> raise (Failure "TODO")
-
-  let sockname conn =
-    match conn with
-    | `TCPv4 _fd -> raise (Failure "TODO")
-
-  let connect ~ctx (mode:Conduit.Client.t) =
+  let connect ~ctx ~mode =
     match mode with
-    | `OpenSSL (_host, _ip, _port) -> 
-      fail (Failure "No SSL support compiled into Conduit")
-    | `Unix_domain_socket _file ->
-      fail (Failure "No Unix support compiled into Conduit")
+    | `Vchan _path ->
+      fail (Failure "No Vchan support compiled into Conduit")
     | `TCP (Ipaddr.V6 _ip, _port) ->
       fail (Failure "No IPv6 support compiled into Conduit")
     | `TCP (Ipaddr.V4 ip, port) ->
@@ -79,10 +91,25 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) = s
       S.TCPV4.create_connection tcp (ip,port)
       >>= function
       | `Error _err -> fail (Failure "connection failed")
-      | `Ok oc -> return (`TCPv4 oc, oc, oc)
+      | `Ok flow ->
+           let flow = Flow.of_tcpv4 flow in
+           return (flow, flow, flow)
 
+  let serve ?(timeout=60) ?stop ~ctx ~mode fn =
+    match mode with
+    |`TCP (`Port port) ->
+      S.listen_tcpv4 ctx.stack ~port
+        (fun flow ->
+           let f = Flow.of_tcpv4 flow in fn f f f);
+      (* TODO: use stop function *)
+      return ()
+    |`Vchan path ->
+      let _f = Flow.of_vchan path in
+      fail (Failure "vchan not implemented")
+end
+
+(*
   let connect_to_uri ~ctx uri =
-    Lwt_conduit_resolver.resolve_uri ~uri ctx.resolver
     >>= function
     | `TCP (_ip,_port) as mode -> connect ~ctx mode
     | `Unix_domain_socket _path as mode -> connect ~ctx mode
@@ -90,6 +117,4 @@ module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) = s
     | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
     | `Vchan _path -> fail (Failure "VChan not supported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
-
-  let serve ?timeout ?ctx ?stop _mode _fn = fail (Failure "TODO")
-end
+*)

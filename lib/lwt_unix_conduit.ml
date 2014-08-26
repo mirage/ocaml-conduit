@@ -22,89 +22,73 @@ type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
+type client = [
+  | `OpenSSL of string * Ipaddr.t * int
+  | `TCP of Ipaddr.t * int
+  | `Unix_domain_socket of string
+] with sexp
+
+type server = [
+  | `OpenSSL of
+      [ `Crt_file_path of string ] * 
+      [ `Key_file_path of string ] *
+      [ `Password of bool -> string | `No_password ] *
+      [ `Port of int ]
+  | `TCP of [ `Port of int ]
+  | `Unix_domain_socket of [ `File of string ]
+] with sexp
+
 type ctx = {
   src: Unix.sockaddr;
-  resolver: Lwt_conduit_resolver.t;
-}
+} 
 
-let init ?src ?(resolver=Lwt_unix_resolver.system) () =
-   let open Unix in
-   match src with
-   | None ->
-      return { src=(ADDR_INET (inet_addr_any, 0)); resolver }
-   | Some host ->
-      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
-      >>= function
-      | [] -> fail (Failure "Invalid conduit source address specified")
-      | {ai_addr;_}::_ -> return { src=ai_addr; resolver }
-
-let system =
-  { src=Unix.(ADDR_INET (inet_addr_any, 0));
-    resolver=Lwt_unix_resolver.system }
-
-let default_ctx =
-  let open Unix in
-  { src = ADDR_INET (inet_addr_any, 0); 
-    resolver = Lwt_unix_resolver.system }
-
-type conn = [
+type flow = [
   | `TCP of Unix.file_descr
 ]
 
-type endp = Lwt_unix.sockaddr
+let default_ctx =
+  { src=Unix.(ADDR_INET (inet_addr_loopback,0)) }
 
-let peername conn =
-  match conn with
-  | `TCP fd -> Unix.getpeername fd
+let init ?src () =
+  let open Unix in
+  match src with
+  | None ->
+     return { src=(ADDR_INET (inet_addr_any, 0)) }
+  | Some host ->
+     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
+     >>= function
+     | [] -> fail (Failure "Invalid conduit source address specified")
+     | {ai_addr;_}::_ -> return { src=ai_addr }
 
-let sockname conn =
-  match conn with
-  | `TCP fd -> Unix.getsockname fd
-
-module Client = struct
-
-  let connect ?(ctx=default_ctx) (mode:Conduit.Client.t) =
-    match mode with
-    | `OpenSSL (_host, ip, port) -> 
+let connect ~ctx (mode:client) =
+  match mode with
+  | `OpenSSL (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
-       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-       Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
+      let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+      Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
 ELSE
       fail (Failure "No SSL support compiled into Conduit")
 END
-    | `TCP (ip,port) ->
+  | `TCP (ip,port) ->
        let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
        Lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
-    | `Unix_domain_socket file ->
+  | `Unix_domain_socket file ->
        Lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
 
-  let connect_to_uri ?(ctx=default_ctx) uri =
-    Lwt_conduit_resolver.resolve_uri ~uri ctx.resolver
-    >>= function
-    | `TCP (_ip,_port) as mode -> connect ~ctx mode
-    | `Unix_domain_socket _path as mode -> connect ~ctx mode
-    | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`OpenSSL (host, ip, port))
-    | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
-    | `Vchan _path -> fail (Failure "VChan not supported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
-end
+let sockaddr_on_tcp_port ctx port =
+  match ctx.src with
+  | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
+  | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
 
-module Server = struct
-
-  let sockaddr_on_tcp_port ctx port =
-    match ctx.src with
-    | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
-    | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
-
-  let serve ?timeout ?(ctx=default_ctx) ?stop (mode:Conduit.Server.t) callback =
-    match mode with
-    | `TCP (`Port port) ->
+let serve ?timeout ?stop ~ctx ~mode callback =
+  match mode with
+  | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
-    | `Unix_domain_socket (`File file) ->
+  | `Unix_domain_socket (`File file) ->
        let sockaddr = Unix.ADDR_UNIX file in
        Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
-    | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
+  | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
@@ -112,4 +96,56 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END
+
+(*
+module Resolver = struct
+
+  type ctx = {
+    src: Unix.sockaddr;
+    resolver: Lwt_conduit_resolver.t;
+  }
+
+  let init ?src ?(resolver=Lwt_unix_resolver.system) () =
+    let open Unix in
+    match src with
+    | None ->
+      return { src=(ADDR_INET (inet_addr_any, 0)); resolver }
+    | Some host ->
+      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
+      >>= function
+      | [] -> fail (Failure "Invalid conduit source address specified")
+      | {ai_addr;_}::_ -> return { src=ai_addr; resolver }
+
+  let system =
+    { src=Unix.(ADDR_INET (inet_addr_any, 0));
+      resolver=Lwt_unix_resolver.system }
+
+  let default_ctx =
+    let open Unix in
+    { src = ADDR_INET (inet_addr_any, 0); 
+      resolver = Lwt_unix_resolver.system }
+
+  type endp = Lwt_unix.sockaddr
+
+  let peername conn =
+    match conn with
+    | `TCP fd -> Unix.getpeername fd
+
+  let sockname conn =
+    match conn with
+    | `TCP fd -> Unix.getsockname fd
+
 end
+
+let connect_to_uri ?(ctx=default_ctx) uri =
+  Lwt_conduit_resolver.resolve_uri ~uri ctx.resolver
+  >>= function
+  | `TCP (_ip,_port) as mode -> connect ~ctx mode
+  | `Unix_domain_socket _path as mode -> connect ~ctx mode
+  | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`OpenSSL (host, ip, port))
+  | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
+  | `Vchan _path -> fail (Failure "VChan not supported")
+  | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+*)
+
+

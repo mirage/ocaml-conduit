@@ -15,43 +15,33 @@
  *
  *)
 
-module type S = sig
-  type 'a io
-  type ic
-  type oc
-  type endp
+type client = [
+  | `TCP of Ipaddr.t * int
+  | `Vchan of string list
+] with sexp
+
+type server = [
+  | `TCP of [ `Port of int ]
+  | `Vchan of string list
+] with sexp
+
+module Make_flow(S:V1_LWT.STACKV4) : V1_LWT.FLOW
+
+module Make(S:V1_LWT.STACKV4) : sig
+
+  module Flow : V1_LWT.FLOW
+  type +'a io
+  type conn = Flow.flow
+  type ic = Flow.flow
+  type oc = Flow.flow
+  
   type ctx
-  type conn
 
-  val peername : conn -> endp
-  val sockname : conn -> endp
+  val init : S.t -> ctx io
 
-  val connect : ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
-  val connect_to_uri : ctx:ctx -> Uri.t -> (conn * ic * oc) io
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit io) ->
-      Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
-end
+  val connect : ctx:ctx -> mode:client -> (conn * ic * oc) io
 
-module type LWT_S = S with type 'a io = 'a Lwt.t
-
-module Make(S:V1_LWT.STACKV4)(DNS:Dns_resolver_mirage.S with type stack=S.t) : sig
-  type 'a io = 'a Lwt.t
-  type ic = S.TCPV4.flow
-  type oc = S.TCPV4.flow
-  type endp = Ipaddr.t
-
-  type ctx
-  val init : Lwt_conduit_resolver.t -> S.t -> ctx io
-
-  (** An individual connection *)
-
-  type conn
-  val peername : conn -> endp
-  val sockname : conn -> endp
-
-  val connect : ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
-  val connect_to_uri : ctx:ctx -> Uri.t -> (conn * ic * oc) io
-
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit io) ->
-      Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
+  val serve :
+    ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
+     mode:server -> (conn -> ic -> oc -> unit io) -> unit io
 end

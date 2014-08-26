@@ -18,7 +18,7 @@
 (** [static hosts] constructs a resolver that looks up any resolution
     requests from the static [hosts] hashtable instead of using the
     system resolver. *)
-val static : (string, Conduit.endp) Hashtbl.t -> Lwt_conduit_resolver.t
+val static : (string, Conduit.endp) Hashtbl.t -> Conduit_resolver_lwt.t
 
 module Make(DNS:Dns_resolver_mirage.S) : sig
   type t
@@ -27,5 +27,5 @@ module Make(DNS:Dns_resolver_mirage.S) : sig
 
   val system :
     ?ns:Ipaddr.V4.t -> ?dns_port:int ->
-    DNS.stack -> Lwt_conduit_resolver.t
+    DNS.stack -> Conduit_resolver_lwt.t
 end

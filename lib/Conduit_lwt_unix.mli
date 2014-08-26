@@ -27,6 +27,7 @@ type client = [
 
 type ctx
 val init : ?src:string -> unit -> ctx io
+val default_ctx : ctx
 
 type flow
 

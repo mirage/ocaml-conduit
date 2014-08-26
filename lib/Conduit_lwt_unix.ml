@@ -65,15 +65,15 @@ let connect ~ctx (mode:client) =
   | `OpenSSL (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-      Lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
+      Conduit_lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
 ELSE
       fail (Failure "No SSL support compiled into Conduit")
 END
   | `TCP (ip,port) ->
        let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-       Lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
+       Conduit_lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
   | `Unix_domain_socket file ->
-       Lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
+       Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
 
 let sockaddr_on_tcp_port ctx port =
   match ctx.src with
@@ -84,15 +84,15 @@ let serve ?timeout ?stop ~ctx ~mode callback =
   match mode with
   | `TCP (`Port port) ->
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
-       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
   | `Unix_domain_socket (`File file) ->
        let sockaddr = Unix.ADDR_UNIX file in
-       Lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        lwt sockaddr = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
-       Lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr callback
+       Conduit_lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr callback
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END

@@ -50,7 +50,7 @@ let static_service name =
 let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
-  Lwt_conduit_resolver.init ~service ~rewrites ()
+  Conduit_resolver_lwt.init ~service ~rewrites ()
 
 (* Build a resolver that uses the stub resolver to perform a
    resolution of the hostname *)
@@ -79,6 +79,6 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     let t = { dns; ns; dns_port } in
     let service = static_service in
     let rewrites = ["", stub_resolver t] in
-    Lwt_conduit_resolver.init ~service ~rewrites ()
+    Conduit_resolver_lwt.init ~service ~rewrites ()
 
 end

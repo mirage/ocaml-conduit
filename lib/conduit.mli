@@ -26,30 +26,6 @@ type endp = [
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
 
-module Client : sig
-
-  type t = [
-    | `OpenSSL of string * Ipaddr.t * int
-    | `TCP of Ipaddr.t * int
-    | `Unix_domain_socket of string
-  ] with sexp
-
-end
-
-module Server : sig
-
-  type t = [
-    | `OpenSSL of
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ] *
-       [ `Password of bool -> string | `No_password ] *
-       [ `Port of int]
-    | `TCP of [ `Port of int ]
-    | `Unix_domain_socket of [ `File of string ]
-  ] with sexp
-
-end
-
 module type IO = sig
   type +'a t
   val (>>=) : 'a t -> ('a -> 'b t) -> 'b t

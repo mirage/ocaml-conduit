@@ -92,8 +92,8 @@ module Make(S:V1_LWT.STACKV4) = struct
       >>= function
       | `Error _err -> fail (Failure "connection failed")
       | `Ok flow ->
-           let flow = Flow.of_tcpv4 flow in
-           return (flow, flow, flow)
+        let flow = Flow.of_tcpv4 flow in
+        return (flow, flow, flow)
 
   let serve ?(timeout=60) ?stop ~ctx ~mode fn =
     match mode with
@@ -106,6 +106,17 @@ module Make(S:V1_LWT.STACKV4) = struct
     |`Vchan path ->
       let _f = Flow.of_vchan path in
       fail (Failure "vchan not implemented")
+
+  (** Use the configuration of the server to interpret how to
+      handle a particular endpoint from the resolver into a
+      concrete implementation of type [client] *)
+  let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
+    match endp with
+    | `TCP (_ip, _port) as mode -> return mode
+    | `Vchan _path -> fail (Failure "VChan currently unsupported")
+    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
+    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 end
 
 (*

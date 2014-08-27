@@ -97,55 +97,23 @@ ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END
 
-(*
-module Resolver = struct
+type endp = [
+  | `TCP of Ipaddr.t * int        (** IP address and destination port *)
+  | `Unix_domain_socket of string (** Unix domain file path *)
+  | `Vchan of string list         (** Xenstore path *)
+  | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string            (** Failed resolution *)
+] with sexp
 
-  type ctx = {
-    src: Unix.sockaddr;
-    resolver: Lwt_conduit_resolver.t;
-  }
 
-  let init ?src ?(resolver=Lwt_unix_resolver.system) () =
-    let open Unix in
-    match src with
-    | None ->
-      return { src=(ADDR_INET (inet_addr_any, 0)); resolver }
-    | Some host ->
-      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
-      >>= function
-      | [] -> fail (Failure "Invalid conduit source address specified")
-      | {ai_addr;_}::_ -> return { src=ai_addr; resolver }
-
-  let system =
-    { src=Unix.(ADDR_INET (inet_addr_any, 0));
-      resolver=Lwt_unix_resolver.system }
-
-  let default_ctx =
-    let open Unix in
-    { src = ADDR_INET (inet_addr_any, 0); 
-      resolver = Lwt_unix_resolver.system }
-
-  type endp = Lwt_unix.sockaddr
-
-  let peername conn =
-    match conn with
-    | `TCP fd -> Unix.getpeername fd
-
-  let sockname conn =
-    match conn with
-    | `TCP fd -> Unix.getsockname fd
-
-end
-
-let connect_to_uri ?(ctx=default_ctx) uri =
-  Lwt_conduit_resolver.resolve_uri ~uri ctx.resolver
-  >>= function
-  | `TCP (_ip,_port) as mode -> connect ~ctx mode
-  | `Unix_domain_socket _path as mode -> connect ~ctx mode
-  | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`OpenSSL (host, ip, port))
-  | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
+(** Use the configuration of the server to interpret how to
+    handle a particular endpoint from the resolver into a
+    concrete implementation of type [client] *)
+let endp_to_client ~ctx (endp:Conduit.endp) =
+  match endp with
+  | `TCP (_ip, _port) as mode -> return mode
+  | `Unix_domain_socket _path as mode -> return mode
+  | `TLS (host, `TCP (ip, port)) -> return (`OpenSSL (host, ip, port))
+  | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Vchan _path -> fail (Failure "VChan not supported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
-*)
-
-

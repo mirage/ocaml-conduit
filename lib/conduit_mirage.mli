@@ -44,4 +44,6 @@ module Make(S:V1_LWT.STACKV4) : sig
   val serve :
     ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
      mode:server -> (conn -> ic -> oc -> unit io) -> unit io
+
+  val endp_to_client: ctx:ctx -> Conduit.endp -> client io
 end

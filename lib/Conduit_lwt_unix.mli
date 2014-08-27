@@ -46,3 +46,5 @@ val connect : ctx:ctx -> client -> (flow * ic * oc) io
 val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
+
+val endp_to_client : ctx:ctx -> Conduit.endp -> client io

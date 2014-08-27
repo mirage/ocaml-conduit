@@ -24,8 +24,8 @@ module Sockaddr_client = struct
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     let () = 
       match src with
-      | None -> print_endline "no src"; ()
-      | Some src_sa -> print_endline "has src"; Lwt_unix.bind fd src_sa
+      | None -> ()
+      | Some src_sa -> Lwt_unix.bind fd src_sa
     in
     lwt () = Lwt_unix.connect fd sa in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in

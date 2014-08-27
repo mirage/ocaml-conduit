@@ -40,7 +40,7 @@ type server = [
 ] with sexp
 
 type ctx = {
-  src: Unix.sockaddr;
+  src: Unix.sockaddr option;
 } 
 
 type tcp_flow = {
@@ -60,26 +60,25 @@ type flow =
   with sexp
 
 let default_ctx =
-  { src=Unix.(ADDR_INET (inet_addr_any,0)) }
+  { src=None }
 
 let init ?src () =
   let open Unix in
   match src with
   | None ->
-     return { src=(ADDR_INET (inet_addr_any, 0)) }
+     return { src=None }
   | Some host ->
      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
      >>= function
-     | {ai_addr;_}::_ -> return { src=ai_addr }
+     | {ai_addr;_}::_ -> return { src=Some ai_addr }
      | [] -> fail (Failure "Invalid conduit source address specified")
 
 let connect ~ctx (mode:client) =
-  print_endline (Sexplib.Sexp.to_string_hum (sexp_of_client mode));
   match mode with
   | `OpenSSL (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-      lwt fd, ic, oc = Conduit_lwt_unix_net_ssl.Client.connect ~src:ctx.src sa in
+      lwt fd, ic, oc = Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa in
       let flow = TCP {fd;ip;port} in
       return (flow, ic, oc)
 ELSE
@@ -87,7 +86,7 @@ ELSE
 END
   | `TCP (ip,port) ->
        let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
-       lwt fd,ic,oc = Conduit_lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa in
+       lwt fd,ic,oc = Conduit_lwt_unix_net.Sockaddr_client.connect ?src:ctx.src sa in
        let flow = TCP {fd;ip;port} in
        return (flow, ic, oc)
   | `Unix_domain_socket path ->
@@ -98,8 +97,9 @@ END
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
   match ctx.src with
-  | ADDR_UNIX _ -> raise (Failure "Cant listen to TCP on a domain socket")
-  | ADDR_INET (a,_) -> (ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a)
+  | Some (ADDR_UNIX _) -> raise (Failure "Cant listen to TCP on a domain socket")
+  | Some (ADDR_INET (a,_)) -> ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a
+  | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
 let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with

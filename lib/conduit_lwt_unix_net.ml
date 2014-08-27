@@ -21,16 +21,13 @@ open Printf
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
-print_endline "1";
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     let () = 
       match src with
       | None -> print_endline "no src"; ()
       | Some src_sa -> print_endline "has src"; Lwt_unix.bind fd src_sa
     in
-print_endline "2";
     lwt () = Lwt_unix.connect fd sa in
-print_endline "3";
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
     return (fd, ic, oc)

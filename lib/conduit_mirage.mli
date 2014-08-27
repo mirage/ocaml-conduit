@@ -31,19 +31,19 @@ module Make(S:V1_LWT.STACKV4) : sig
 
   module Flow : V1_LWT.FLOW
   type +'a io
-  type conn = Flow.flow
   type ic = Flow.flow
   type oc = Flow.flow
+  type flow = Flow.flow
   
   type ctx
 
   val init : S.t -> ctx io
 
-  val connect : ctx:ctx -> mode:client -> (conn * ic * oc) io
+  val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
   val serve :
     ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
-     mode:server -> (conn -> ic -> oc -> unit io) -> unit io
+     mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
 end

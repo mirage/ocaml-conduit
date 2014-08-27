@@ -17,6 +17,7 @@
 
 open Lwt
 open Sexplib.Std
+open Sexplib.Conv
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
@@ -42,12 +43,24 @@ type ctx = {
   src: Unix.sockaddr;
 } 
 
-type flow = [
-  | `TCP of Unix.file_descr
-]
+type tcp_flow = {
+  fd: Lwt_unix.file_descr sexp_opaque;
+  ip: Ipaddr.t;
+  port: int;
+} with sexp
+
+type domain_flow = {
+  fd: Lwt_unix.file_descr sexp_opaque;
+  path: string;
+} with sexp
+
+type flow =
+  | TCP of tcp_flow
+  | Domain_socket of domain_flow
+  with sexp
 
 let default_ctx =
-  { src=Unix.(ADDR_INET (inet_addr_loopback,0)) }
+  { src=Unix.(ADDR_INET (inet_addr_any,0)) }
 
 let init ?src () =
   let open Unix in
@@ -57,42 +70,53 @@ let init ?src () =
   | Some host ->
      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
      >>= function
-     | [] -> fail (Failure "Invalid conduit source address specified")
      | {ai_addr;_}::_ -> return { src=ai_addr }
+     | [] -> fail (Failure "Invalid conduit source address specified")
 
 let connect ~ctx (mode:client) =
+  print_endline (Sexplib.Sexp.to_string_hum (sexp_of_client mode));
   match mode with
   | `OpenSSL (_host, ip, port) -> 
 IFDEF HAVE_LWT_SSL THEN
       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-      Conduit_lwt_unix_net_ssl.Client.connect ~src:ctx.src sa
+      lwt fd, ic, oc = Conduit_lwt_unix_net_ssl.Client.connect ~src:ctx.src sa in
+      let flow = TCP {fd;ip;port} in
+      return (flow, ic, oc)
 ELSE
       fail (Failure "No SSL support compiled into Conduit")
 END
   | `TCP (ip,port) ->
-       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-       Conduit_lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa
-  | `Unix_domain_socket file ->
-       Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX file)
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
+       lwt fd,ic,oc = Conduit_lwt_unix_net.Sockaddr_client.connect ~src:ctx.src sa in
+       let flow = TCP {fd;ip;port} in
+       return (flow, ic, oc)
+  | `Unix_domain_socket path ->
+       lwt (fd,ic,oc) = Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX path) in
+       let flow = Domain_socket {fd; path} in
+       return (flow, ic, oc)
 
 let sockaddr_on_tcp_port ctx port =
+  let open Unix in
   match ctx.src with
-  | Unix.ADDR_UNIX _ -> fail (Failure "Cant listen to TCP on a domain socket")
-  | Unix.ADDR_INET (a,_) -> return (Unix.ADDR_INET (a,port))
+  | ADDR_UNIX _ -> raise (Failure "Cant listen to TCP on a domain socket")
+  | ADDR_INET (a,_) -> (ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a)
 
-let serve ?timeout ?stop ~ctx ~mode callback =
+let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with
   | `TCP (`Port port) ->
-       lwt sockaddr = sockaddr_on_tcp_port ctx port in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
-  | `Unix_domain_socket (`File file) ->
-       let sockaddr = Unix.ADDR_UNIX file in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop callback
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in 
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc)
+  |  `Unix_domain_socket (`File path) ->
+       let sockaddr = Unix.ADDR_UNIX path in
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc)
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
-       lwt sockaddr = sockaddr_on_tcp_port ctx port in
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
-       Conduit_lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr callback
+       Conduit_lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr
+         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END
@@ -105,7 +129,6 @@ type endp = [
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
 
-
 (** Use the configuration of the server to interpret how to
     handle a particular endpoint from the resolver into a
     concrete implementation of type [client] *)
@@ -117,3 +140,4 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Vchan _path -> fail (Failure "VChan not supported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+

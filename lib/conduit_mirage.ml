@@ -71,7 +71,7 @@ module Make(S:V1_LWT.STACKV4) = struct
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
-  type conn = Flow.flow
+  type flow = Flow.flow
 
   type ctx = {
     stack: S.t;
@@ -80,7 +80,7 @@ module Make(S:V1_LWT.STACKV4) = struct
   let init stack =
     return { stack }
 
-  let connect ~ctx ~mode =
+  let connect ~ctx (mode:client) =
     match mode with
     | `Vchan _path ->
       fail (Failure "No Vchan support compiled into Conduit")
@@ -113,19 +113,8 @@ module Make(S:V1_LWT.STACKV4) = struct
   let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan _path -> fail (Failure "VChan currently unsupported")
+    | `Vchan path as mode -> return mode
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 end
-
-(*
-  let connect_to_uri ~ctx uri =
-    >>= function
-    | `TCP (_ip,_port) as mode -> connect ~ctx mode
-    | `Unix_domain_socket _path as mode -> connect ~ctx mode
-    | `TLS (host, `TCP (ip, port)) -> connect ~ctx (`OpenSSL (host, ip, port))
-    | `TLS (_host, _) -> fail (Failure "TLS to non-TCP unsupported")
-    | `Vchan _path -> fail (Failure "VChan not supported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
-*)

@@ -21,17 +21,19 @@ open Printf
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
+print_endline "1";
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     let () = 
       match src with
-      | None -> ()
-      | Some src_sa -> Lwt_unix.bind fd src_sa
+      | None -> print_endline "no src"; ()
+      | Some src_sa -> print_endline "has src"; Lwt_unix.bind fd src_sa
     in
+print_endline "2";
     lwt () = Lwt_unix.connect fd sa in
-    let sa = `TCP (Lwt_unix.unix_file_descr fd) in
+print_endline "3";
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
-    return (sa, ic, oc)
+    return (fd, ic, oc)
 
   let close (ic,oc) =
     let _ = try_lwt Lwt_io.close oc with _ -> return () in
@@ -54,10 +56,9 @@ module Sockaddr_server = struct
 
   let process_accept ?timeout callback (client,_) =
     Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
-    let sa = `TCP (Lwt_unix.unix_file_descr client) in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
-    let c = callback sa ic oc in
+    let c = callback client ic oc in
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in

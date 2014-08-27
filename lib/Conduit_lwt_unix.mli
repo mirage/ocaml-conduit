@@ -15,21 +15,11 @@
  *
  *)
 
-type 'a io = 'a Lwt.t
-type ic = Lwt_io.input_channel
-type oc = Lwt_io.output_channel
-
 type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
 ] with sexp
-
-type ctx
-val init : ?src:string -> unit -> ctx io
-val default_ctx : ctx
-
-type flow
 
 type server = [
   | `OpenSSL of
@@ -41,6 +31,15 @@ type server = [
   | `Unix_domain_socket of [ `File of string ]
 ] with sexp
 
+type 'a io = 'a Lwt.t
+type ic = Lwt_io.input_channel
+type oc = Lwt_io.output_channel
+type flow with sexp
+
+type ctx
+val init : ?src:string -> unit -> ctx io
+val default_ctx : ctx
+
 val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
 val serve :
@@ -48,3 +47,4 @@ val serve :
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
+

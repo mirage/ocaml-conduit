@@ -74,20 +74,25 @@ module Make(S:V1_LWT.STACKV4) = struct
   type flow = Flow.flow
 
   type ctx = {
-    stack: S.t;
+    stack: S.t option;
   }
 
   let init stack =
-    return { stack }
+    return { stack = Some stack }
+
+  let default_ctx =
+    { stack = None }
 
   let connect ~ctx (mode:client) =
-    match mode with
-    | `Vchan _path ->
+    match mode, ctx.stack with
+    | `Vchan _path, _ ->
       fail (Failure "No Vchan support compiled into Conduit")
-    | `TCP (Ipaddr.V6 _ip, _port) ->
+    | `TCP (Ipaddr.V6 _ip, _port), _ ->
       fail (Failure "No IPv6 support compiled into Conduit")
-    | `TCP (Ipaddr.V4 ip, port) ->
-      let tcp = S.tcpv4 ctx.stack in
+    | `TCP (Ipaddr.V4 _ip, _port), None ->
+      fail (Failure "No stack bound to Conduit")
+    | `TCP (Ipaddr.V4 ip, port), Some stack  ->
+      let tcp = S.tcpv4 stack in
       S.TCPV4.create_connection tcp (ip,port)
       >>= function
       | `Error _err -> fail (Failure "connection failed")
@@ -96,14 +101,16 @@ module Make(S:V1_LWT.STACKV4) = struct
         return (flow, flow, flow)
 
   let serve ?(timeout=60) ?stop ~ctx ~mode fn =
-    match mode with
-    |`TCP (`Port port) ->
-      S.listen_tcpv4 ctx.stack ~port
+    match mode, ctx.stack with
+    |`TCP (`Port _port), None ->
+      fail (Failure "No stack bound to Conduit")
+    |`TCP (`Port port), Some stack ->
+      S.listen_tcpv4 stack ~port
         (fun flow ->
            let f = Flow.of_tcpv4 flow in fn f f f);
       (* TODO: use stop function *)
       return ()
-    |`Vchan path ->
+    |`Vchan path, _ ->
       let _f = Flow.of_vchan path in
       fail (Failure "vchan not implemented")
 

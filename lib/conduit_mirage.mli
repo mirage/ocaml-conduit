@@ -30,12 +30,13 @@ module Make_flow(S:V1_LWT.STACKV4) : V1_LWT.FLOW
 module Make(S:V1_LWT.STACKV4) : sig
 
   module Flow : V1_LWT.FLOW
-  type +'a io
+  type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
   
   type ctx
+  val default_ctx : ctx
 
   val init : S.t -> ctx io
 

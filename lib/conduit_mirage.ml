@@ -32,7 +32,7 @@ type server = [
 module Make_flow(S:V1_LWT.STACKV4) = struct
 
   type 'a io = 'a Lwt.t
-  type error = string (* XXX *)
+  type error = S.TCPV4.error (* XXX *)
   type buffer = Cstruct.t
 
   type flow =
@@ -45,24 +45,22 @@ module Make_flow(S:V1_LWT.STACKV4) = struct
   let read flow =
     match flow with
     | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t ->
-        S.TCPV4.read t >>= function
-        | `Ok _ | `Eof as r -> return r
-        | `Error _ -> return (`Error "read") (* XXX *)
+    | TCPv4 t -> S.TCPV4.read t
 
   let write flow buf =
     match flow with
     | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t ->
-        S.TCPV4.write t buf >>= fun () ->
-        return (`Ok ())
+    | TCPv4 t -> S.TCPV4.write t buf
 
   let writev flow bufv =
     match flow with
     | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t ->
-        S.TCPV4.writev t bufv >>= fun () ->
-        return (`Ok ())
+    | TCPv4 t -> S.TCPV4.writev t bufv
+
+  let close flow =
+    match flow with
+    | Vchan _ -> fail (Failure "TODO")
+    | TCPv4 t -> S.TCPV4.close t
 end
 
 module Make(S:V1_LWT.STACKV4) = struct

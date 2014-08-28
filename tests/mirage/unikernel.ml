@@ -11,31 +11,35 @@ let domain = "anil.recoil.org"
 let uri = Uri.of_string "http://anil.recoil.org"
 let ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 
-module Client (C:CONSOLE) (S:STACKV4) = struct
+module Client (C:CONSOLE) (S:STACKV4) (E:ENTROPY) = struct
 
-  module U = S.UDPV4
   module DNS = Dns_resolver_mirage.Make(OS.Time)(S)
-  module RES = Mirage_resolver.Make(DNS)
-  module COND = Mirage_conduit.Make(S)(DNS)
+  module RES = Conduit_resolver_mirage.Make(DNS)
+  module CON = Conduit_mirage.Make(S)
 
-  let start c s =
+  let start c s e =
     Console.log_s c "Starting to resolve in 3s..." >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
     let r = RES.system ~ns s in
-    Lwt_conduit_resolver.resolve_uri ~uri r
+    Conduit_resolver_lwt.resolve_uri ~uri r
     >>= fun endp ->
+    lwt ctx = CON.init s in
+    CON.endp_to_client ~ctx endp
+    >>= fun client ->
     Console.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
     >>= fun () ->
-    lwt ctx = COND.init r s in
-    lwt (conn, ic, oc) = COND.connect_to_uri ~ctx uri in
+    lwt (conn, ic, oc) = CON.connect ~ctx client in
     let page = Io_page.(to_cstruct (get 1)) in
     let http_get = "GET / HTTP/1.1\nHost: anil.recoil.org\n\n" in
     Cstruct.blit_from_string http_get 0 page 0 (String.length http_get);
     let buf = Cstruct.sub page 0 (String.length http_get) in
-    lwt () = S.TCPV4.write oc buf in
-    S.TCPV4.read ic >>= function 
-    | `Eof -> Console.log_s c "EOF"
-    | `Error _ -> Console.log_s c "ERR"
-    | `Ok buf -> Console.log_s c (sprintf "OK\n%s\n" (Cstruct.to_string buf))
-
+    CON.Flow.write oc buf >>= function
+    | `Eof -> Console.log_s c "EOF on write"
+    | `Error _ -> Console.log_s c "ERR on write"
+    | `Ok buf -> begin
+      CON.Flow.read ic >>= function
+      | `Eof -> Console.log_s c "EOF"
+      | `Error _ -> Console.log_s c "ERR"
+      | `Ok buf -> Console.log_s c (sprintf "OK\n%s\n" (Cstruct.to_string buf))
+    end
 end

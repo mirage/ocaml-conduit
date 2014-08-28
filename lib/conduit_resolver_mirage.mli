@@ -18,7 +18,11 @@
 (** [static hosts] constructs a resolver that looks up any resolution
     requests from the static [hosts] hashtable instead of using the
     system resolver. *)
-val static : (string, Conduit.endp) Hashtbl.t -> Conduit_resolver_lwt.t
+val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Conduit_resolver_lwt.t
+
+(** [localhost] is a static resolver that has a single entry that
+    maps [localhost] to [127.0.0.1], and fails on all other hostnames. *)
+val localhost : Conduit_resolver_lwt.t
 
 module Make(DNS:Dns_resolver_mirage.S) : sig
   type t

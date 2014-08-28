@@ -33,9 +33,11 @@ let get_port service uri =
   | None -> service.Conduit_resolver.port
   | Some port -> port
 
-let static_resolver hosts _service uri =
+let static_resolver hosts service uri =
+  let port = get_port service uri in
   try
-    return (Hashtbl.find hosts (get_host uri))
+    let fn = Hashtbl.find hosts (get_host uri) in
+    return (fn ~port)
   with Not_found -> 
     return (`Unknown ("name resolution failed"))
 
@@ -51,6 +53,11 @@ let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
   Conduit_resolver_lwt.init ~service ~rewrites ()
+
+let localhost =
+  let hosts = Hashtbl.create 3 in
+  Hashtbl.add hosts "localhost" (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
+  static hosts
 
 (* Build a resolver that uses the stub resolver to perform a
    resolution of the hostname *)

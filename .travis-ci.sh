@@ -1,4 +1,4 @@
-OPAM_DEPENDS="sexplib ipaddr stringext"
+OPAM_DEPENDS="sexplib ipaddr cstruct stringext uri"
 
 case "$OCAML_VERSION,$OPAM_VERSION" in
 4.00.1,1.0.0) ppa=avsm/ocaml40+opam10 ;;

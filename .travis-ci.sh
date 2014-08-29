@@ -53,4 +53,9 @@ make clean
 make
 make install
 
+opam install dns tcpip mirage-types
+make clean
+make
+make install
+
 opam install cohttp cowabloga

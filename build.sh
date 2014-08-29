@@ -20,7 +20,7 @@ esac
 
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
-HAVE_MIRAGE=`ocamlfind query mirage-types 2>/dev/null || true`
+HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"

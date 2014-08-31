@@ -21,4 +21,8 @@ module IO = struct
   let return = Lwt.return
 end
 
+module type S = Conduit.RESOLVER
+  with type svc = Conduit_resolver.service
+  and  type 'a io = 'a Lwt.t
+
 include Conduit_resolver.Make(IO)

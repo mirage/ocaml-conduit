@@ -102,21 +102,26 @@ let sockaddr_on_tcp_port ctx port =
   | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
 let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
+  let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
+  Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in 
        Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc)
+         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
+       >>= fun () -> t
   |  `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
        Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc)
+         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
+       >>= fun () -> t
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
 IFDEF HAVE_LWT_SSL THEN
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
        Conduit_lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr
-         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
+         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc);
+       >>= fun () -> t
 ELSE
        fail (Failure "No SSL support compiled into Conduit")
 END

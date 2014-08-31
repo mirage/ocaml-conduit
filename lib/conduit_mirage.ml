@@ -70,6 +70,7 @@ module Make(S:V1_LWT.STACKV4) = struct
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
+  type stack = S.t
 
   type ctx = {
     stack: S.t option;
@@ -99,15 +100,18 @@ module Make(S:V1_LWT.STACKV4) = struct
         return (flow, flow, flow)
 
   let serve ?(timeout=60) ?stop ~ctx ~mode fn =
+    let t, _u = Lwt.task () in
+    Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
     match mode, ctx.stack with
     |`TCP (`Port _port), None ->
       fail (Failure "No stack bound to Conduit")
     |`TCP (`Port port), Some stack ->
       S.listen_tcpv4 stack ~port
         (fun flow ->
-           let f = Flow.of_tcpv4 flow in fn f f f);
-      (* TODO: use stop function *)
-      return ()
+           let f = Flow.of_tcpv4 flow in
+           fn f f f
+        );
+      t
     |`Vchan path, _ ->
       let _f = Flow.of_vchan path in
       fail (Failure "vchan not implemented")
@@ -122,4 +126,27 @@ module Make(S:V1_LWT.STACKV4) = struct
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+end
+
+module type S = sig
+
+  module Flow : V1_LWT.FLOW 
+  type +'a io = 'a Lwt.t
+  type ic = Flow.flow
+  type oc = Flow.flow
+  type flow = Flow.flow
+  type stack
+  
+  type ctx
+  val default_ctx : ctx
+
+  val init : stack -> ctx io
+
+  val connect : ctx:ctx -> client -> (flow * ic * oc) io
+
+  val serve :
+    ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
+     mode:server -> (flow -> ic -> oc -> unit io) -> unit io
+
+  val endp_to_client: ctx:ctx -> Conduit.endp -> client io
 end

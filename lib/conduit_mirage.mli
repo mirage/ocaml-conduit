@@ -27,18 +27,19 @@ type server = [
 
 module Make_flow(S:V1_LWT.STACKV4) : V1_LWT.FLOW
 
-module Make(S:V1_LWT.STACKV4) : sig
+module type S = sig
 
   module Flow : V1_LWT.FLOW
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
-  
+  type stack
+
   type ctx
   val default_ctx : ctx
 
-  val init : S.t -> ctx io
+  val init : stack -> ctx io
 
   val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
@@ -48,3 +49,5 @@ module Make(S:V1_LWT.STACKV4) : sig
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
 end
+
+module Make(S:V1_LWT.STACKV4) : S with type stack = S.t

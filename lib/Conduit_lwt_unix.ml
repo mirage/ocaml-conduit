@@ -39,8 +39,17 @@ type server = [
   | `Unix_domain_socket of [ `File of string ]
 ] with sexp
 
+type tls_server_key = [
+  | `None
+  | `OpenSSL of
+      [ `Crt_file_path of string ] * 
+      [ `Key_file_path of string ] *
+      [ `Password of bool -> string | `No_password ]
+]
+
 type ctx = {
   src: Unix.sockaddr option;
+  tls_server_key: tls_server_key;
 } 
 
 type tcp_flow = {
@@ -60,17 +69,17 @@ type flow =
   with sexp
 
 let default_ctx =
-  { src=None }
+  { src=None; tls_server_key=`None }
 
-let init ?src () =
+let init ?src ?(tls_server_key=`None) () =
   let open Unix in
   match src with
   | None ->
-     return { src=None }
+     return { src=None; tls_server_key }
   | Some host ->
      Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
      >>= function
-     | {ai_addr;_}::_ -> return { src=Some ai_addr }
+     | {ai_addr;_}::_ -> return { src=Some ai_addr; tls_server_key }
      | [] -> fail (Failure "Invalid conduit source address specified")
 
 let connect ~ctx (mode:client) =
@@ -146,3 +155,17 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `Vchan _path -> fail (Failure "VChan not supported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
+let endp_to_server ~ctx (endp:Conduit.endp) =
+  match endp with
+  | `Unix_domain_socket path -> return (`Unix_domain_socket (`File path))
+  | `TLS (host, `TCP (ip, port)) -> begin
+       match ctx.tls_server_key with
+       | `None -> fail (Failure "No TLS server key configured")
+       | `OpenSSL (`Crt_file_path crt, `Key_file_path key, pass) ->
+          return (`OpenSSL (`Crt_file_path crt, `Key_file_path key,
+            pass, `Port port))
+     end
+  | `TCP (_ip, port) -> return (`TCP (`Port port))
+  | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
+  | `Vchan _path -> fail (Failure "VChan not supported")
+  | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

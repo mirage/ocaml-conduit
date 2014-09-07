@@ -15,37 +15,27 @@
  *
  *)
 
-module Client : sig
-  val connect :
-    ?src:Lwt_unix.sockaddr ->
-    Lwt_unix.sockaddr ->
-    ([`TCP of Unix.file_descr] * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+module Sockaddr_client : sig
+  open Lwt_io
 
+  val connect : ?src:Lwt_unix.sockaddr -> Lwt_unix.sockaddr ->
+   (Lwt_unix.file_descr * input channel * output channel) Lwt.t
+
+  val close : input channel * output channel -> unit Lwt.t
 end
 
-module Server : sig
-  val accept :
-    Lwt_unix.file_descr ->
-    ([`TCP of Unix.file_descr] * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+module Sockaddr_server : sig
+  open Lwt_io
 
-  val listen :
-    ?nconn:int ->
-    ?password:(bool -> string) ->
-    certfile:string ->
-    keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
+  val init_socket : Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
   val init :
-    ?nconn:int ->
-    ?password:(bool -> string) ->
-    certfile:string ->
-    keyfile:string ->
+    sockaddr:Lwt_unix.sockaddr ->
     ?stop:(unit Lwt.t) ->
     ?timeout:int ->
-    Lwt_unix.sockaddr ->
-    ([`TCP of Unix.file_descr] -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
+    (Lwt_unix.file_descr -> input channel -> output channel -> unit Lwt.t) ->
     unit Lwt.t
+
+  val close : input channel * output channel -> unit Lwt.t
 end
 
-val close : 
-  Lwt_io.input_channel * Lwt_io.output_channel ->
-  unit Lwt.t

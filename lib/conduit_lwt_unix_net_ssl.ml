@@ -22,7 +22,7 @@ let _ = Ssl.init ()
 let chans_of_fd sock =
   let ic = Lwt_ssl.in_channel_of_descr sock in
   let oc = Lwt_ssl.out_channel_of_descr sock in
-  (`TCP (Lwt_ssl.get_unix_fd sock), ic, oc)
+  ((Lwt_ssl.get_fd sock), ic, oc)
 
 let close (ic,oc) =
   let _ = try_lwt Lwt_io.close oc with _ -> return () in

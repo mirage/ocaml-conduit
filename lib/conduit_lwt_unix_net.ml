@@ -18,14 +18,6 @@
 open Lwt
 open Printf
 
-(* Perform a DNS lookup on the addr and generate a sockaddr *)
-let build_sockaddr host service =
-  let open Lwt_unix in
-  getprotobyname "tcp" >>= fun pe ->
-  getaddrinfo host service [AI_PROTOCOL pe.p_proto] >>= function
-  | [] -> fail (Invalid_argument (sprintf "No socket address for %s/%s" host service))
-  | ai::_ -> Lwt.return ai.ai_addr
-
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
@@ -36,10 +28,9 @@ module Sockaddr_client = struct
       | Some src_sa -> Lwt_unix.bind fd src_sa
     in
     lwt () = Lwt_unix.connect fd sa in
-    let sa = `TCP (Lwt_unix.unix_file_descr fd) in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
-    return (sa, ic, oc)
+    return (fd, ic, oc)
 
   let close (ic,oc) =
     let _ = try_lwt Lwt_io.close oc with _ -> return () in
@@ -62,10 +53,9 @@ module Sockaddr_server = struct
 
   let process_accept ?timeout callback (client,_) =
     Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
-    let sa = `TCP (Lwt_unix.unix_file_descr client) in
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
-    let c = callback sa ic oc in
+    let c = callback client ic oc in
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in

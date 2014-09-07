@@ -15,34 +15,38 @@
  *
 *)
 
-module Client : sig
 
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Unix_domain_socket of string
-  ] with sexp
+(** End points that can potentially be connected to.
+    These are typically returned by a call to [Conduit_resolver]. *)
+type endp = [
+  | `TCP of Ipaddr.t * int        (** IP address and destination port *)
+  | `Unix_domain_socket of string (** Unix domain file path *)
+  | `Vchan of string list         (** Xenstore path *)
+  | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string            (** Failed resolution *)
+] with sexp
 
+module type IO = sig
+  type +'a t
+  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val return : 'a -> 'a t
 end
 
-module Server : sig
+module type RESOLVER = sig
+  type +'a io
+  type t with sexp
+  type svc
 
-  type t = [
-    | `SSL of 
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ] *
-       [ `Password of bool -> string | `No_password ] *
-       [ `Port of int]
-    | `TCP of [ `Port of int ]
-    | `Unix_domain_socket of [ `File of string ]
-  ] with sexp
+  type rewrite_fn = svc -> Uri.t -> endp io
+  type service_fn = string -> svc option io
 
+  val init :
+    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
+    unit -> t
+
+  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
+
+  val resolve_uri :
+    ?rewrites:(string * rewrite_fn) list ->
+    uri:Uri.t -> t -> endp io
 end
-
-val has_async_ssl : bool
-(** [has_async_ssl] is [true] if Async SSL support has been compiled into
-    this library. *)
-
-val has_lwt_unix_ssl : bool
-(** [has_lwt_ssl] is [true] if Lwt SSL support has been compiled into
-    this library. *)

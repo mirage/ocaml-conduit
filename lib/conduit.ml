@@ -17,38 +17,38 @@
 
 open Sexplib.Std
 
-module Client = struct
+(** The resolver will return an [endp], which the Conduit
+    backend must interpret to make a connection. *)
+type endp = [
+  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
+  | `Unix_domain_socket of string (** unix file path *)
+  | `Vchan of string list         (** xenstore path *)
+  | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string            (** failed resolution *)
+] with sexp
 
-  type t = [
-    | `SSL of string * int
-    | `TCP of string * int
-    | `Unix_domain_socket of string
-  ] with sexp
-
+module type IO = sig
+  type +'a t
+  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+  val return : 'a -> 'a t
 end
 
-module Server = struct
+module type RESOLVER = sig
+  type +'a io
+  type t with sexp
+  type svc
 
-  type t = [
-    | `SSL of
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ] *
-       [ `Password of bool -> string | `No_password ] *
-       [ `Port of int ]
-    | `TCP of [ `Port of int ]
-    | `Unix_domain_socket of [ `File of string ]
-  ] with sexp
+  type rewrite_fn = svc -> Uri.t -> endp io
+  type service_fn = string -> svc option io
 
+  val init :
+    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
+    unit -> t
+
+  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
+
+  val resolve_uri :
+    ?rewrites:(string * rewrite_fn) list ->
+    uri:Uri.t -> t -> endp io
 end
 
-IFDEF HAVE_ASYNC_SSL THEN
-let has_async_ssl = true
-ELSE
-let has_async_ssl = false
-END
-
-IFDEF HAVE_LWT_SSL THEN
-let has_lwt_unix_ssl = true
-ELSE
-let has_lwt_unix_ssl = false
-END

@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,27 +13,12 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *)
+*)
 
-type 'a io = 'a Lwt.t
-type ic = Lwt_io.input_channel
-type oc = Lwt_io.output_channel
-type endp = Lwt_unix.sockaddr
+module IO : Conduit.IO with type 'a t = 'a Lwt.t
 
-type ctx
-val init : ?src:string -> unit -> ctx io
+module type S = Conduit.RESOLVER 
+  with type svc = Conduit_resolver.service
+  and  type 'a io = 'a Lwt.t
 
-(** An individual connection *)
-
-type conn
-val peername : conn -> endp
-val sockname : conn -> endp
-
-module Client : sig
-  val connect : ?ctx:ctx -> Conduit.Client.t -> (conn * ic * oc) io
-end
-
-module Server : sig
-  val serve : ?timeout:int -> ?ctx:ctx -> ?stop:(unit Lwt.t) ->
-    Conduit.Server.t -> (conn -> ic -> oc -> unit io) -> unit io
-end
+include S

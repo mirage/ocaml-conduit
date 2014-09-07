@@ -13,36 +13,39 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
-
-open Core.Std
-open Async.Std
-
-type +'a io = 'a Deferred.t
-type ic = Reader.t
-type oc = Writer.t
+ *)
 
 module Client : sig
-  val connect : ?interrupt:unit io -> Conduit.Client.t -> (ic * oc) io
+  val connect :
+    ?src:Lwt_unix.sockaddr ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+
 end
 
 module Server : sig
-  type mode = [
-    | `SSL of
-       [ `Crt_file_path of string ] * 
-       [ `Key_file_path of string ]
-    | `TCP
-  ] with sexp
+  val accept :
+    Lwt_unix.file_descr ->
+    (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
-  val create :
-    ?max_connections:int ->
-    ?max_pending_connections:int ->
-    ?buffer_age_limit:Writer.buffer_age_limit ->
-    ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
-                      | `Ignore
-                      | `Raise ] ->
-    mode ->
-    ('a, 'b) Tcp.Where_to_listen.t ->
-    ('a -> ic -> oc -> unit io) -> 
-    ('a, 'b) Tcp.Server.t io
+  val listen :
+    ?nconn:int ->
+    ?password:(bool -> string) ->
+    certfile:string ->
+    keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
+
+  val init :
+    ?nconn:int ->
+    ?password:(bool -> string) ->
+    certfile:string ->
+    keyfile:string ->
+    ?stop:(unit Lwt.t) ->
+    ?timeout:int ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.file_descr -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
+    unit Lwt.t
 end
+
+val close : 
+  Lwt_io.input_channel * Lwt_io.output_channel ->
+  unit Lwt.t

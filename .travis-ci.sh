@@ -1,4 +1,4 @@
-OPAM_DEPENDS="sexplib ipaddr"
+OPAM_DEPENDS="sexplib ipaddr cstruct stringext uri"
 
 case "$OCAML_VERSION,$OPAM_VERSION" in
 4.00.1,1.0.0) ppa=avsm/ocaml40+opam10 ;;
@@ -49,6 +49,11 @@ make
 make install
 
 opam install ssl
+make clean
+make
+make install
+
+opam install dns tcpip mirage-types
 make clean
 make
 make install

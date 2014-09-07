@@ -48,6 +48,7 @@ module type S = sig
      mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
+  val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
 module Make(S:V1_LWT.STACKV4) : S with type stack = S.t

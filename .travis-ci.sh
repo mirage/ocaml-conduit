@@ -36,13 +36,11 @@ make clean
 make
 make install
 
-export OPAMVERBOSE=1
 opam install async_ssl
 make clean
 make
 make install
 
-export OPAMVERBOSE=0
 opam install lwt
 make clean
 make
@@ -53,6 +51,7 @@ make clean
 make
 make install
 
+opam remote add mirage-dev git://github.com/mirage/mirage-dev
 opam install dns tcpip mirage-types
 make clean
 make

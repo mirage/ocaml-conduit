@@ -126,6 +126,14 @@ module Make(S:V1_LWT.STACKV4) = struct
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+
+  let endp_to_server ~ctx (endp:Conduit.endp) : server Lwt.t =
+    match endp with
+    | `TCP (_ip, port) -> return (`TCP (`Port port))
+    | `Vchan path as mode -> return mode
+    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
+    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 end
 
 module type S = sig
@@ -149,4 +157,5 @@ module type S = sig
      mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
+  val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end

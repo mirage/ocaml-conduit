@@ -36,8 +36,16 @@ type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 type flow with sexp
 
+type tls_server_key = [
+ | `None
+ | `OpenSSL of
+    [ `Crt_file_path of string ] * 
+    [ `Key_file_path of string ] *
+    [ `Password of bool -> string | `No_password ]
+]
+
 type ctx
-val init : ?src:string -> unit -> ctx io
+val init : ?src:string -> ?tls_server_key:tls_server_key -> unit -> ctx io
 val default_ctx : ctx
 
 val connect : ctx:ctx -> client -> (flow * ic * oc) io
@@ -47,4 +55,5 @@ val serve :
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
+val endp_to_server : ctx:ctx -> Conduit.endp -> server io
 

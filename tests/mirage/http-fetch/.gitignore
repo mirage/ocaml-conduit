@@ -1,4 +1,5 @@
 Makefile
+*.xe
 *.xl
 _build
 main.ml

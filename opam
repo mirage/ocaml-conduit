@@ -1,4 +1,5 @@
 opam-version: "1"
+version: "0.6.0"
 maintainer: "anil@recoil.org"
 tags: [
   "org:mirage"
@@ -14,6 +15,7 @@ depends: [
   "stringext"
   "uri"
   "cstruct" {>="1.0.1"}
+  "ipaddr" {>="2.0.0"}
 ]
 depopts: [
   "async"

@@ -20,52 +20,67 @@ open Sexplib.Std
 
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of string list
+  | `Vchan of int * Vchan.Port.t
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of string list
+  | `Vchan of int * Vchan.Port.t
 ] with sexp
 
 (** All the possible connection types supported *)
-module Make_flow(S:V1_LWT.STACKV4) = struct
+module Make_flow(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) = struct
 
   type 'a io = 'a Lwt.t
-  type error = S.TCPV4.error (* XXX *)
+  type error = [ `Refused | `Timeout | `Unknown of bytes ]
+
   type buffer = Cstruct.t
 
   type flow =
     | TCPv4 of S.TCPV4.flow
-    | Vchan of string list (* TODO *)
+    | Vchan of V.t
 
   let of_tcpv4 f = TCPv4 f
-  let of_vchan v = Vchan v
+  let of_vchan f = Vchan f
+
+  let vchan_error t =
+    t >>= function
+      | `Error (`Unknown x) -> return (`Error (`Unknown x))
+      | `Eof -> return (`Eof)
+      | `Ok b -> return (`Ok b)
+
+  let stack_error t =
+    t >>= function
+      | `Error (`Unknown x) -> return (`Error (`Unknown x))
+      | `Error (`Refused) -> return (`Error (`Refused))
+      | `Error (`Timeout) -> return (`Error (`Timeout))
+      | `Eof -> return (`Eof)
+      | `Ok b -> return (`Ok b)
 
   let read flow =
     match flow with
-    | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t -> S.TCPV4.read t
+    | Vchan t -> vchan_error (V.read t)
+    | TCPv4 t -> stack_error (S.TCPV4.read t)
 
   let write flow buf =
     match flow with
-    | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t -> S.TCPV4.write t buf
+    | Vchan t -> vchan_error (V.write t buf)
+    | TCPv4 t -> stack_error (S.TCPV4.write t buf)
 
   let writev flow bufv =
     match flow with
-    | Vchan _ -> fail (Failure "TODO")
-    | TCPv4 t -> S.TCPV4.writev t bufv
+    | Vchan t -> vchan_error (V.writev t bufv)
+    | TCPv4 t -> stack_error (S.TCPV4.writev t bufv)
 
   let close flow =
     match flow with
-    | Vchan _ -> fail (Failure "TODO")
+    | Vchan t -> V.close t
     | TCPv4 t -> S.TCPV4.close t
 end
 
-module Make(S:V1_LWT.STACKV4) = struct
+module Make(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) = struct
 
-  module Flow = Make_flow(S)
+  module Flow = Make_flow(S)(V)
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
@@ -80,12 +95,15 @@ module Make(S:V1_LWT.STACKV4) = struct
     return { stack = Some stack }
 
   let default_ctx =
-    { stack = None }
+    { stack = None  }
 
   let connect ~ctx (mode:client) =
     match mode, ctx.stack with
-    | `Vchan _path, _ ->
-      fail (Failure "No Vchan support compiled into Conduit")
+    | `Vchan (domid, port), _ ->
+      V.client ~domid ~port ()
+      >>= fun flow ->
+      let flow = Flow.of_vchan flow in
+      return (flow, flow, flow)
     | `TCP (Ipaddr.V6 _ip, _port), _ ->
       fail (Failure "No IPv6 support compiled into Conduit")
     | `TCP (Ipaddr.V4 _ip, _port), None ->
@@ -112,9 +130,11 @@ module Make(S:V1_LWT.STACKV4) = struct
            fn f f f
         );
       t
-    |`Vchan path, _ ->
-      let _f = Flow.of_vchan path in
-      fail (Failure "vchan not implemented")
+    |`Vchan (domid, port), _ ->
+      V.server ~domid ~port ()
+      >>= fun t ->
+      let f = Flow.of_vchan t in
+      fn f f f
 
   (** Use the configuration of the server to interpret how to
       handle a particular endpoint from the resolver into a
@@ -122,7 +142,7 @@ module Make(S:V1_LWT.STACKV4) = struct
   let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan path as mode -> return mode
+    | `Vchan (_domid, _port) as mode -> return mode
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
@@ -130,7 +150,7 @@ module Make(S:V1_LWT.STACKV4) = struct
   let endp_to_server ~ctx (endp:Conduit.endp) : server Lwt.t =
     match endp with
     | `TCP (_ip, port) -> return (`TCP (`Port port))
-    | `Vchan path as mode -> return mode
+    | `Vchan (_domid, port) as mode -> return mode
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

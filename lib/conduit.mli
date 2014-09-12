@@ -21,7 +21,7 @@
 type endp = [
   | `TCP of Ipaddr.t * int        (** IP address and destination port *)
   | `Unix_domain_socket of string (** Unix domain file path *)
-  | `Vchan of string list         (** Xenstore path *)
+  | `Vchan of int * Vchan.Port.t  (** domain id, port *)
   | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** Failed resolution *)
 ] with sexp

@@ -27,6 +27,7 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
+  | `Vchan of int * Vchan.Port.t
 ] with sexp
 
 type server = [
@@ -37,6 +38,7 @@ type server = [
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
+  | `Vchan of int * Vchan.Port.t
 ] with sexp
 
 type tls_server_key = [
@@ -138,7 +140,7 @@ END
 type endp = [
   | `TCP of Ipaddr.t * int        (** IP address and destination port *)
   | `Unix_domain_socket of string (** Unix domain file path *)
-  | `Vchan of string list         (** Xenstore path *)
+  | `Vchan of int * Vchan.Port.t  (** domain id * port *)
   | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
@@ -151,8 +153,8 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode
   | `TLS (host, `TCP (ip, port)) -> return (`OpenSSL (host, ip, port))
+  | `Vchan (_, _) as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
-  | `Vchan _path -> fail (Failure "VChan not supported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
 let endp_to_server ~ctx (endp:Conduit.endp) =
@@ -166,6 +168,6 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
             pass, `Port port))
      end
   | `TCP (_ip, port) -> return (`TCP (`Port port))
+  | `Vchan (_, _) as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
-  | `Vchan _path -> fail (Failure "VChan not supported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

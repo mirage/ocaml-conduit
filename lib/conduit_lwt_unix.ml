@@ -31,7 +31,7 @@ type client = [
 
 type server = [
   | `OpenSSL of
-      [ `Crt_file_path of string ] * 
+      [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ] *
       [ `Port of int ]
@@ -42,7 +42,7 @@ type server = [
 type tls_server_key = [
   | `None
   | `OpenSSL of
-      [ `Crt_file_path of string ] * 
+      [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ]
 ]
@@ -50,7 +50,7 @@ type tls_server_key = [
 type ctx = {
   src: Unix.sockaddr option;
   tls_server_key: tls_server_key;
-} 
+}
 
 type tcp_flow = {
   fd: Lwt_unix.file_descr sexp_opaque;
@@ -84,7 +84,7 @@ let init ?src ?(tls_server_key=`None) () =
 
 let connect ~ctx (mode:client) =
   match mode with
-  | `OpenSSL (_host, ip, port) -> 
+  | `OpenSSL (_host, ip, port) ->
 IFDEF HAVE_LWT_SSL THEN
       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
       lwt fd, ic, oc = Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa in
@@ -115,7 +115,7 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
   | `TCP (`Port port) ->
-       let sockaddr, ip = sockaddr_on_tcp_port ctx port in 
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
        >>= fun () -> t
@@ -124,7 +124,7 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
        Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
        >>= fun () -> t
-  | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) -> 
+  | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
 IFDEF HAVE_LWT_SSL THEN
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        let password = match pass with |`No_password -> None |`Password fn -> Some fn in
@@ -143,10 +143,7 @@ type endp = [
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
 
-(** Use the configuration of the server to interpret how to
-    handle a particular endpoint from the resolver into a
-    concrete implementation of type [client] *)
-let endp_to_client ~ctx (endp:Conduit.endp) =
+let endp_to_client ~ctx:_ (endp:Conduit.endp) =
   match endp with
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode
@@ -158,7 +155,7 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
 let endp_to_server ~ctx (endp:Conduit.endp) =
   match endp with
   | `Unix_domain_socket path -> return (`Unix_domain_socket (`File path))
-  | `TLS (host, `TCP (ip, port)) -> begin
+  | `TLS (_host, `TCP (_ip, port)) -> begin
        match ctx.tls_server_key with
        | `None -> fail (Failure "No TLS server key configured")
        | `OpenSSL (`Crt_file_path crt, `Key_file_path key, pass) ->

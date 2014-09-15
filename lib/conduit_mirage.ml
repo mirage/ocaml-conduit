@@ -99,7 +99,8 @@ module Make(S:V1_LWT.STACKV4) = struct
         let flow = Flow.of_tcpv4 flow in
         return (flow, flow, flow)
 
-  let serve ?(timeout=60) ?stop ~ctx ~mode fn =
+  let serve ?(timeout=60) ?stop:_ ~ctx ~mode fn =
+    let _ = timeout in
     let t, _u = Lwt.task () in
     Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
     match mode, ctx.stack with
@@ -116,21 +117,18 @@ module Make(S:V1_LWT.STACKV4) = struct
       let _f = Flow.of_vchan path in
       fail (Failure "vchan not implemented")
 
-  (** Use the configuration of the server to interpret how to
-      handle a particular endpoint from the resolver into a
-      concrete implementation of type [client] *)
-  let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
+  let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan path as mode -> return mode
+    | `Vchan _path as mode -> return mode
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
-  let endp_to_server ~ctx (endp:Conduit.endp) : server Lwt.t =
+  let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
     match endp with
     | `TCP (_ip, port) -> return (`TCP (`Port port))
-    | `Vchan path as mode -> return mode
+    | `Vchan _path as mode -> return mode
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
@@ -138,13 +136,13 @@ end
 
 module type S = sig
 
-  module Flow : V1_LWT.FLOW 
+  module Flow : V1_LWT.FLOW
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
   type stack
-  
+
   type ctx
   val default_ctx : ctx
 

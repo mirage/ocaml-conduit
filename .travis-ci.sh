@@ -21,6 +21,8 @@ opam --version
 opam --git-version
 
 opam init -a
+opam remote add mirage-dev git://github.com/mirage/mirage-dev
+opam update
 opam install ${OPAM_DEPENDS}
 
 eval `opam config env`
@@ -52,7 +54,6 @@ make clean
 make
 make install
 
-opam remote add mirage-dev git://github.com/mirage/mirage-dev
 opam install dns tcpip mirage-types
 make clean
 make

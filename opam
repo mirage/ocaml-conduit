@@ -1,5 +1,4 @@
-opam-version: "1"
-version: "0.6.0"
+opam-version: "1.1"
 maintainer: "anil@recoil.org"
 tags: [
   "org:mirage"
@@ -8,7 +7,7 @@ build: [
   [make]
   [make "install"]
 ]
-remove: [["ocamlfind" "remove" "conduit"]]
+remove: ["ocamlfind" "remove" "conduit"]
 depends: [
   "ocamlfind"
   "sexplib" {>="109.15.00"}
@@ -20,9 +19,12 @@ depends: [
 depopts: [
   "async"
   "lwt"
-  ("lwt" & "ssl")
+  "ssl"
   "async_ssl"
-  ("mirage-types" & "dns" & "tcpip")
+  "mirage-types"
+  "dns"
+  "tcpip"
+  "vchan"
 ]
 conflicts: [
   "async" {<"109.15.00"}
@@ -30,4 +32,4 @@ conflicts: [
   "async_ssl" {<"111.21.00"}
   "mirage-types" {<"2.0.0"}
 ]
-ocaml-version: [>="4.01.0"]
+available: [ocaml-version >= "4.01.0"]

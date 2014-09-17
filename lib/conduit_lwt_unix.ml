@@ -16,7 +16,6 @@
  *)
 
 open Lwt
-open Sexplib.Std
 open Sexplib.Conv
 
 type +'a io = 'a Lwt.t
@@ -65,10 +64,16 @@ type domain_flow = {
   path: string;
 } with sexp
 
+type vchan_flow = {
+  domid: int;
+  port: Vchan.Port.t;
+} with sexp
+
 type flow =
   | TCP of tcp_flow
   | Domain_socket of domain_flow
-  with sexp
+  | Vchan of vchan_flow
+with sexp
 
 let default_ctx =
   { src=None; tls_server_key=`None }
@@ -104,6 +109,10 @@ END
        lwt (fd,ic,oc) = Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX path) in
        let flow = Domain_socket {fd; path} in
        return (flow, ic, oc)
+  | `Vchan (domid, port) ->
+       let flow = Vchan { domid; port } in
+       Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
+       return (flow, ic, oc)
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -116,6 +125,9 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
+    |`Vchan (domid, port) ->
+      Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
+      callback (Vchan {domid; port}) ic oc
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop

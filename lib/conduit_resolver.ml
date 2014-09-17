@@ -17,16 +17,6 @@
 
 open Sexplib.Std
 
-(** The resolver will return an [endp], which the Conduit
-    backend must interpret to make a connection. *)
-type endp = [
-  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
-  | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan of int * Vchan.Port.t  (** domain id, port *)
-  | `TLS of string * endp         (** wrap in a TLS channel *)
-  | `Unknown of string            (** failed resolution *)
-] with sexp
-
 type service = {
   name: string;
   port: int;
@@ -38,10 +28,10 @@ module Make(IO:Conduit.IO) = struct
 
   type svc = service
   type 'a io = 'a IO.t
-  
+
   (** A rewrite modifies an input URI with more specialization
       towards a concrete [endp] *)
-  type rewrite_fn = service -> Uri.t -> endp IO.t with sexp
+  type rewrite_fn = service -> Uri.t -> Conduit.endp IO.t with sexp
   type service_fn = string -> service option IO.t with sexp
 
   type t = {

@@ -16,13 +16,12 @@
  *)
 
 open Lwt
-open Printf
 
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    let () = 
+    let () =
       match src with
       | None -> ()
       | Some src_sa -> Lwt_unix.bind fd src_sa
@@ -65,9 +64,9 @@ module Sockaddr_server = struct
   let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
     let cont = ref true in
     let s = init_socket sockaddr in
-    async (fun () -> 
-      stop >>= fun () -> 
-      cont := false; 
+    async (fun () ->
+      stop >>= fun () ->
+      cont := false;
       return_unit
     );
     while_lwt !cont do

@@ -48,6 +48,10 @@ module type S = sig
      mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
+  (** Use the configuration of the server to interpret how to handle a
+      particular endpoint from the resolver into a concrete
+      implementation of type [client] *)
+
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 

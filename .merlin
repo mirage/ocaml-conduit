@@ -1,0 +1,3 @@
+PKG sexplib stringext uri cstruct ipaddr
+B _build/**
+S lib/

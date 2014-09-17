@@ -32,7 +32,7 @@ type server = [
 module Make_flow(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) = struct
 
   type 'a io = 'a Lwt.t
-  type error = [ `Refused | `Timeout | `Unknown of bytes ]
+  type error = [ `Refused | `Timeout | `Unknown of string ]
 
   type buffer = Cstruct.t
 
@@ -158,13 +158,13 @@ end
 
 module type S = sig
 
-  module Flow : V1_LWT.FLOW 
+  module Flow : V1_LWT.FLOW
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
   type stack
-  
+
   type ctx
   val default_ctx : ctx
 

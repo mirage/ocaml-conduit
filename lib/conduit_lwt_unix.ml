@@ -26,7 +26,7 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 type server = [
@@ -37,7 +37,7 @@ type server = [
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 type tls_server_key = [
@@ -66,7 +66,7 @@ type domain_flow = {
 
 type vchan_flow = {
   domid: int;
-  port: Vchan.Port.t;
+  port: string;
 } with sexp
 
 type flow =
@@ -167,7 +167,7 @@ END
 type endp = [
   | `TCP of Ipaddr.t * int        (** IP address and destination port *)
   | `Unix_domain_socket of string (** Unix domain file path *)
-  | `Vchan of int * Vchan.Port.t  (** domain id * port *)
+  | `Vchan of int * string        (** domain id * port *)
   | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** Failed resolution *)
 ] with sexp

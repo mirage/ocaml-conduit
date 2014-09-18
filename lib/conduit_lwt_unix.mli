@@ -19,7 +19,7 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 type server = [
@@ -30,7 +30,7 @@ type server = [
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 type 'a io = 'a Lwt.t

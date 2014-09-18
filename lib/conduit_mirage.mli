@@ -17,12 +17,12 @@
 
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * Vchan.Port.t
+  | `Vchan of int * string
 ] with sexp
 
 module Make_flow(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) : V1_LWT.FLOW

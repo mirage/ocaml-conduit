@@ -19,14 +19,18 @@ open Lwt
 
 let _ = Ssl.init ()
 
+let safe_close t =
+  Lwt.catch
+    (fun () -> Lwt_io.close t)
+    (fun _ -> return_unit)
+
 let chans_of_fd sock =
   let ic = Lwt_ssl.in_channel_of_descr sock in
   let oc = Lwt_ssl.out_channel_of_descr sock in
   ((Lwt_ssl.get_fd sock), ic, oc)
 
-let close (ic,oc) =
-  let _ = try_lwt Lwt_io.close oc with _ -> return () in
-  try_lwt Lwt_io.close ic with _ -> return ()
+let close (ic, oc) =
+  Lwt.join [ safe_close oc; safe_close ic ]
 
 module Client = struct
   (* SSL TCP connection *)
@@ -39,8 +43,8 @@ module Client = struct
       | None -> ()
       | Some src_sa -> Lwt_unix.bind fd src_sa
     in
-    lwt () = Lwt_unix.connect fd sa in
-    lwt sock = Lwt_ssl.ssl_connect fd t in
+    Lwt_unix.connect fd sa >>= fun () ->
+    Lwt_ssl.ssl_connect fd t >>= fun sock ->
     return (chans_of_fd sock)
 end
 
@@ -49,8 +53,8 @@ module Server = struct
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Server_context
 
   let accept fd =
-    lwt (afd,_) = Lwt_unix.accept fd in
-    lwt sock = Lwt_ssl.ssl_accept afd t in
+    Lwt_unix.accept fd >>= fun (afd, _) ->
+    Lwt_ssl.ssl_accept afd t >>= fun sock ->
     return (chans_of_fd sock)
 
   let listen ?(nconn=20) ?password ~certfile ~keyfile sa =
@@ -81,11 +85,17 @@ module Server = struct
       cont := false;
       return_unit
     );
-    while_lwt !cont do
-      try_lwt begin
-        accept s >>= process_accept ~timeout callback
-      end with
-       | Lwt.Canceled -> cont := false; return ()
-       | _ -> return ()
-    done
+    let rec loop () =
+      if not !cont then return_unit
+      else (
+        Lwt.catch
+          (fun () -> accept s >>= process_accept ~timeout callback)
+          (function
+            | Lwt.Canceled -> cont := false; return ()
+            | _ -> return ())
+        >>= loop
+      )
+    in
+    loop ()
+
 end

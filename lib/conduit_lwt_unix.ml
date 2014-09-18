@@ -82,37 +82,44 @@ let init ?src ?(tls_server_key=`None) () =
   let open Unix in
   match src with
   | None ->
-     return { src=None; tls_server_key }
+    return { src=None; tls_server_key }
   | Some host ->
-     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
-     >>= function
-     | {ai_addr;_}::_ -> return { src=Some ai_addr; tls_server_key }
-     | [] -> fail (Failure "Invalid conduit source address specified")
+    Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
+    >>= function
+    | {ai_addr;_}::_ -> return { src=Some ai_addr; tls_server_key }
+    | [] -> fail (Failure "Invalid conduit source address specified")
 
 let connect ~ctx (mode:client) =
   match mode with
+  | `TCP (ip,port) ->
+    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
+    Conduit_lwt_unix_net.Sockaddr_client.connect ?src:ctx.src sa
+    >>= fun (fd, ic, oc) ->
+    let flow = TCP {fd;ip;port} in
+    return (flow, ic, oc)
+  | `Unix_domain_socket path ->
+    Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX path)
+    >>= fun (fd, ic, oc) ->
+    let flow = Domain_socket {fd; path} in
+    return (flow, ic, oc)
   | `OpenSSL (_host, ip, port) ->
 IFDEF HAVE_LWT_SSL THEN
-      let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-      lwt fd, ic, oc = Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa in
-      let flow = TCP {fd;ip;port} in
-      return (flow, ic, oc)
+    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+    Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa
+    >>= fun (fd, ic, oc) ->
+    let flow = TCP {fd;ip;port} in
+    return (flow, ic, oc)
 ELSE
-      fail (Failure "No SSL support compiled into Conduit")
+    fail (Failure "No SSL support compiled into Conduit")
 END
-  | `TCP (ip,port) ->
-       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
-       lwt fd,ic,oc = Conduit_lwt_unix_net.Sockaddr_client.connect ?src:ctx.src sa in
-       let flow = TCP {fd;ip;port} in
-       return (flow, ic, oc)
-  | `Unix_domain_socket path ->
-       lwt (fd,ic,oc) = Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX path) in
-       let flow = Domain_socket {fd; path} in
-       return (flow, ic, oc)
   | `Vchan (domid, port) ->
-       let flow = Vchan { domid; port } in
-       Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
-       return (flow, ic, oc)
+IFDEF HAVE_VCHAN_LWT THEN
+    let flow = Vchan { domid; port } in
+    Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
+    return (flow, ic, oc)
+ELSE
+    fail (Failure "No Vchan support compiled into Conduit")
+END
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -125,28 +132,36 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
-    |`Vchan (domid, port) ->
-      Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
-      callback (Vchan {domid; port}) ic oc
   | `TCP (`Port port) ->
-       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
-       >>= fun () -> t
+    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+      (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc) >>= fun () ->
+    t
   |  `Unix_domain_socket (`File path) ->
-       let sockaddr = Unix.ADDR_UNIX path in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
-       >>= fun () -> t
+    let sockaddr = Unix.ADDR_UNIX path in
+    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+      (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc) >>= fun () ->
+    t
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
 IFDEF HAVE_LWT_SSL THEN
-       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       let password = match pass with |`No_password -> None |`Password fn -> Some fn in
-       Conduit_lwt_unix_net_ssl.Server.init ?password ~certfile ~keyfile ?timeout ?stop sockaddr
-         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc);
-       >>= fun () -> t
+    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+    let password = match pass with
+      | `No_password -> None
+      | `Password fn -> Some fn
+    in
+    Conduit_lwt_unix_net_ssl.Server.init
+      ?password ~certfile ~keyfile ?timeout  ?stop sockaddr
+      (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
+    t
 ELSE
-       fail (Failure "No SSL support compiled into Conduit")
+    fail (Failure "No SSL support compiled into Conduit")
+END
+  |`Vchan (domid, port) ->
+IFDEF HAVE_VCHAN_LWT THEN
+    Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
+    callback (Vchan {domid; port}) ic oc
+ELSE
+    fail (Failure "No Vchan support compiled into Conduit")
 END
 
 type endp = [

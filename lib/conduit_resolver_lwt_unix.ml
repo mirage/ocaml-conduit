@@ -25,14 +25,13 @@ let is_tls_service =
 
 let system_service name =
   (* TODO memoize *)
-  try_lwt 
-    Lwt_unix.getservbyname name "tcp"
-    >>= fun s ->
-    let tls = is_tls_service name in
-    let svc = { Conduit_resolver.name; port=s.Lwt_unix.s_port; tls } in
-    return (Some svc)
-  with Not_found ->
-    return None
+  Lwt.catch
+    (fun () ->
+      Lwt_unix.getservbyname name "tcp" >>= fun s ->
+      let tls = is_tls_service name in
+      let svc = { Conduit_resolver.name; port=s.Lwt_unix.s_port; tls } in
+      return (Some svc))
+    (function Not_found -> return_none | e -> fail e)
 
 let static_service name =
   match Uri_services.tcp_port_of_service name with
@@ -51,7 +50,7 @@ let get_port service uri =
   match Uri.port uri with
   | None -> service.Conduit_resolver.port
   | Some port -> port
- 
+
 (* Build a default resolver that uses the system gethostbyname and
    the /etc/services file *)
 let system_resolver service uri =
@@ -69,9 +68,9 @@ let system_resolver service uri =
 let static_resolver hosts _service uri =
   try
     return (Hashtbl.find hosts (get_host uri))
-  with Not_found -> 
+  with Not_found ->
     return (`Unknown ("name resolution failed"))
-    
+
 let system =
   let service = system_service in
   let rewrites = ["", system_resolver] in

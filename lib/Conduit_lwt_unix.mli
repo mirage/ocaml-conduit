@@ -23,7 +23,7 @@ type client = [
 
 type server = [
   | `OpenSSL of
-      [ `Crt_file_path of string ] * 
+      [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ] *
       [ `Port of int ]
@@ -39,7 +39,7 @@ type flow with sexp
 type tls_server_key = [
  | `None
  | `OpenSSL of
-    [ `Crt_file_path of string ] * 
+    [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
 ]
@@ -54,6 +54,7 @@ val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
+val endp_of_flow : flow -> Conduit.endp
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
 val endp_to_server : ctx:ctx -> Conduit.endp -> server io
 

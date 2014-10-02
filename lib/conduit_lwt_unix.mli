@@ -19,16 +19,18 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
+  | `Vchan of int * string
 ] with sexp
 
 type server = [
   | `OpenSSL of
-      [ `Crt_file_path of string ] * 
+      [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ] *
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
+  | `Vchan of int * string
 ] with sexp
 
 type 'a io = 'a Lwt.t
@@ -39,7 +41,7 @@ type flow with sexp
 type tls_server_key = [
  | `None
  | `OpenSSL of
-    [ `Crt_file_path of string ] * 
+    [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
 ]
@@ -55,5 +57,8 @@ val serve :
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
-val endp_to_server : ctx:ctx -> Conduit.endp -> server io
+(** Use the configuration of the server to interpret how to handle a
+    particular endpoint from the resolver into a concrete
+    implementation of type [client] *)
 
+val endp_to_server : ctx:ctx -> Conduit.endp -> server io

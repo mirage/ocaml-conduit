@@ -21,6 +21,7 @@ esac
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip 2>/dev/null || true`
+HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
@@ -61,7 +62,6 @@ if [ "$HAVE_LWT" != "" ]; then
   add_target "conduit-lwt"
   LWT_REQUIRES="lwt"
   LWT_UNIX_REQUIRES="lwt.unix ipaddr.unix uri.services"
-  LWT_SYNTAX=lwt.syntax
 
   echo Conduit_lwt_unix > lib/conduit-lwt-unix.mllib
   echo Conduit_lwt_unix_net >> lib/conduit-lwt-unix.mllib
@@ -80,12 +80,19 @@ if [ "$HAVE_LWT" != "" ]; then
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
     echo Conduit_resolver_mirage >> lib/conduit-lwt-mirage.mllib
-    LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
+    LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services vchan"
     add_target "conduit-lwt-mirage"
   fi
+
 fi
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_SYNTAX | tr -s ' '`
+if [ "$HAVE_VCHAN_LWT" != "" ]; then
+    echo "Building with Vchan Lwt_unix support."
+    echo 'true: define(HAVE_VCHAN_LWT)' >> _tags
+    VCHAN_LWT_REQUIRES="vchan.lwt"
+fi
+
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 
 ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
@@ -99,6 +106,7 @@ sed \
   -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
   -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
   -e "s/@LWT_MIRAGE_REQUIRES@/${LWT_MIRAGE_REQUIRES}/g" \
+  -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
   META.in > META
 
 if [ "$1" = "true" ]; then

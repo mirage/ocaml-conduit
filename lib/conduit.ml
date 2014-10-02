@@ -22,7 +22,7 @@ open Sexplib.Std
 type endp = [
   | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
   | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan of string list         (** xenstore path *)
+  | `Vchan of int * string        (** domain id, port *)
   | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** failed resolution *)
 ] with sexp
@@ -51,4 +51,3 @@ module type RESOLVER = sig
     ?rewrites:(string * rewrite_fn) list ->
     uri:Uri.t -> t -> endp io
 end
-

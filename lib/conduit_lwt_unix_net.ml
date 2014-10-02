@@ -16,32 +16,36 @@
  *)
 
 open Lwt
-open Printf
+
+let safe_close t =
+  Lwt.catch
+    (fun () -> Lwt_io.close t)
+    (fun _ -> return_unit)
 
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    let () = 
+    let () =
       match src with
       | None -> ()
       | Some src_sa -> Lwt_unix.bind fd src_sa
     in
-    lwt () = Lwt_unix.connect fd sa in
+    Lwt_unix.connect fd sa >>= fun () ->
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
     return (fd, ic, oc)
 
   let close (ic,oc) =
-    let _ = try_lwt Lwt_io.close oc with _ -> return () in
-    try_lwt Lwt_io.close ic with _ -> return ()
+    safe_close oc >>= fun () ->
+    safe_close ic
+
 end
 
 module Sockaddr_server = struct
 
-  let close (ic,oc) =
-    try_lwt Lwt_io.close oc with _ -> return () >>= fun () ->
-    try_lwt Lwt_io.close ic with _ -> return ()
+  let close (ic, oc) =
+    Lwt.join [ safe_close oc;  safe_close ic ]
 
   let init_socket sockaddr =
     Unix.handle_unix_error (fun () ->
@@ -65,13 +69,18 @@ module Sockaddr_server = struct
   let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
     let cont = ref true in
     let s = init_socket sockaddr in
-    async (fun () -> 
-      stop >>= fun () -> 
-      cont := false; 
+    async (fun () ->
+      stop >>= fun () ->
+      cont := false;
       return_unit
     );
-    while_lwt !cont do
-      Lwt_unix.accept s >>=
-      process_accept ?timeout callback
-    done
+    let rec loop () =
+      if not !cont then return_unit
+      else
+        Lwt_unix.accept s >>=
+        process_accept ?timeout callback >>= fun () ->
+        loop ()
+    in
+    loop ()
+
 end

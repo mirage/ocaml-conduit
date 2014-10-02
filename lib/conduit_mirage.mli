@@ -17,15 +17,15 @@
 
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of string list
+  | `Vchan of int * string
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of string list
+  | `Vchan of int * string
 ] with sexp
 
-module Make_flow(S:V1_LWT.STACKV4) : V1_LWT.FLOW
+module Make_flow(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) : V1_LWT.FLOW
 
 module type S = sig
 
@@ -48,7 +48,11 @@ module type S = sig
      mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
   val endp_to_client: ctx:ctx -> Conduit.endp -> client io
+  (** Use the configuration of the server to interpret how to handle a
+      particular endpoint from the resolver into a concrete
+      implementation of type [client] *)
+
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4) : S with type stack = S.t
+module Make(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) : S with type stack = S.t

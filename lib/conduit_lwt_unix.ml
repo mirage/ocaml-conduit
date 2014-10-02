@@ -133,15 +133,15 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
   | `TCP (`Port port) ->
-    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-      (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc) >>= fun () ->
-    t
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
+       >>= fun () -> t
   |  `Unix_domain_socket (`File path) ->
-    let sockaddr = Unix.ADDR_UNIX path in
-    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-      (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc) >>= fun () ->
-    t
+       let sockaddr = Unix.ADDR_UNIX path in
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
+       >>= fun () -> t
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
 IFDEF HAVE_LWT_SSL THEN
     let sockaddr, ip = sockaddr_on_tcp_port ctx port in
@@ -172,7 +172,14 @@ type endp = [
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
 
-let endp_to_client ~ctx:_ (endp:Conduit.endp) =
+let endp_of_flow = function
+  | TCP { ip; port; _ } -> `TCP (ip, port)
+  | Domain_socket { path; _ } -> `Unix_domain_socket path
+
+(** Use the configuration of the server to interpret how to
+    handle a particular endpoint from the resolver into a
+    concrete implementation of type [client] *)
+let endp_to_client ~ctx (endp:Conduit.endp) =
   match endp with
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode

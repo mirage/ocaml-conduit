@@ -112,9 +112,13 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  | `Vchan (domid, port) ->
+  | `Vchan (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
-    let flow = Vchan { domid; port } in
+    begin match Vchan.Port.of_string sport with
+      | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+      | `Ok p -> return p
+    end >>= fun port ->
+    let flow = Vchan { domid; port=sport } in
     Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
     return (flow, ic, oc)
 ELSE
@@ -156,10 +160,14 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  |`Vchan (domid, port) ->
+  |`Vchan (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
+    begin match Vchan.Port.of_string sport with
+      | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+      | `Ok p -> return p
+    end >>= fun port ->
     Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
-    callback (Vchan {domid; port}) ic oc
+    callback (Vchan {domid; port=sport}) ic oc
 ELSE
     fail (Failure "No Vchan support compiled into Conduit")
 END
@@ -175,6 +183,7 @@ type endp = [
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)
   | Domain_socket { path; _ } -> `Unix_domain_socket path
+  | Vchan { domid; port } -> `Vchan (domid, port)
 
 (** Use the configuration of the server to interpret how to
     handle a particular endpoint from the resolver into a

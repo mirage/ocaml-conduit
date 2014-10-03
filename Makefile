@@ -16,4 +16,6 @@ github:
 	rm -f *.html
 	cp _build/lib/conduit-all.docdir/* .
 	git add *.html
+	cp nice-style.css style.css
+	git add style.css
 	git commit -m 'sync ocamldoc' -a

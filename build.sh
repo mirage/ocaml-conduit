@@ -34,9 +34,7 @@ add_pkg () {
 
 add_pkg "$SYNTAX_PKG"
 add_pkg "$BASE_PKG"
-add_target "conduit_trie"
 add_target "conduit"
-add_target "conduit_resolver"
 rm -f _tags
 
 echo 'true: syntax(camlp4o)' >> _tags
@@ -54,6 +52,7 @@ if [ "$HAVE_ASYNC" != "" ]; then
     ASYNC_REQUIRES="$ASYNC_REQUIRES async_ssl"
     echo Conduit_async_net_ssl >> lib/conduit-async.mllib
   fi
+  cp lib/conduit-async.mllib lib/conduit-async.odocl
 fi
 
 if [ "$HAVE_LWT" != "" ]; then
@@ -76,6 +75,9 @@ if [ "$HAVE_LWT" != "" ]; then
     echo Conduit_lwt_unix_net_ssl >> lib/conduit-lwt-unix.mllib
   fi
 
+  cp lib/conduit-lwt.mllib lib/conduit-lwt.odocl
+  cp lib/conduit-lwt-unix.mllib lib/conduit-lwt-unix.odocl
+
   if [ "$HAVE_MIRAGE" != "" ]; then
     echo "Building with Mirage support."
     echo 'true: define(HAVE_MIRAGE)' >> _tags
@@ -86,6 +88,7 @@ if [ "$HAVE_LWT" != "" ]; then
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
     add_target "conduit-lwt-mirage"
+    cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
   fi
 
 fi
@@ -100,6 +103,11 @@ if [ "$HAVE_VCHAN_LWT" != "" ]; then
     echo 'true: define(HAVE_VCHAN_LWT)' >> _tags
     VCHAN_LWT_REQUIRES="vchan.lwt"
 fi
+
+# Build all the ocamldoc
+rm -f lib/conduit-all.odocl
+cat lib/*.odocl > lib/conduit-all.odocl
+TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
 
 REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 

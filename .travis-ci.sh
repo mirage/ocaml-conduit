@@ -54,7 +54,7 @@ make clean
 make
 make install
 
-opam install dns tcpip mirage-types
+opam install dns tcpip mirage-types vchan
 make clean
 make
 make install

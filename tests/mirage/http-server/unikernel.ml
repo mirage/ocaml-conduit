@@ -11,7 +11,7 @@ let uri = Uri.of_string "http://localhost"
 
 module Client (C:CONSOLE) (S:STACKV4) = struct
 
-  module CON = Conduit_mirage.Make(S)
+  module CON = Conduit_mirage.Make(S)(Vchan.In_memory)
 
   let callback c flow ic oc =
     Console.log_s c "Connection!" >>= fun () ->

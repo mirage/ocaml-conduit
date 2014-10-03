@@ -112,9 +112,13 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  | `Vchan (domid, port) ->
+  | `Vchan (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
-    let flow = Vchan { domid; port } in
+    begin match Vchan.Port.of_string sport with
+      | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+      | `Ok p -> return p
+    end >>= fun port ->
+    let flow = Vchan { domid; port=sport } in
     Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
     return (flow, ic, oc)
 ELSE
@@ -133,15 +137,15 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
   match mode with
   | `TCP (`Port port) ->
-    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-      (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc) >>= fun () ->
-    t
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
+       >>= fun () -> t
   |  `Unix_domain_socket (`File path) ->
-    let sockaddr = Unix.ADDR_UNIX path in
-    Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
-      (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc) >>= fun () ->
-    t
+       let sockaddr = Unix.ADDR_UNIX path in
+       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
+       >>= fun () -> t
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
 IFDEF HAVE_LWT_SSL THEN
     let sockaddr, ip = sockaddr_on_tcp_port ctx port in
@@ -156,10 +160,14 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  |`Vchan (domid, port) ->
+  |`Vchan (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
+    begin match Vchan.Port.of_string sport with
+      | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+      | `Ok p -> return p
+    end >>= fun port ->
     Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
-    callback (Vchan {domid; port}) ic oc
+    callback (Vchan {domid; port=sport}) ic oc
 ELSE
     fail (Failure "No Vchan support compiled into Conduit")
 END
@@ -172,7 +180,15 @@ type endp = [
   | `Unknown of string            (** Failed resolution *)
 ] with sexp
 
-let endp_to_client ~ctx:_ (endp:Conduit.endp) =
+let endp_of_flow = function
+  | TCP { ip; port; _ } -> `TCP (ip, port)
+  | Domain_socket { path; _ } -> `Unix_domain_socket path
+  | Vchan { domid; port } -> `Vchan (domid, port)
+
+(** Use the configuration of the server to interpret how to
+    handle a particular endpoint from the resolver into a
+    concrete implementation of type [client] *)
+let endp_to_client ~ctx (endp:Conduit.endp) =
   match endp with
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode

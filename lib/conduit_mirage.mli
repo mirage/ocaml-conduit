@@ -15,17 +15,55 @@
  *
  *)
 
+IFDEF HAVE_VCHAN THEN
+type vchan_port = Vchan.Port.t with sexp
+ELSE
+type vchan_port = [ `Vchan_not_available ] with sexp
+ENDIF
+
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of int * string
+  | `Vchan of int * vchan_port
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * string
+  | `Vchan of int * vchan_port
 ] with sexp
 
-module Make_flow(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) : V1_LWT.FLOW
+module type ENDPOINT = sig
+  type t with sexp_of
+  type port = vchan_port
+
+  type error = [
+    `Unknown of string
+  ]
+
+  val server :
+    domid:int ->
+    port:port ->
+    ?read_size:int ->
+    ?write_size:int ->
+    unit -> t Lwt.t
+
+  val client :
+    domid:int ->
+    port:port ->
+    unit -> t Lwt.t
+
+  val close : t -> unit Lwt.t
+  (** Close a vchan. This deallocates the vchan and attempts to free
+      its resources. The other side is notified of the close, but can
+      still read any data pending prior to the close. *)
+
+  include V1_LWT.FLOW
+    with type flow = t
+    and  type error := error
+    and  type 'a io = 'a Lwt.t
+    and  type buffer = Cstruct.t
+end
+
+module Make_flow(S:V1_LWT.TCPV4)(V:ENDPOINT) : V1_LWT.FLOW
 
 module type S = sig
 
@@ -55,4 +93,4 @@ module type S = sig
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4)(V: Vchan.S.ENDPOINT) : S with type stack = S.t
+module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) : S with type stack = S.t

@@ -18,20 +18,58 @@
 open Lwt
 open Sexplib.Std
 
+IFDEF HAVE_VCHAN THEN
+type vchan_port = Vchan.Port.t with sexp
+ELSE
+type vchan_port = [ `Vchan_not_available ] with sexp
+ENDIF
+
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of int * string
+  | `Vchan of int * vchan_port
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * string
+  | `Vchan of int * vchan_port
 ] with sexp
 
 type unknown = [ `Unknown of string ]
 
+module type ENDPOINT = sig
+  type t with sexp_of
+  type port = vchan_port
+
+  type error = [
+    `Unknown of string
+  ]
+
+  val server :
+    domid:int ->
+    port:port ->
+    ?read_size:int ->
+    ?write_size:int ->
+    unit -> t Lwt.t
+
+  val client :
+    domid:int ->
+    port:port ->
+    unit -> t Lwt.t
+
+  val close : t -> unit Lwt.t
+  (** Close a vchan. This deallocates the vchan and attempts to free
+      its resources. The other side is notified of the close, but can
+      still read any data pending prior to the close. *)
+
+  include V1_LWT.FLOW
+    with type flow = t
+    and  type error := error
+    and  type 'a io = 'a Lwt.t
+    and  type buffer = Cstruct.t
+end
+
 (** All the possible connection types supported *)
-module Make_flow(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) =
+module Make_flow(S:V1_LWT.TCPV4)(V: ENDPOINT) =
 struct
 
   type 'a io = 'a Lwt.t
@@ -81,9 +119,9 @@ struct
     | TCPv4 t -> S.close t
 end
 
-module Make(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) = struct
+module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
 
-  module Flow = Make_flow(S)(V)
+  module Flow = Make_flow(S.TCPV4)(V)
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
@@ -100,7 +138,7 @@ module Make(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) = struct
   let default_ctx =
     { stack = None  }
 
-  let connect ~ctx (mode:client) =
+  let connect ~ctx mode =
     match mode, ctx.stack with
     | `Vchan (domid, port), _ ->
       V.client ~domid ~port ()
@@ -112,7 +150,7 @@ module Make(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) = struct
     | `TCP (Ipaddr.V4 _ip, _port), None ->
       fail (Failure "No stack bound to Conduit")
     | `TCP (Ipaddr.V4 ip, port), Some tcp  ->
-      S.create_connection tcp (ip,port) >>= function
+      S.TCPV4.create_connection (S.tcpv4 tcp) (ip,port) >>= function
       | `Error _err -> fail (Failure "connection failed")
       | `Ok flow ->
         let flow = Flow.of_tcpv4 flow in
@@ -141,7 +179,17 @@ module Make(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) = struct
   let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan (_domid, _port) as mode -> return mode
+    | `Vchan (domid, port) ->
+IFDEF HAVE_VCHAN THEN
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan (domid, port))
+ELSE
+       fail (Failure "Vchan not available")
+ENDIF
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
@@ -149,7 +197,17 @@ module Make(S:V1_LWT.TCPV4)(V: V1_LWT.VCHAN) = struct
   let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
     match endp with
     | `TCP (_ip, port) -> return (`TCP (`Port port))
-    | `Vchan _path as mode -> return mode
+    | `Vchan (domid, port) ->
+IFDEF HAVE_VCHAN THEN
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan (domid, port))
+ELSE
+       fail (Failure "Vchan not available")
+ENDIF
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

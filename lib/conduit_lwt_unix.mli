@@ -56,6 +56,7 @@ val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
+val endp_of_flow : flow -> Conduit.endp
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
 (** Use the configuration of the server to interpret how to handle a
     particular endpoint from the resolver into a concrete

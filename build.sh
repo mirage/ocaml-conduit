@@ -21,7 +21,8 @@ esac
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip 2>/dev/null || true`
-HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt 2>/dev/null || true`
+HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
+HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
@@ -80,11 +81,19 @@ if [ "$HAVE_LWT" != "" ]; then
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
     echo Conduit_resolver_mirage >> lib/conduit-lwt-mirage.mllib
-    LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services vchan"
+    LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
+    if [ "$HAVE_VCHAN" != "" ]; then
+      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
+    fi
     add_target "conduit-lwt-mirage"
   fi
 
 fi
+
+if [ "$HAVE_VCHAN" ]; then
+  echo "Build with Vchan support."
+  echo 'true: define(HAVE_VCHAN)' >> _tags
+fi 
 
 if [ "$HAVE_VCHAN_LWT" != "" ]; then
     echo "Building with Vchan Lwt_unix support."

@@ -179,10 +179,14 @@ module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
   let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan (domid, port) as mode ->
+    | `Vchan (domid, port) ->
 IFDEF HAVE_VCHAN THEN
-       let port = Vchan.Port.of_string port in
-       return (domid, port)
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan (domid, port))
 ELSE
        fail (Failure "Vchan not available")
 ENDIF
@@ -195,8 +199,12 @@ ENDIF
     | `TCP (_ip, port) -> return (`TCP (`Port port))
     | `Vchan (domid, port) ->
 IFDEF HAVE_VCHAN THEN
-       let port = Vchan.Port.of_string port in
-       return (domid, port)
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan (domid, port))
 ELSE
        fail (Failure "Vchan not available")
 ENDIF

@@ -22,5 +22,5 @@ let client =
   foreign "Unikernel.Client" @@ console @-> stackv4 @-> job
 
 let () =
-  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage" ];
+  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage"; "vchan" ];
   register "http-server" [ client $ default_console $ stack default_console ]

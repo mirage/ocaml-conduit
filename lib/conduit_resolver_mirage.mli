@@ -15,6 +15,8 @@
  *
  *)
 
+(** Functorial interface for resolving URIs to endpoints. *)
+
 (** [static hosts] constructs a resolver that looks up any resolution
     requests from the static [hosts] hashtable instead of using the
     system resolver. *)
@@ -24,11 +26,17 @@ val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Conduit_resolver_
     maps [localhost] to [127.0.0.1], and fails on all other hostnames. *)
 val localhost : Conduit_resolver_lwt.t
 
+(** Given a DNS resolver {{:https://github.com/mirage/ocaml-dns}implementation},
+    provide a {!Conduit_resolver_lwt} that can perform DNS lookups to return
+    endpoints. *)
 module Make(DNS:Dns_resolver_mirage.S) : sig
-  type t
 
+  (** Default resolver to use, which is [8.8.8.8] (Google DNS). *)
   val default_ns : Ipaddr.V4.t
 
+  (** [system ?ns ?dns_port stack] will return a resolver that uses
+      the stub resolver [ns] on port [dns_port] to resolve URIs via
+      the [stack] network interface. *)
   val system :
     ?ns:Ipaddr.V4.t -> ?dns_port:int ->
     DNS.stack -> Conduit_resolver_lwt.t

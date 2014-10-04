@@ -42,7 +42,7 @@ let connect ?interrupt dst =
 IFDEF HAVE_ASYNC_SSL THEN
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
-      Conduit_async_net_ssl.ssl_connect rd wr
+      Conduit_async_ssl.ssl_connect rd wr
 ELSE
       raise (Failure "SSL unsupported")
 END
@@ -68,7 +68,7 @@ let serve
     | `TCP -> handle_request sock rd wr
     | `OpenSSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
 IFDEF HAVE_ASYNC_SSL THEN
-        Conduit_async_net_ssl.ssl_listen ~crt_file ~key_file rd wr
+        Conduit_async_ssl.ssl_listen ~crt_file ~key_file rd wr
         >>= fun (rd,wr) -> handle_request sock rd wr
 ELSE
         raise (Failure "SSL unsupported in Conduit")

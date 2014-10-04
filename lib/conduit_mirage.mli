@@ -15,30 +15,51 @@
  *
  *)
 
+(** Functorial connection establishment interface that is compatible with
+    the Mirage libraries.
+
+    Currently supports two transports: 
+
+    - TCPv4 for remote communications using the {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
+    - Vchan for inter-VM communication within a single Xen host
+  *)
+
 IFDEF HAVE_VCHAN THEN
 type vchan_port = Vchan.Port.t with sexp
 ELSE
 type vchan_port = [ `Vchan_not_available ] with sexp
 ENDIF
 
+(** Configuration for a single client connection *)
 type client = [
-  | `TCP of Ipaddr.t * int
-  | `Vchan of int * vchan_port
+  | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
+  | `Vchan of int * vchan_port (** Remote Xen domain id and port name *)
 ] with sexp
 
+(** Configuration for listening on a server port. *)
 type server = [
   | `TCP of [ `Port of int ]
   | `Vchan of int * vchan_port
 ] with sexp
 
+(** Module type of a Vchan endpoint *)
 module type ENDPOINT = sig
+
+  (** Type of a single connection *)
   type t with sexp_of
+
+  (** Type of the port name that identifies a unique connection at an endpoint *)
   type port = vchan_port
 
   type error = [
     `Unknown of string
   ]
 
+  (** [server ~domid ~port ?read_size ?write_size] will listen on a connection for
+      a source [domid] and [port] combination, block until a client connects, and 
+      then return a {!t} handle to read and write on the resulting connection.
+      The size of the shared memory buffer can be controlled by setting [read_size]
+      or [write_size] in bytes. *)
   val server :
     domid:int ->
     port:port ->
@@ -46,15 +67,19 @@ module type ENDPOINT = sig
     ?write_size:int ->
     unit -> t Lwt.t
 
+  (** [client ~domid ~port] will connect to a remote [domid] and [port] combination,
+    where a server should already be listening after making a call to {!server}.
+    The call will block until a connection is established, after which it will return
+    a {!t} handle that can be used to read or write on the shared memory connection. *)
   val client :
     domid:int ->
     port:port ->
     unit -> t Lwt.t
 
-  val close : t -> unit Lwt.t
-  (** Close a vchan. This deallocates the vchan and attempts to free
+  (** Close a Vchan. This deallocates the Vchan and attempts to free
       its resources. The other side is notified of the close, but can
       still read any data pending prior to the close. *)
+  val close : t -> unit Lwt.t
 
   include V1_LWT.FLOW
     with type flow = t
@@ -63,6 +88,8 @@ module type ENDPOINT = sig
     and  type buffer = Cstruct.t
 end
 
+(** Functor to construct a {!V1_LWT.FLOW} module that internally contains
+    all of the supported transport mechanisms, such as TCPv4 and Vchan. *)
 module Make_flow(S:V1_LWT.TCPV4)(V:ENDPOINT) : V1_LWT.FLOW
 
 module type S = sig

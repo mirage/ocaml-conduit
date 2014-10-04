@@ -15,8 +15,12 @@
  *
 *)
 
+(** Resolve URIs to endpoints using the {{:http://ocsigen.org/lwt}Lwt} library *)
+
+(** IO module compatible with {!Conduit.IO} that uses Lwt *)
 module IO : Conduit.IO with type 'a t = 'a Lwt.t
 
+(** Module type that specialises {!Conduit.RESOLVER} to use Lwt threads *)
 module type S = Conduit.RESOLVER 
   with type svc = Conduit_resolver.service
   and  type 'a io = 'a Lwt.t

@@ -15,6 +15,8 @@
  *
  *)
 
+(** Resolve URIs to endpoints using Unix system calls *)
+
 (** Use the Unix system name resolver via [getaddrinfo] and
     [getservbyname] *)
 val system : Conduit_resolver_lwt.t

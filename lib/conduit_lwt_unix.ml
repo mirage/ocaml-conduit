@@ -89,23 +89,91 @@ let init ?src ?(tls_server_key=`None) () =
     | {ai_addr;_}::_ -> return { src=Some ai_addr; tls_server_key }
     | [] -> fail (Failure "Invalid conduit source address specified")
 
+let safe_close t =
+  Lwt.catch
+    (fun () -> Lwt_io.close t)
+    (fun _ -> return_unit)
+
+(* Vanilla sockaddr connection *)
+module Sockaddr_client = struct
+  let connect ?src sa =
+    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+    let () =
+      match src with
+      | None -> ()
+      | Some src_sa -> Lwt_unix.bind fd src_sa
+    in
+    Lwt_unix.connect fd sa >>= fun () ->
+    let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
+    let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
+    return (fd, ic, oc)
+
+  let close (ic,oc) =
+    safe_close oc >>= fun () ->
+    safe_close ic
+
+end
+
+module Sockaddr_server = struct
+
+  let close (ic, oc) =
+    Lwt.join [ safe_close oc; safe_close ic ]
+
+  let init_socket sockaddr =
+    Unix.handle_unix_error (fun () ->
+      let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+      Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
+      Lwt_unix.bind sock sockaddr;
+      Lwt_unix.listen sock 15;
+      sock) ()
+
+  let process_accept ?timeout callback (client,_) =
+    Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
+    let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
+    let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
+    let c = callback client ic oc in
+    let events = match timeout with
+      |None -> [c]
+      |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
+    let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
+    return ()
+
+  let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
+    let cont = ref true in
+    let s = init_socket sockaddr in
+    async (fun () ->
+      stop >>= fun () ->
+      cont := false;
+      return_unit
+    );
+    let rec loop () =
+      if not !cont then return_unit
+      else
+        Lwt_unix.accept s >>=
+        process_accept ?timeout callback >>= fun () ->
+        loop ()
+    in
+    loop ()
+
+end
+
 let connect ~ctx (mode:client) =
   match mode with
   | `TCP (ip,port) ->
     let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
-    Conduit_lwt_unix_net.Sockaddr_client.connect ?src:ctx.src sa
+    Sockaddr_client.connect ?src:ctx.src sa
     >>= fun (fd, ic, oc) ->
     let flow = TCP {fd;ip;port} in
     return (flow, ic, oc)
   | `Unix_domain_socket path ->
-    Conduit_lwt_unix_net.Sockaddr_client.connect (Unix.ADDR_UNIX path)
+    Sockaddr_client.connect (Unix.ADDR_UNIX path)
     >>= fun (fd, ic, oc) ->
     let flow = Domain_socket {fd; path} in
     return (flow, ic, oc)
   | `OpenSSL (_host, ip, port) ->
 IFDEF HAVE_LWT_SSL THEN
     let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-    Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa
+    Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
     >>= fun (fd, ic, oc) ->
     let flow = TCP {fd;ip;port} in
     return (flow, ic, oc)
@@ -138,12 +206,12 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+       Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
        >>= fun () -> t
   |  `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
-       Conduit_lwt_unix_net.Sockaddr_server.init ~sockaddr ?timeout ?stop
+       Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
        >>= fun () -> t
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
@@ -153,7 +221,7 @@ IFDEF HAVE_LWT_SSL THEN
       | `No_password -> None
       | `Password fn -> Some fn
     in
-    Conduit_lwt_unix_net_ssl.Server.init
+    Conduit_lwt_unix_ssl.Server.init
       ?password ~certfile ~keyfile ?timeout  ?stop sockaddr
       (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
     t

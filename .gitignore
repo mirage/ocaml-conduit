@@ -6,3 +6,4 @@ _tags
 META
 _build/
 .*.swp
+*.odocl

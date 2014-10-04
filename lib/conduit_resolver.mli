@@ -15,12 +15,20 @@
  *
  *)
 
+(** Resolve URIs to endpoints *)
+
+(** Description of a single service.
+    Can be populated from [/etc/services] with the exception of the
+    [tls] field, which indicates if the connection is intended to be
+    TLS/SSL-encrypted or not (e.g. for [https]).  *)
 type service = {
   name: string;
   port: int;
   tls: bool
 } with sexp
 
+(** Functor to construct a concrete resolver using a {!Conduit.IO}
+    implementation, usually via either Lwt or Async *)
 module Make (IO : Conduit.IO) : Conduit.RESOLVER
   with type svc = service
   and  type 'a io = 'a IO.t

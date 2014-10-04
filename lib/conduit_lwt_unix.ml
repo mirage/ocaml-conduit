@@ -173,7 +173,7 @@ let connect ~ctx (mode:client) =
   | `OpenSSL (_host, ip, port) ->
 IFDEF HAVE_LWT_SSL THEN
     let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-    Conduit_lwt_unix_net_ssl.Client.connect ?src:ctx.src sa
+    Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
     >>= fun (fd, ic, oc) ->
     let flow = TCP {fd;ip;port} in
     return (flow, ic, oc)
@@ -221,7 +221,7 @@ IFDEF HAVE_LWT_SSL THEN
       | `No_password -> None
       | `Password fn -> Some fn
     in
-    Conduit_lwt_unix_net_ssl.Server.init
+    Conduit_lwt_unix_ssl.Server.init
       ?password ~certfile ~keyfile ?timeout  ?stop sockaddr
       (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
     t

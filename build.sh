@@ -50,7 +50,7 @@ if [ "$HAVE_ASYNC" != "" ]; then
     echo "Building with Async/SSL support."
     echo 'true: define(HAVE_ASYNC_SSL)' >> _tags
     ASYNC_REQUIRES="$ASYNC_REQUIRES async_ssl"
-    echo Conduit_async_net_ssl >> lib/conduit-async.mllib
+    echo Conduit_async_ssl >> lib/conduit-async.mllib
   fi
   cp lib/conduit-async.mllib lib/conduit-async.odocl
 fi
@@ -71,7 +71,7 @@ if [ "$HAVE_LWT" != "" ]; then
     echo "Building with Lwt/SSL support."
     echo 'true: define(HAVE_LWT_SSL)' >> _tags
     LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES lwt.ssl"
-    echo Conduit_lwt_unix_net_ssl >> lib/conduit-lwt-unix.mllib
+    echo Conduit_lwt_unix_ssl >> lib/conduit-lwt-unix.mllib
   fi
 
   cp lib/conduit-lwt.mllib lib/conduit-lwt.odocl

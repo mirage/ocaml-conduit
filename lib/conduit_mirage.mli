@@ -15,17 +15,27 @@
  *
  *)
 
+(** Functorial interface to Conduit that is compatible with the Mirage
+    module types.  Currently supports two transports: TCPv4 for remote
+    communications, and Vchan for inter-VM communication within a single
+    Xen host. *)
+
 IFDEF HAVE_VCHAN THEN
+(** A Vchan port name *)
 type vchan_port = Vchan.Port.t with sexp
 ELSE
+(** Vchan is not available in this library: recompile it with 
+    the [vchan] package from OPAM to enable support *)
 type vchan_port = [ `Vchan_not_available ] with sexp
 ENDIF
 
+(** Configuration for a single client connection *)
 type client = [
-  | `TCP of Ipaddr.t * int
-  | `Vchan of int * vchan_port
+  | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
+  | `Vchan of int * vchan_port (** Remote Xen domain id and port name *)
 ] with sexp
 
+(** Configuration for listening on a server port. *)
 type server = [
   | `TCP of [ `Port of int ]
   | `Vchan of int * vchan_port

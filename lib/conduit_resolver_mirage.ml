@@ -26,7 +26,10 @@ let is_tls_service =
 let get_host uri =
   match Uri.host uri with
   | None -> "localhost"
-  | Some host -> host
+  | Some host -> 
+      match Ipaddr.of_string host with
+      | Some ip -> Ipaddr.to_string ip
+      | None -> host
 
 let get_port service uri =
   match Uri.port uri with

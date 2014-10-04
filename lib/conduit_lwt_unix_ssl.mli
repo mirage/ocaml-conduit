@@ -15,6 +15,8 @@
  *
  *)
 
+(** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
+
 module Client : sig
   val connect :
     ?src:Lwt_unix.sockaddr ->

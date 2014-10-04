@@ -41,8 +41,12 @@ type server = [
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
+
+(** Type of an established connection *)
 type flow with sexp
 
+(** Type describing where to locate an OpenSSL-format
+    key in the filesystem *)
 type tls_server_key = [
  | `None
  | `OpenSSL of
@@ -51,20 +55,40 @@ type tls_server_key = [
     [ `Password of bool -> string | `No_password ]
 ]
 
+(** State handler for an active conduit *)
 type ctx
-val init : ?src:string -> ?tls_server_key:tls_server_key -> unit -> ctx io
+
+(** Default context that listens on all source addresses with
+    no TLS certificate associated with the Conduit *)
 val default_ctx : ctx
 
+(** [init ?src ?tls_server_key] will initialize a Unix conduit
+    that binds to the [src] interface if specified.  If TLS server
+    connections are used, then [tls_server_key] must contain a
+    valid certificate to be used to advertise a TLS connection *)
+val init : ?src:string -> ?tls_server_key:tls_server_key -> unit -> ctx io
+
+(** [connect ~ctx client] establishes an outgoing connection
+    via the [ctx] context to the endpoint described by [client] *)
 val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
+(** [serve ?timeout ?stop ~ctx ~mode fn] establishes a listening
+    connection of type [mode], using the [ctx] context.  The
+    [stop] thread will terminate the server if it ever becomes
+    determined.  Every connection will be served in a new
+    lightweight thread that is invoked via the [fn] callback *)
 val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
+(** [endp_of_flow flow] retrieves the original {!Conduit.endp}
+    from the established [flow] *)
 val endp_of_flow : flow -> Conduit.endp
-val endp_to_client : ctx:ctx -> Conduit.endp -> client io
-(** Use the configuration of the server to interpret how to handle a
-    particular endpoint from the resolver into a concrete
-    implementation of type [client] *)
 
+(** [endp_to_client ~ctx endp] converts an [endp] into a
+    a concrete connection mechanism of type [client] *)
+val endp_to_client : ctx:ctx -> Conduit.endp -> client io
+
+(** [endp_to_server ~ctx endp] converts an [endp] into a
+    a concrete connection mechanism of type [client] *)
 val endp_to_server : ctx:ctx -> Conduit.endp -> server io

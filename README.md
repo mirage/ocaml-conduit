@@ -14,8 +14,8 @@ as well as which library is used (just OpenSSL for now).
 
 Source code is in `lib/`.
 
-* `Lwt_unix_conduit` has the Lwt UNIX modules.
-* `Async_conduit` has the Core/Async modules.
+* `Conduit_lwt` has the Lwt UNIX modules.
+* `Conduit_async` has the Core/Async modules.
 
 ### Further Informartion
 

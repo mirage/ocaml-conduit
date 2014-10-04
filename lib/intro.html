@@ -1,10 +1,10 @@
-Interface for establishing reliable stream-oriented connections.
-
 The {!Conduit} library abstracts the concerns of establishing connections to
 peers that may be running within the same host (e.g. in another virtual
-machine) or on a remote host via TCP.  It consists of one library that is
-responsible for {{!transport}establishing individual connections}, and a
-{{!resolution}name resolver} that maps URIs to endpoints.
+machine) or on a remote host via TCP.  It consists of:
+
+- The {!Conduit} module with basic type definitions
+- Modules for {{!transport}establishing individual connections}
+- Modules for {{!resolution}name resolvers} that maps URIs to endpoints
 
 {2:transport Connection Establishment} 
 

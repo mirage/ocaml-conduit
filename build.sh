@@ -64,7 +64,6 @@ if [ "$HAVE_LWT" != "" ]; then
   LWT_UNIX_REQUIRES="lwt.unix ipaddr.unix uri.services"
 
   echo Conduit_lwt_unix > lib/conduit-lwt-unix.mllib
-  echo Conduit_lwt_unix_net >> lib/conduit-lwt-unix.mllib
   echo Conduit_resolver_lwt_unix >> lib/conduit-lwt-unix.mllib
   add_target "conduit-lwt-unix"
 

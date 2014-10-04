@@ -15,17 +15,14 @@
  *
  *)
 
-(** Functorial interface to Conduit that is compatible with the Mirage
+(** Functorial interface that is compatible with the Mirage
     module types.  Currently supports two transports: TCPv4 for remote
     communications, and Vchan for inter-VM communication within a single
     Xen host. *)
 
 IFDEF HAVE_VCHAN THEN
-(** A Vchan port name *)
 type vchan_port = Vchan.Port.t with sexp
 ELSE
-(** Vchan is not available in this library: recompile it with 
-    the [vchan] package from OPAM to enable support *)
 type vchan_port = [ `Vchan_not_available ] with sexp
 ENDIF
 
@@ -41,14 +38,24 @@ type server = [
   | `Vchan of int * vchan_port
 ] with sexp
 
+(** Module type of a Vchan endpoint *)
 module type ENDPOINT = sig
+
+  (** Type of a single connection *)
   type t with sexp_of
+
+  (** Type of the port name that identifies a unique connection at an endpoint *)
   type port = vchan_port
 
   type error = [
     `Unknown of string
   ]
 
+  (** [server ~domid ~port ?read_size ?write_size] will listen on a connection for
+      a source [domid] and [port] combination, block until a client connects, and 
+      then return a {!t} handle to read and write on the resulting connection.
+      The size of the shared memory buffer can be controlled by setting [read_size]
+      or [write_size] in bytes. *)
   val server :
     domid:int ->
     port:port ->
@@ -56,15 +63,19 @@ module type ENDPOINT = sig
     ?write_size:int ->
     unit -> t Lwt.t
 
+  (** [client ~domid ~port] will connect to a remote [domid] and [port] combination,
+    where a server should already be listening after making a call to {!server}.
+    The call will block until a connection is established, after which it will return
+    a {!t} handle that can be used to read or write on the shared memory connection. *)
   val client :
     domid:int ->
     port:port ->
     unit -> t Lwt.t
 
-  val close : t -> unit Lwt.t
-  (** Close a vchan. This deallocates the vchan and attempts to free
+  (** Close a Vchan. This deallocates the Vchan and attempts to free
       its resources. The other side is notified of the close, but can
       still read any data pending prior to the close. *)
+  val close : t -> unit Lwt.t
 
   include V1_LWT.FLOW
     with type flow = t

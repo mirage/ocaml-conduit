@@ -15,15 +15,18 @@
  *
  *)
 
-(** Connection establishment using the [Lwt_unix] library *) 
+(** Connection establishment using the
+    {{:http://ocsigen.org/lwt/api/Lwt_unix}Lwt_unix} library *) 
 
+(** Set of supported client connections that are supported by this module. *)
 type client = [
-  | `OpenSSL of string * Ipaddr.t * int
-  | `TCP of Ipaddr.t * int
-  | `Unix_domain_socket of string
-  | `Vchan of int * string
+  | `OpenSSL of string * Ipaddr.t * int (** Use OpenSSL to connect to the given [host], [ip], [port] tuple via TCP *)
+  | `TCP of Ipaddr.t * int (** Use TCP to connect to the given [ip], [port] tuple. *)
+  | `Unix_domain_socket of string (** Use UNIX domain sockets to connect to a socket on the [path]. *)
+  | `Vchan of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)
 ] with sexp
 
+(** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
   | `OpenSSL of
       [ `Crt_file_path of string ] *

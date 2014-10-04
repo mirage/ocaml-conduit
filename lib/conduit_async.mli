@@ -15,6 +15,9 @@
  *
 *)
 
+(** Connection establishment using the
+    {{:https://github.com/janestreet/async}Async} library *)
+
 open Core.Std
 open Async.Std
 

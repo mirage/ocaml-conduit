@@ -20,10 +20,10 @@
     This library abstracts the concerns of establishing connections to
     peers that may be running within the same host (e.g. in another
     virtual machine) or on a remote host via TCP.  It consists of one
-    library that is responsible for establishing individual
-    connections, and a name resolver that maps URIs to endpoints.
+    library that is responsible for {{!transport}establishing individual
+    connections}, and a {{!resolution}name resolver} that maps URIs to endpoints.
 
-    {1:transport Connection Establishment} 
+    {2:transport Connection Establishment} 
 
     Connections are created by identifying remote nodes by an {!endp} address.
     To ensure portability, the {!endp} values are translated into concrete
@@ -36,13 +36,13 @@
 
     {!modules: Conduit_lwt_unix Conduit_async Conduit_mirage}
 
-    {1 Name Resolution}
+    {2:resolution Name Resolution}
 
     This deals with resolving URIs into a list of {!endp} addresses that can
-    then be connected to by the {!transport} modules.  The name resolver
-    conforms to the {!RESOLVER} module type below.
+    then be connected to by the {{!transport}connection establishment} modules.
 
-    The OS-specific modules that handle name resolution are:
+    All of the name resolvers conform to the {!RESOLVER} module type.
+    The OS-specific implementations of this interface are:
 
     {!modules: Conduit_resolver_lwt Conduit_resolver_lwt_unix Conduit_resolver_mirage}
    *)

@@ -15,10 +15,14 @@
  *
  *)
 
-(** Functorial interface that is compatible with the Mirage
-    module types.  Currently supports two transports: TCPv4 for remote
-    communications, and Vchan for inter-VM communication within a single
-    Xen host. *)
+(** Functorial connection establishment interface that is compatible with
+    the Mirage libraries.
+
+    Currently supports two transports: 
+
+    - TCPv4 for remote communications using the {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
+    - Vchan for inter-VM communication within a single Xen host
+  *)
 
 IFDEF HAVE_VCHAN THEN
 type vchan_port = Vchan.Port.t with sexp

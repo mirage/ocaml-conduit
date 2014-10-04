@@ -15,6 +15,8 @@
  *
  *)
 
+(** Connection establishment using the [Lwt_unix] library *) 
+
 type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int

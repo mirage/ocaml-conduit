@@ -19,19 +19,32 @@
 
     This library abstracts the concerns of establishing connections to
     peers that may be running within the same host (e.g. in another
-    virtual machine) or on a remote host via TCP.  It consists of two
-    main components that are responsible for:
- 
-    - Establishing a single connection to a remote peer that is identified
-      by an {!endp} address.
-    - Resolving URIs into a list of {!endp} addresses that can then be
-      connected to by the transport layer.
+    virtual machine) or on a remote host via TCP.  It consists of one
+    library that is responsible for establishing individual
+    connections, and a name resolver that maps URIs to endpoints.
 
-    To ensure portability, the {!endp} addresses are translated into
-    concrete connections by separate modules that target [Lwt_unix],
-    [Async] and [Mirage].
+    {1:transport Connection Establishment} 
+
+    Connections are created by identifying remote nodes by an {!endp} address.
+    To ensure portability, the {!endp} values are translated into concrete
+    connections by separate modules that target [Lwt_unix], [Async] and [Mirage].
+    This lets those backends use the appropriate local technique for creating the
+    connection (such as using OpenSSL on Unix, or a pure OCaml TLS+TCP
+    implementation on Mirage, or some other combination).
+
+    The modules dealing with connection establishment are:
 
     {!modules: Conduit_lwt_unix Conduit_async Conduit_mirage}
+
+    {1 Name Resolution}
+
+    This deals with resolving URIs into a list of {!endp} addresses that can
+    then be connected to by the {!transport} modules.  The name resolver
+    conforms to the {!RESOLVER} module type below.
+
+    The OS-specific modules that handle name resolution are:
+
+    {!modules: Conduit_resolver_lwt Conduit_resolver_lwt_unix Conduit_resolver_mirage}
    *)
 
 (** End points that can potentially be connected to.

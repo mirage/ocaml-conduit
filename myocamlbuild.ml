@@ -4,6 +4,6 @@ dispatch (
   | After_rules ->
     pflag ["ocaml";"compile";] "define" (fun s -> S [A"-ppopt"; A ("-D"^s)]);
     pflag ["ocaml";"ocamldep";] "define" (fun s -> S [A"-ppopt"; A ("-D"^s)]);
-    flag ["ocaml"; "doc"] (S[A"-short-functors"; A"-all-parms"; A"-sort"; A"-m"; A"A"]);
+    flag ["ocaml"; "doc"] (S[A"-short-functors"; A"-sort"; A"-m"; A"A"]);
   | _ -> ()
 )

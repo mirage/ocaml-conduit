@@ -84,6 +84,8 @@ module type ENDPOINT = sig
     and  type buffer = Cstruct.t
 end
 
+(** Functor to construct a {!V1_LWT.FLOW} module that internally contains
+    all of the supported transport mechanisms, such as TCPv4 and Vchan. *)
 module Make_flow(S:V1_LWT.TCPV4)(V:ENDPOINT) : V1_LWT.FLOW
 
 module type S = sig

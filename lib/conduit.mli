@@ -15,7 +15,24 @@
  *
 *)
 
-(** The conduit API *)
+(** Interface for establishing reliable stream-oriented connections.
+
+    This library abstracts the concerns of establishing connections to
+    peers that may be running within the same host (e.g. in another
+    virtual machine) or on a remote host via TCP.  It consists of two
+    main components that are responsible for:
+ 
+    - Establishing a single connection to a remote peer that is identified
+      by an {!endp} address.
+    - Resolving URIs into a list of {!endp} addresses that can then be
+      connected to by the transport layer.
+
+    To ensure portability, the {!endp} addresses are translated into
+    concrete connections by separate modules that target [Lwt_unix],
+    [Async] and [Mirage].
+
+    {!modules: Conduit_lwt_unix Conduit_async Conduit_mirage}
+   *)
 
 (** End points that can potentially be connected to.
     These are typically returned by a call to [Conduit_resolver]. *)

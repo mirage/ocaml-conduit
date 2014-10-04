@@ -16,7 +16,9 @@
  *
  *)
 
-(** A Radix tree mapping strings to ['a]. *)
+(** Radix tree that can do longest-prefix searches on string keys *)
+
+(** Radix tree that maps [string] keys to ['a] values *)
 type 'a t with sexp
 
 (** An empty tree *)

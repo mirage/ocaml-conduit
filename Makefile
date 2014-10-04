@@ -18,4 +18,4 @@ github:
 	git add *.html
 	cp nice-style.css style.css
 	git add style.css
-	git commit -m 'sync ocamldoc' -a
+	git commit -m 'sync ocamldoc' *.html *.css

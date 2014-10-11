@@ -7,3 +7,10 @@ META
 _build/
 .*.swp
 *.odocl
+*.docdir
+*.stamp
+*.xen
+*.xml
+*.native
+*.byte
+*.xl

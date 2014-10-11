@@ -23,6 +23,7 @@ HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip 2>/dev/null || true`
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
+HAVE_XEN=`ocamlfind query mirage-xen 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
@@ -85,6 +86,10 @@ if [ "$HAVE_LWT" != "" ]; then
     LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
+    fi
+    if [ "$HAVE_XEN" != "" ]; then
+      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES mirage-xen"
+      echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
     fi
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl

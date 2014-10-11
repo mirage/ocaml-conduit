@@ -92,3 +92,14 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     Conduit_resolver_lwt.init ~service ~rewrites ()
 
 end
+
+module type PEER = sig
+  type t
+  type flow
+  type uuid
+  type port
+
+  val register : uuid -> t Lwt.t
+  val accept : t -> flow Lwt.t
+  val connect : t -> remote_name:uuid -> port:port -> flow Lwt.t
+end

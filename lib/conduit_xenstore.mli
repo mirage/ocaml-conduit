@@ -15,6 +15,8 @@
  *
 *)
 
+(** Establish Vchans via named endpoints in XenStore *)
+
 include Conduit_resolver_mirage.PEER with
       type flow = Vchan_xen.t
   and type uuid = string

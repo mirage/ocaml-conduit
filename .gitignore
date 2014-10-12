@@ -5,6 +5,7 @@ lib/conduit-lwt-mirage.mllib
 _tags
 META
 _build/
+_install/
 .*.swp
 *.odocl
 *.docdir

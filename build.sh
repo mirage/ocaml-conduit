@@ -37,6 +37,8 @@ add_pkg "$SYNTAX_PKG"
 add_pkg "$BASE_PKG"
 add_target "conduit"
 rm -f _tags
+rm -rf _install
+mkdir -p _install
 
 echo 'true: syntax(camlp4o)' >> _tags
 
@@ -90,6 +92,7 @@ if [ "$HAVE_LWT" != "" ]; then
     if [ "$HAVE_XEN" != "" ]; then
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES mirage-xen vchan.xen"
       echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
+      echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
     fi
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
@@ -132,6 +135,7 @@ sed \
 
 if [ "$1" = "true" ]; then
   B=_build/lib/
+  ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a > _install/lib
   ocamlfind remove conduit || true
   FILES=`ls -1 $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a 2>/dev/null || true`
   ocamlfind install conduit META $FILES

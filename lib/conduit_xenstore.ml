@@ -47,6 +47,13 @@ let readdir h d =
 
 let register name =
   OS.Xs.make () >>= fun xs ->
+  (* Check that a /conduit directory exists *)
+  catch (fun () ->
+    OS.Xs.(immediate xs (fun h -> readdir h "/conduit"))
+    >>= fun _ -> return_unit)
+    (fun _ -> fail (Failure
+      "No /conduit Xenstore entry found. Run `xenstore-conduit-init`"))
+  >>= fun () ->
   xenstore_register xs name >>= fun () ->
   return { xs; name }
  

@@ -1,5 +1,7 @@
 .PHONY: all install clean
 
+PREFIX ?= /usr/local/bin
+ 
 all:
 	@./build.sh
 
@@ -7,7 +9,7 @@ install:
 	@./build.sh true
 
 clean:
-	rm -rf _build
+	rm -rf _build _install
 
 github:
 	git checkout gh-pages

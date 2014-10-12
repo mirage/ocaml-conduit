@@ -51,4 +51,5 @@ module type PEER = sig
   val register : uuid -> t Lwt.t
   val accept : t -> flow Lwt.t
   val connect : t -> remote_name:uuid -> port:port -> flow Lwt.t
+  val exists : t -> uuid -> bool Lwt.t
 end

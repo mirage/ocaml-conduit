@@ -85,3 +85,10 @@ let connect {xs; name} ~remote_name ~port =
   |`Ok port' ->
      printf "vchan client domid %d port %s\n%!" remote_domid port;
      Vchan_xen.client ~domid:remote_domid ~port:port' ()
+
+let exists {xs; _} remote_name =
+  catch (fun () ->
+    get_peer_id xs remote_name
+    >>= fun _ -> return_true
+  ) (fun _exn -> return_false)
+

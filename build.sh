@@ -88,7 +88,7 @@ if [ "$HAVE_LWT" != "" ]; then
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
     if [ "$HAVE_XEN" != "" ]; then
-      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES mirage-xen"
+      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES mirage-xen vchan.xen"
       echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
     fi
     add_target "conduit-lwt-mirage"

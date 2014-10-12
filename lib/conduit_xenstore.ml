@@ -59,8 +59,9 @@ let accept {xs; name } =
     Vchan.Port.of_string port
     |> function
     |`Error e -> fail (Failure ("error making port: " ^ e))
-    |`Ok port ->
-      Vchan_xen.server ~domid:remote_domid ~port ~read_size:4096 ~write_size:4096 ()
+    |`Ok port' ->
+      printf "vchan server domid %d port %s\n%!" remote_domid port;
+      Vchan_xen.server ~domid:remote_domid ~port:port' ~read_size:4096 ~write_size:4096 ()
   in
   OS.Xs.wait xs waitfn
 
@@ -74,5 +75,6 @@ let connect {xs; name} ~remote_name ~port =
   Vchan.Port.of_string port
   |> function
   |`Error _ -> fail (Failure "error making port")
-  |`Ok port ->
-     Vchan_xen.client ~domid:remote_domid ~port ()
+  |`Ok port' ->
+     printf "vchan client domid %d port %s\n%!" remote_domid port;
+     Vchan_xen.client ~domid:remote_domid ~port:port' ()

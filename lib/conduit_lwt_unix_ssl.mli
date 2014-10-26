@@ -18,7 +18,9 @@
 (** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
 
 module Client : sig
+
   val connect :
+    ?ctx:Ssl.context ->
     ?src:Lwt_unix.sockaddr ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
@@ -27,16 +29,19 @@ end
 
 module Server : sig
   val accept :
+    ?ctx:Ssl.context ->
     Lwt_unix.file_descr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
   val listen :
+    ?ctx:Ssl.context ->
     ?nconn:int ->
     ?password:(bool -> string) ->
     certfile:string ->
     keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
   val init :
+    ?ctx:Ssl.context ->
     ?nconn:int ->
     ?password:(bool -> string) ->
     certfile:string ->
@@ -48,6 +53,6 @@ module Server : sig
     unit Lwt.t
 end
 
-val close : 
+val close :
   Lwt_io.input_channel * Lwt_io.output_channel ->
   unit Lwt.t

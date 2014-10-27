@@ -31,7 +31,7 @@ type client = [
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * vchan_port
+  | `Vchan of [ `Remote_domid of int ] * vchan_port
 ] with sexp
 
 type unknown = [ `Unknown of string ]
@@ -119,6 +119,23 @@ struct
     | TCPv4 t -> S.close t
 end
 
+module type PEER = sig
+  type t
+  type flow
+  type uuid
+  type port
+
+  val register : uuid -> t Lwt.t
+
+  val accept : t -> Conduit.endp Lwt.t
+
+  val connect : t -> remote_name:uuid -> port:port -> Conduit.endp Lwt.t
+end
+
+module type VCHAN_PEER = PEER
+  with type uuid = string
+   and type port = string
+
 module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
 
   module Flow = Make_flow(S.TCPV4)(V)
@@ -141,8 +158,10 @@ module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
   let connect ~ctx mode =
     match mode, ctx.stack with
     | `Vchan (domid, port), _ ->
+      Printf.printf "Conduit.connect: Vchan %d %s\n%!" domid (Vchan.Port.to_string port);
       V.client ~domid ~port ()
       >>= fun flow ->
+      Printf.printf "Conduit.connect: connected!\n%!";
       let flow = Flow.of_vchan flow in
       return (flow, flow, flow)
     | `TCP (Ipaddr.V6 _ip, _port), _ ->
@@ -170,11 +189,11 @@ module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
            fn f f f
         );
       t
-    |`Vchan (domid, port), _ ->
-      V.server ~domid ~port ()
-      >>= fun t ->
-      let f = Flow.of_vchan t in
-      fn f f f
+    |`Vchan (`Remote_domid domid, port), _ ->
+       V.server ~domid ~port ()
+       >>= fun t ->
+       let f = Flow.of_vchan t in
+       fn f f f
 
   let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
@@ -204,7 +223,7 @@ IFDEF HAVE_VCHAN THEN
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
-       return (`Vchan (domid, port))
+       return (`Vchan ((`Remote_domid domid), port))
 ELSE
        fail (Failure "Vchan not available")
 ENDIF

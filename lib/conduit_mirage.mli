@@ -39,7 +39,7 @@ type client = [
 (** Configuration for listening on a server port. *)
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * vchan_port
+  | `Vchan of [ `Remote_domid of int ] * vchan_port
 ] with sexp
 
 (** Module type of a Vchan endpoint *)
@@ -87,6 +87,24 @@ module type ENDPOINT = sig
     and  type 'a io = 'a Lwt.t
     and  type buffer = Cstruct.t
 end
+
+module type PEER = sig
+  type t
+  type flow
+  type uuid
+  type port
+
+  val register : uuid -> t Lwt.t
+
+  val accept : t -> Conduit.endp Lwt.t
+
+  val connect : t -> remote_name:uuid -> port:port -> Conduit.endp Lwt.t
+end
+
+module type VCHAN_PEER = PEER
+  with type uuid = string
+   and type port = string
+
 
 (** Functor to construct a {!V1_LWT.FLOW} module that internally contains
     all of the supported transport mechanisms, such as TCPv4 and Vchan. *)

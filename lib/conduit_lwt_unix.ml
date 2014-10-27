@@ -261,7 +261,7 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode
   | `TLS (host, `TCP (ip, port)) -> return (`OpenSSL (host, ip, port))
-  | `Vchan (_, _) as mode -> return mode
+  | `Vchan _ as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
@@ -276,6 +276,6 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
             pass, `Port port))
      end
   | `TCP (_ip, port) -> return (`TCP (`Port port))
-  | `Vchan (_, _) as mode -> return mode
+  | `Vchan _ as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

@@ -26,6 +26,8 @@ type t = {
 type port = string
 type uuid = string
 type flow = Vchan_xen.t
+
+module Endpoint = Vchan_xen
  
 let get_my_id xs =
   OS.Xs.(immediate xs (fun h -> read h "domid"))
@@ -35,10 +37,11 @@ let xenstore_register xs myname =
   OS.Xs.(immediate xs (fun h -> write h ("/conduit/" ^ myname) domid))
 
 let get_peer_id xs name =
-  OS.Xs.(immediate xs (fun h -> read h ("/conduit/" ^ name)))
+  Lwt.catch
+   (fun () -> OS.Xs.(immediate xs (fun h -> read h ("/conduit/" ^ name))))
+   (fun _ -> fail (Failure (sprintf "Conduit_xenstore: %s peer not found" name)))
 
 let readdir h d =
-  printf "safe: reading %s\n%!" d;
   OS.Xs.(directory h d) >>= fun dirs ->
   let dirs = List.filter (fun p -> p <> "") dirs in
   match dirs with
@@ -49,7 +52,7 @@ let register name =
   OS.Xs.make () >>= fun xs ->
   (* Check that a /conduit directory exists *)
   catch (fun () ->
-    OS.Xs.(immediate xs (fun h -> readdir h "/conduit"))
+    OS.Xs.(immediate xs (fun h -> read h "/conduit"))
     >>= fun _ -> return_unit)
     (fun _ -> fail (Failure
       "No /conduit Xenstore entry found. Run `xenstore-conduit-init`"))
@@ -63,14 +66,22 @@ let accept {xs; name } =
     readdir h (sprintf "/conduit/%s/%s" name remote_name) >>= fun port ->
     OS.Xs.read h (sprintf "/conduit/%s" remote_name) >>= fun remote_domid ->
     let remote_domid = int_of_string remote_domid in
-    Vchan.Port.of_string port
-    |> function
-    |`Error e -> fail (Failure ("error making port: " ^ e))
-    |`Ok port' ->
-      printf "vchan server domid %d port %s\n%!" remote_domid port;
-      Vchan_xen.server ~domid:remote_domid ~port:port' ~read_size:4096 ~write_size:4096 ()
+    return (`Vchan_direct (remote_domid, port))
   in
   OS.Xs.wait xs waitfn
+
+let listen v =
+  (* TODO cancellation *)
+  let conn, push_conn = Lwt_stream.create () in
+  let {xs; name} = v in
+  Printf.printf "Conduit_xenstore: listen on %s\n%!" name;
+  let rec loop () =
+    accept v >>= fun c ->
+    push_conn (Some c);
+    loop ()
+  in
+  ignore_result (loop ());
+  return conn
 
 let connect {xs; name} ~remote_name ~port =
   get_peer_id xs remote_name
@@ -79,9 +90,4 @@ let connect {xs; name} ~remote_name ~port =
   OS.Xs.(immediate xs (fun h -> write h
      (sprintf "/conduit/%s/%s/%s" remote_name name port) port))
   >>= fun () ->
-  Vchan.Port.of_string port
-  |> function
-  |`Error _ -> fail (Failure "error making port")
-  |`Ok port' ->
-     printf "vchan client domid %d port %s\n%!" remote_domid port;
-     Vchan_xen.client ~domid:remote_domid ~port:port' ()
+  return (`Vchan_direct (remote_domid, port))

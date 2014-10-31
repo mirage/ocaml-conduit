@@ -22,7 +22,8 @@ open Sexplib.Std
 type endp = [
   | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
   | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan of int * string        (** domain id, port *)
+  | `Vchan_direct of int * string        (** domain id, port *)
+  | `Vchan_domain_socket of string * string
   | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** failed resolution *)
 ] with sexp

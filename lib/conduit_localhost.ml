@@ -15,7 +15,13 @@
  *
 *)
 
-(** Establish Vchans via named endpoints in XenStore *)
+type t = unit
+type flow
+type uuid = string
+type port = string
 
-include Conduit_mirage.VCHAN_PEER
-  with type flow = Vchan_xen.t
+let register _ = Lwt.return ()
+let listen _ = Lwt.fail (Failure "Localhost peer only")
+let connect _ ~remote_name ~port = Lwt.return (`Unknown "localhost peer only")
+
+module Endpoint = Vchan.In_memory

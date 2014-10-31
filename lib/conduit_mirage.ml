@@ -18,59 +18,27 @@
 open Lwt
 open Sexplib.Std
 
-IFDEF HAVE_VCHAN THEN
 type vchan_port = Vchan.Port.t with sexp
-ELSE
-type vchan_port = [ `Vchan_not_available ] with sexp
-ENDIF
 
 type client = [
   | `TCP of Ipaddr.t * int
-  | `Vchan of int * vchan_port
+  | `Vchan_direct of int * vchan_port
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * vchan_port
+  | `Vchan_direct of [`Remote_domid of int] * vchan_port
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
 ] with sexp
 
 type unknown = [ `Unknown of string ]
 
-module type ENDPOINT = sig
-  type t with sexp_of
-  type port = vchan_port
-
-  type error = [
-    `Unknown of string
-  ]
-
-  val server :
-    domid:int ->
-    port:port ->
-    ?read_size:int ->
-    ?write_size:int ->
-    unit -> t Lwt.t
-
-  val client :
-    domid:int ->
-    port:port ->
-    unit -> t Lwt.t
-
-  val close : t -> unit Lwt.t
-  (** Close a vchan. This deallocates the vchan and attempts to free
-      its resources. The other side is notified of the close, but can
-      still read any data pending prior to the close. *)
-
-  include V1_LWT.FLOW
-    with type flow = t
-    and  type error := error
-    and  type 'a io = 'a Lwt.t
-    and  type buffer = Cstruct.t
-end
+module type VCHAN_FLOW = V1_LWT.FLOW
+  with type error := unknown
 
 (** All the possible connection types supported *)
-module Make_flow(S:V1_LWT.TCPV4)(V: ENDPOINT) =
-struct
+module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
 
   type 'a io = 'a Lwt.t
   type error = [ `Refused | `Timeout | `Unknown of string ]
@@ -119,30 +87,119 @@ struct
     | TCPv4 t -> S.close t
 end
 
-module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
+module type ENDPOINT = sig
+  type t with sexp_of
+  type port = vchan_port
 
-  module Flow = Make_flow(S.TCPV4)(V)
+  type error = [
+    `Unknown of string
+  ]
+
+  val server :
+    domid:int ->
+    port:port ->
+    ?read_size:int ->
+    ?write_size:int ->
+    unit -> t Lwt.t
+
+  val client :
+    domid:int ->
+    port:port ->
+    unit -> t Lwt.t
+
+  include V1_LWT.FLOW
+    with type flow = t
+    and  type error := error
+    and  type 'a io = 'a Lwt.t
+    and  type buffer = Cstruct.t
+end
+
+module type PEER = sig
+  type t
+  type flow
+  type uuid
+  type port
+
+  module Endpoint : ENDPOINT
+
+  val register : uuid -> t Lwt.t
+
+  val listen : t -> Conduit.endp Lwt_stream.t Lwt.t
+
+  val connect : t -> remote_name:uuid -> port:port -> Conduit.endp Lwt.t
+
+end
+
+module type VCHAN_PEER = PEER
+  with type uuid = string
+   and type port = string
+
+module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
+
+  module Flow = Make_flow(S.TCPV4)(V.Endpoint)
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
   type stack = S.t
-
+  type peer = V.t
+ 
   type ctx = {
+    peer: V.t option;
     stack: S.t option;
   }
 
-  let init stack =
-    return { stack = Some stack }
+  let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
+    match endp with
+    | `TCP (_ip, _port) as mode -> return mode
+    | `Vchan_direct (domid, port) ->
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan_direct (domid, port))
+    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
+    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+
+  let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
+    match endp with
+    | `TCP (_ip, port) -> return (`TCP (`Port port))
+    | `Vchan_direct (domid, port) ->
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan_direct ((`Remote_domid domid), port))
+    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
+    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+
+  let init ?peer ?stack () =
+    return { peer; stack }
 
   let default_ctx =
-    { stack = None  }
+    { peer = None; stack = None }
 
-  let connect ~ctx mode =
+  let rec connect ~ctx (mode:client) =
     match mode, ctx.stack with
-    | `Vchan (domid, port), _ ->
-      V.client ~domid ~port ()
+    | `Vchan_domain_socket (`Uuid uuid, `Port port), _ -> begin
+       match ctx.peer with
+       | None -> fail (Failure "TODO")
+       | Some peer ->
+           V.connect peer ~remote_name:uuid ~port
+           >>= fun endp ->
+           endp_to_client ~ctx endp
+           >>= fun client ->
+           connect ~ctx client
+    end   
+    | `Vchan_direct (domid, port), _ ->
+      Printf.printf "Conduit.connect: Vchan %d %s\n%!" domid (Vchan.Port.to_string port);
+      V.Endpoint.client ~domid ~port ()
       >>= fun flow ->
+      Printf.printf "Conduit.connect: connected!\n%!";
       let flow = Flow.of_vchan flow in
       return (flow, flow, flow)
     | `TCP (Ipaddr.V6 _ip, _port), _ ->
@@ -156,11 +213,29 @@ module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
         let flow = Flow.of_tcpv4 flow in
         return (flow, flow, flow)
 
-  let serve ?(timeout=60) ?stop:_ ~ctx ~mode fn =
+  let serve ?(timeout=60) ?stop:_ ~ctx ~(mode:server) fn =
     let _ = timeout in
     let t, _u = Lwt.task () in
     Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
     match mode, ctx.stack with
+    | `Vchan_domain_socket (`Uuid uuid, `Port port), _ -> begin
+      match ctx.peer with
+      | None -> fail (Failure "TODO")
+      | Some peer ->
+         V.listen peer
+         >>= fun conns ->
+         Lwt_stream.iter_p (fun endp ->
+           endp_to_server ~ctx endp
+           >>= fun server ->
+           match server with
+           | `Vchan_direct (`Remote_domid domid, port) ->
+              V.Endpoint.server ~domid ~port ()
+              >>= fun t ->
+              let f = Flow.of_vchan t in
+              fn f f f
+           | _ -> fail (Failure "TODO")
+         ) conns
+    end 
     |`TCP (`Port _port), None ->
       fail (Failure "No stack bound to Conduit")
     |`TCP (`Port port), Some stack ->
@@ -170,47 +245,12 @@ module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) = struct
            fn f f f
         );
       t
-    |`Vchan (domid, port), _ ->
-      V.server ~domid ~port ()
-      >>= fun t ->
-      let f = Flow.of_vchan t in
-      fn f f f
+    |`Vchan_direct (`Remote_domid domid, port), _ ->
+       V.Endpoint.server ~domid ~port ()
+       >>= fun t ->
+       let f = Flow.of_vchan t in
+       fn f f f
 
-  let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
-    match endp with
-    | `TCP (_ip, _port) as mode -> return mode
-    | `Vchan (domid, port) ->
-IFDEF HAVE_VCHAN THEN
-       begin
-         match Vchan.Port.of_string port with 
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan (domid, port))
-ELSE
-       fail (Failure "Vchan not available")
-ENDIF
-    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
-    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
-
-  let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
-    match endp with
-    | `TCP (_ip, port) -> return (`TCP (`Port port))
-    | `Vchan (domid, port) ->
-IFDEF HAVE_VCHAN THEN
-       begin
-         match Vchan.Port.of_string port with 
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan (domid, port))
-ELSE
-       fail (Failure "Vchan not available")
-ENDIF
-    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
-    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 end
 
 module type S = sig
@@ -221,11 +261,12 @@ module type S = sig
   type oc = Flow.flow
   type flow = Flow.flow
   type stack
+  type peer
 
   type ctx
   val default_ctx : ctx
 
-  val init : stack -> ctx io
+  val init : ?peer:peer -> ?stack:stack -> unit -> ctx io
 
   val connect : ctx:ctx -> client -> (flow * ic * oc) io
 

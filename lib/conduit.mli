@@ -48,11 +48,12 @@
 (** End points that can potentially be connected to.
     These are typically returned by a call to a {{!resolution}resolver}. *)
 type endp = [
-  | `TCP of Ipaddr.t * int        (** IP address and destination port *)
-  | `Unix_domain_socket of string (** Unix domain file path *)
-  | `Vchan of int * string        (** domain id, port *)
-  | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
-  | `Unknown of string            (** Failed resolution *)
+  | `TCP of Ipaddr.t * int         (** IP address and destination port *)
+  | `Unix_domain_socket of string  (** Unix domain file path *)
+  | `Vchan_direct of int * string  (** domain id, port *)
+  | `Vchan_domain_socket of string * string (** Vchan Xen domain socket *)
+  | `TLS of string * endp          (** Wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string             (** Failed resolution *)
 ] with sexp
 
 (** Module type for cooperative threading that can be satisfied by

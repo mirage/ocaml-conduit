@@ -24,22 +24,20 @@
     - Vchan for inter-VM communication within a single Xen host
   *)
 
-IFDEF HAVE_VCHAN THEN
 type vchan_port = Vchan.Port.t with sexp
-ELSE
-type vchan_port = [ `Vchan_not_available ] with sexp
-ENDIF
 
 (** Configuration for a single client connection *)
 type client = [
   | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
-  | `Vchan of int * vchan_port (** Remote Xen domain id and port name *)
+  | `Vchan_direct of int * vchan_port (** Remote Xen domain id and port name *)
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
 ] with sexp
 
 (** Configuration for listening on a server port. *)
 type server = [
   | `TCP of [ `Port of int ]
-  | `Vchan of int * vchan_port
+  | `Vchan_direct of [ `Remote_domid of int ] * vchan_port
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
 ] with sexp
 
 (** Module type of a Vchan endpoint *)
@@ -88,9 +86,33 @@ module type ENDPOINT = sig
     and  type buffer = Cstruct.t
 end
 
+module type PEER = sig
+  type t
+  type flow
+  type uuid
+  type port
+
+  module Endpoint : ENDPOINT
+
+  val register : uuid -> t Lwt.t
+
+  val listen : t -> Conduit.endp Lwt_stream.t Lwt.t
+
+  val connect : t -> remote_name:uuid -> port:port -> Conduit.endp Lwt.t
+
+end
+
+module type VCHAN_PEER = PEER
+  with type uuid = string
+   and type port = string
+
+type unknown = [ `Unknown of string ]
+module type VCHAN_FLOW = V1_LWT.FLOW
+  with type error := unknown
+
 (** Functor to construct a {!V1_LWT.FLOW} module that internally contains
     all of the supported transport mechanisms, such as TCPv4 and Vchan. *)
-module Make_flow(S:V1_LWT.TCPV4)(V:ENDPOINT) : V1_LWT.FLOW
+module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) : V1_LWT.FLOW
 
 module type S = sig
 
@@ -100,11 +122,12 @@ module type S = sig
   type oc = Flow.flow
   type flow = Flow.flow
   type stack
+  type peer
 
   type ctx
   val default_ctx : ctx
 
-  val init : stack -> ctx io
+  val init : ?peer:peer -> ?stack:stack -> unit -> ctx io
 
   val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
@@ -120,4 +143,6 @@ module type S = sig
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4)(V: ENDPOINT) : S with type stack = S.t
+module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER) : 
+  S with type stack = S.t
+     and type peer = V.t

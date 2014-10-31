@@ -72,7 +72,25 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     dns_port: int;
   }
 
-  let stub_resolver t service uri =
+  let vchan_lookup tld =
+    let tld_len = String.length tld in
+    let get_short_host uri =
+      let n = get_host uri in
+      let len = String.length n in
+      if len > tld_len && (String.sub n (len-tld_len) tld_len = tld) then
+        String.sub n 0 (len-tld_len)
+      else
+        n
+    in
+    fun service uri ->
+      (* Strip the tld from the hostname *)
+      let remote_name = get_short_host uri in
+      Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
+        (Sexplib.Sexp.to_string_hum (Conduit_resolver.sexp_of_service service))
+        (Uri.to_string uri) remote_name;
+      return (`Vchan_domain_socket (remote_name, service.Conduit_resolver.name))
+
+  let stub_resolver t service uri : Conduit.endp Lwt.t =
     let host = get_host uri in
     let port = get_port service uri in
     DNS.gethostbyname ~server:t.ns ~dns_port:t.dns_port t.dns host
@@ -84,22 +102,18 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
   
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
  
-  let system ?(ns=default_ns) ?(dns_port=53) stack =
-    let dns = DNS.create stack in
-    let t = { dns; ns; dns_port } in
+  let system ?(ns=default_ns) ?(dns_port=53) ?stack () =
     let service = static_service in
-    let rewrites = ["", stub_resolver t] in
-    Conduit_resolver_lwt.init ~service ~rewrites ()
+    let rewrites =
+      match stack with 
+      | Some s ->
+         let dns = DNS.create s in
+         let t = { dns; ns; dns_port } in
+         [ "", stub_resolver t ]
+      | None -> []
+    in
+    let rewrites = (".xen", vchan_lookup ".xen" ) :: rewrites in
+    return (Conduit_resolver_lwt.init ~service ~rewrites ())
 
 end
 
-module type PEER = sig
-  type t
-  type flow
-  type uuid
-  type port
-
-  val register : uuid -> t Lwt.t
-  val accept : t -> flow Lwt.t
-  val connect : t -> remote_name:uuid -> port:port -> flow Lwt.t
-end

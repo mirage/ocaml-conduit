@@ -13,9 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
-
-(** Establish Vchans via named endpoints in XenStore *)
+ *)
 
 include Conduit_mirage.VCHAN_PEER
-  with type flow = Vchan_xen.t

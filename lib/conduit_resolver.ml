@@ -37,7 +37,7 @@ module Make(IO:Conduit.IO) = struct
   type t = {
     default_lookup : rewrite_fn;
     mutable domains: rewrite_fn Conduit_trie.t;
-    service: service_fn;
+    mutable service: service_fn;
   } with sexp
 
   let default_lookup _ uri =
@@ -59,6 +59,9 @@ module Make(IO:Conduit.IO) = struct
 
   let add_rewrite ~host ~f t =
     t.domains <- Conduit_trie.insert (host_to_domain_list host) f t.domains
+
+  let set_service ~f t =
+    t.service <- f
 
   let init ?(service=default_service) ?(rewrites=[]) () =
     let domains = Conduit_trie.empty in

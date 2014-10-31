@@ -62,8 +62,6 @@ let localhost =
   Hashtbl.add hosts "localhost" (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
-(* Build a resolver that uses the stub resolver to perform a
-   resolution of the hostname *)
 module Make(DNS:Dns_resolver_mirage.S) = struct
 
   type t = {
@@ -72,7 +70,7 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     dns_port: int;
   }
 
-  let vchan_lookup tld =
+  let vchan_resolver ~tld =
     let tld_len = String.length tld in
     let get_short_host uri =
       let n = get_host uri in
@@ -90,30 +88,31 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
         (Uri.to_string uri) remote_name;
       return (`Vchan_domain_socket (remote_name, service.Conduit_resolver.name))
 
-  let stub_resolver t service uri : Conduit.endp Lwt.t =
+  let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
+
+  let dns_stub_resolver ?(ns=default_ns) ?(ns_port=53) dns service uri : Conduit.endp Lwt.t =
     let host = get_host uri in
     let port = get_port service uri in
-    DNS.gethostbyname ~server:t.ns ~dns_port:t.dns_port t.dns host
+    DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
     >>= fun res ->
     List.filter (function Ipaddr.V4 _ -> true | _ -> false) res
     |> function
     | [] -> return (`Unknown ("name resolution failed"))
     | addr::_ -> return (`TCP (addr,port))
   
-  let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
- 
-  let system ?(ns=default_ns) ?(dns_port=53) ?stack () =
-    let service = static_service in
-    let rewrites =
-      match stack with 
+  let register ?(ns=default_ns) ?(ns_port=53) ?stack res =
+      begin match stack with 
       | Some s ->
+         (* DNS stub resolver *)
          let dns = DNS.create s in
-         let t = { dns; ns; dns_port } in
-         [ "", stub_resolver t ]
-      | None -> []
-    in
-    let rewrites = (".xen", vchan_lookup ".xen" ) :: rewrites in
-    return (Conduit_resolver_lwt.init ~service ~rewrites ())
+         let f = dns_stub_resolver ~ns ~ns_port dns in
+         Conduit_resolver_lwt.add_rewrite ~host:"" ~f res
+      | None -> ()
+      end;
+      Conduit_resolver_lwt.set_service ~f:static_service res;
+      let vchan_tld = ".xen" in
+      let vchan_res = vchan_resolver ~tld:vchan_tld in
+      Conduit_resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res
 
 end
 

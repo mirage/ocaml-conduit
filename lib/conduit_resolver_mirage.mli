@@ -34,11 +34,16 @@ module Make(DNS:Dns_resolver_mirage.S) : sig
   (** Default resolver to use, which is [8.8.8.8] (Google DNS). *)
   val default_ns : Ipaddr.V4.t
 
-  (** [system ?ns ?dns_port stack] will return a resolver that uses
-      the stub resolver [ns] on port [dns_port] to resolve URIs via
-      the [stack] network interface. *)
-  val system :
-    ?ns:Ipaddr.V4.t -> ?dns_port:int ->
-    ?stack:DNS.stack -> unit -> Conduit_resolver_lwt.t Lwt.t
-end
+  val vchan_resolver : tld:string -> Conduit_resolver_lwt.rewrite_fn
 
+  (** [dns_stub_resolver ?ns ?dns_port dns] will return a resolver that uses
+      the stub resolver [ns] on port [ns_port] to resolve URIs via
+      the [dns] network interface. *)
+  val dns_stub_resolver:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Conduit_resolver_lwt.rewrite_fn
+
+  (** [register ?ns ?ns_port ?stack res] TODO *)
+  val register:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack ->
+    Conduit_resolver_lwt.t -> unit
+end

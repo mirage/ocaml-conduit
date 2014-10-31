@@ -23,6 +23,60 @@ type service = {
   tls: bool
 } with sexp
 
+(** Module type for a {{!resolution}resolver} that can map URIs to
+    concrete {{!Conduit.endp}endpoints} that stream connections can be
+    established with. *)
+module type S = sig
+
+  (** Abstract type of the cooperative threading library used, normally
+      defined via the {!IO} module type *)
+  type +'a io
+
+  (** State handle for a running resolver *)
+  type t with sexp
+
+  (** Abstract type for a service entry, which maps a URI scheme into
+      a protocol handler and TCP port *)
+  type svc
+
+  (** A rewrite function resolves a {{!svc}service} and a URI into
+      a concrete endpoint. *)
+  type rewrite_fn = svc -> Uri.t -> Conduit.endp io
+
+  (** A service function maps the string (such as [http] or [ftp]) from
+      a URI scheme into a {{!svc}service} description that includes
+      enough metadata about the service to subsequently {{!rewrite_fn}resolve}
+      it into an {{!Conduit.endp}endpoint}. *)
+  type service_fn = string -> svc option io
+
+  (** [init ?service ?rewrites] will initialize the resolver and return
+      a state handler.  The {{!service_fn}service} argument should
+      contain the system-specific resolution mechanism for URI schemas.
+
+      The [rewrites] argument can optionally override a subset of the
+      URI domain name with the given {!rewrite_fn} to permit custom
+      resolution rules.  For example, a rewrite rule for ".xen" would
+      let the rewrite function resolve hostnames such as "foo.xen"
+      into a shared memory channel for the "foo" virtual machine. *)
+  val init :
+    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
+    unit -> t
+
+  (** [add_rewrite ~host f t] will add to the [t] resolver the [f] rewrite rule
+      for all the domain names that shortest-prefix match [host] *)
+  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
+
+  val set_service : f:service_fn -> t -> unit
+
+  (** [resolve_uri ?rewrites ~uri t] will use [t] to resolve the
+      [uri] into a concrete endpoint.  Any [rewrites] that are passed
+      in will be overlayed on the existing rules within the [t]
+      resolver, but not otherwise modify it. *)
+  val resolve_uri :
+    ?rewrites:(string * rewrite_fn) list ->
+    uri:Uri.t -> t -> Conduit.endp io
+end
+
 module Make(IO:Conduit.IO) = struct
   open IO
 

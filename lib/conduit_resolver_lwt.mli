@@ -21,7 +21,7 @@
 module IO : Conduit.IO with type 'a t = 'a Lwt.t
 
 (** Module type that specialises {!Conduit.RESOLVER} to use Lwt threads *)
-module type S = Conduit.RESOLVER 
+module type S = Conduit_resolver.S
   with type svc = Conduit_resolver.service
   and  type 'a io = 'a Lwt.t
 

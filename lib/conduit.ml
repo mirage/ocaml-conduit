@@ -33,24 +33,3 @@ module type IO = sig
   val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
   val return : 'a -> 'a t
 end
-
-module type RESOLVER = sig
-  type +'a io
-  type t with sexp
-  type svc
-
-  type rewrite_fn = svc -> Uri.t -> endp io
-  type service_fn = string -> svc option io
-
-  val init :
-    ?service:service_fn -> ?rewrites:(string * rewrite_fn) list ->
-    unit -> t
-
-  val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
-
-  val set_service : f:service_fn -> t -> unit
-
-  val resolve_uri :
-    ?rewrites:(string * rewrite_fn) list ->
-    uri:Uri.t -> t -> endp io
-end

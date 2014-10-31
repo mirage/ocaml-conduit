@@ -21,7 +21,7 @@ module IO = struct
   let return = Lwt.return
 end
 
-module type S = Conduit.RESOLVER
+module type S = Conduit_resolver.S
   with type svc = Conduit_resolver.service
   and  type 'a io = 'a Lwt.t
 

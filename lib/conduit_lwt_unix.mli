@@ -23,7 +23,8 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int (** Use OpenSSL to connect to the given [host], [ip], [port] tuple via TCP *)
   | `TCP of Ipaddr.t * int (** Use TCP to connect to the given [ip], [port] tuple. *)
   | `Unix_domain_socket of string (** Use UNIX domain sockets to connect to a socket on the [path]. *)
-  | `Vchan of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)
+  | `Vchan_direct of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)
+  | `Vchan_domain_socket of string * string
 ] with sexp
 
 (** Set of supported listening mechanisms that are supported by this module. *)
@@ -35,7 +36,8 @@ type server = [
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
-  | `Vchan of int * string
+  | `Vchan_direct of int * string
+  | `Vchan_domain_socket of string  * string
 ] with sexp
 
 type 'a io = 'a Lwt.t

@@ -26,12 +26,10 @@ val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Conduit_resolver_
     maps [localhost] to [127.0.0.1], and fails on all other hostnames. *)
 val localhost : Conduit_resolver_lwt.t
 
-module Localhost_peer : Conduit_mirage.VCHAN_PEER
-
 (** Given a DNS resolver {{:https://github.com/mirage/ocaml-dns}implementation},
     provide a {!Conduit_resolver_lwt} that can perform DNS lookups to return
     endpoints. *)
-module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) : sig
+module Make(DNS:Dns_resolver_mirage.S) : sig
 
   (** Default resolver to use, which is [8.8.8.8] (Google DNS). *)
   val default_ns : Ipaddr.V4.t
@@ -41,6 +39,6 @@ module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) : sig
       the [stack] network interface. *)
   val system :
     ?ns:Ipaddr.V4.t -> ?dns_port:int ->
-    ?uuid:string -> ?stack:DNS.stack -> unit -> Conduit_resolver_lwt.t Lwt.t
+    ?stack:DNS.stack -> unit -> Conduit_resolver_lwt.t Lwt.t
 end
 

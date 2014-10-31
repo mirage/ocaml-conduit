@@ -26,6 +26,8 @@ type t = {
 type port = string
 type uuid = string
 type flow = Vchan_xen.t
+
+module Endpoint = Vchan_xen
  
 let get_my_id xs =
   OS.Xs.(immediate xs (fun h -> read h "domid"))
@@ -64,9 +66,22 @@ let accept {xs; name } =
     readdir h (sprintf "/conduit/%s/%s" name remote_name) >>= fun port ->
     OS.Xs.read h (sprintf "/conduit/%s" remote_name) >>= fun remote_domid ->
     let remote_domid = int_of_string remote_domid in
-    return (`Vchan (remote_domid, port))
+    return (`Vchan_direct (remote_domid, port))
   in
   OS.Xs.wait xs waitfn
+
+let listen v =
+  (* TODO cancellation *)
+  let conn, push_conn = Lwt_stream.create () in
+  let {xs; name} = v in
+  Printf.printf "Conduit_xenstore: listen on %s\n%!" name;
+  let rec loop () =
+    accept v >>= fun c ->
+    push_conn (Some c);
+    loop ()
+  in
+  ignore_result (loop ());
+  return conn
 
 let connect {xs; name} ~remote_name ~port =
   get_peer_id xs remote_name
@@ -75,4 +90,4 @@ let connect {xs; name} ~remote_name ~port =
   OS.Xs.(immediate xs (fun h -> write h
      (sprintf "/conduit/%s/%s/%s" remote_name name port) port))
   >>= fun () ->
-  return (`Vchan (remote_domid, port))
+  return (`Vchan_direct (remote_domid, port))

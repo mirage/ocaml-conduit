@@ -85,6 +85,7 @@ if [ "$HAVE_LWT" != "" ]; then
     echo "Building with Mirage support."
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
+    echo Conduit_localhost >> lib/conduit-lwt-mirage.mllib
     echo Conduit_resolver_mirage >> lib/conduit-lwt-mirage.mllib
     LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then

@@ -62,20 +62,9 @@ let localhost =
   Hashtbl.add hosts "localhost" (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
-module Localhost_peer = struct
-  type t = unit
-  type flow
-  type uuid = string
-  type port = string
-
-  let register _ = return ()
-  let accept _ = return (`Unknown "localhost peer only")
-  let connect _ ~remote_name ~port = return (`Unknown "localhost peer only")
-end
-
 (* Build a resolver that uses the stub resolver to perform a
    resolution of the hostname *)
-module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) = struct
+module Make(DNS:Dns_resolver_mirage.S) = struct
 
   type t = {
     dns: DNS.t;
@@ -83,7 +72,7 @@ module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) = struct
     dns_port: int;
   }
 
-  let vchan_lookup tld t =
+  let vchan_lookup tld =
     let tld_len = String.length tld in
     let get_short_host uri =
       let n = get_host uri in
@@ -99,7 +88,7 @@ module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) = struct
       Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
         (Sexplib.Sexp.to_string_hum (Conduit_resolver.sexp_of_service service))
         (Uri.to_string uri) remote_name;
-      Peer.connect t ~remote_name ~port:service.Conduit_resolver.name
+      return (`Vchan_domain_socket (remote_name, service.Conduit_resolver.name))
 
   let stub_resolver t service uri : Conduit.endp Lwt.t =
     let host = get_host uri in
@@ -113,10 +102,8 @@ module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) = struct
   
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
  
-  let system ?(ns=default_ns) ?(dns_port=53) ?uuid ?stack () =
-    let uuid = match uuid with None -> "default" |Some u -> u in
+  let system ?(ns=default_ns) ?(dns_port=53) ?stack () =
     let service = static_service in
-    Peer.register uuid >>= fun peer ->
     let rewrites =
       match stack with 
       | Some s ->
@@ -125,7 +112,7 @@ module Make(DNS:Dns_resolver_mirage.S)(Peer:Conduit_mirage.VCHAN_PEER) = struct
          [ "", stub_resolver t ]
       | None -> []
     in
-    let rewrites = (".xen", vchan_lookup ".xen" peer) :: rewrites in
+    let rewrites = (".xen", vchan_lookup ".xen" ) :: rewrites in
     return (Conduit_resolver_lwt.init ~service ~rewrites ())
 
 end

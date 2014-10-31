@@ -107,6 +107,8 @@ module type RESOLVER = sig
       for all the domain names that shortest-prefix match [host] *)
   val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
 
+  val set_service : f:service_fn -> t -> unit
+
   (** [resolve_uri ?rewrites ~uri t] will use [t] to resolve the
       [uri] into a concrete endpoint.  Any [rewrites] that are passed
       in will be overlayed on the existing rules within the [t]

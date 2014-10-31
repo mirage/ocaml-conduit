@@ -48,6 +48,8 @@ module type RESOLVER = sig
 
   val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
 
+  val set_service : f:service_fn -> t -> unit
+
   val resolve_uri :
     ?rewrites:(string * rewrite_fn) list ->
     uri:Uri.t -> t -> endp io

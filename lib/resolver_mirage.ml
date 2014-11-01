@@ -114,5 +114,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
       let vchan_res = vchan_resolver ~tld:vchan_tld in
       Resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res
 
+  let init ?ns ?ns_port ?stack () =
+    let res = Resolver_lwt.init () in
+    register ?ns ?ns_port ?stack res;
+    res
 end
 

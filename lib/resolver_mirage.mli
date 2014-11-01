@@ -46,4 +46,8 @@ module Make(DNS:Dns_resolver_mirage.S) : sig
   val register:
     ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack ->
     Resolver_lwt.t -> unit
+
+  (** [init ?ns ?ns_port ?stack ()] TODO *)
+  val init:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack -> unit -> Resolver_lwt.t
 end

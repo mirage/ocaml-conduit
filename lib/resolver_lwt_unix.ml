@@ -29,7 +29,7 @@ let system_service name =
     (fun () ->
       Lwt_unix.getservbyname name "tcp" >>= fun s ->
       let tls = is_tls_service name in
-      let svc = { Conduit_resolver.name; port=s.Lwt_unix.s_port; tls } in
+      let svc = { Resolver.name; port=s.Lwt_unix.s_port; tls } in
       return (Some svc))
     (function Not_found -> return_none | e -> fail e)
 
@@ -38,7 +38,7 @@ let static_service name =
   | [] -> return None
   | port::_ ->
      let tls = is_tls_service name in
-     let svc = { Conduit_resolver.name; port; tls } in
+     let svc = { Resolver.name; port; tls } in
      return (Some svc)
 
 let get_host uri =
@@ -51,7 +51,7 @@ let get_host uri =
 
 let get_port service uri =
   match Uri.port uri with
-  | None -> service.Conduit_resolver.port
+  | None -> service.Resolver.port
   | Some port -> port
 
 (* Build a default resolver that uses the system gethostbyname and
@@ -77,10 +77,10 @@ let static_resolver hosts _service uri =
 let system =
   let service = system_service in
   let rewrites = ["", system_resolver] in
-  Conduit_resolver_lwt.init ~service ~rewrites ()
+  Resolver_lwt.init ~service ~rewrites ()
 
 (* Build a default resolver from a static set of lookup rules *)
 let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
-  Conduit_resolver_lwt.init ~service ~rewrites ()
+  Resolver_lwt.init ~service ~rewrites ()

@@ -20,30 +20,30 @@
 (** [static hosts] constructs a resolver that looks up any resolution
     requests from the static [hosts] hashtable instead of using the
     system resolver. *)
-val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Conduit_resolver_lwt.t
+val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Resolver_lwt.t
 
 (** [localhost] is a static resolver that has a single entry that
     maps [localhost] to [127.0.0.1], and fails on all other hostnames. *)
-val localhost : Conduit_resolver_lwt.t
+val localhost : Resolver_lwt.t
 
 (** Given a DNS resolver {{:https://github.com/mirage/ocaml-dns}implementation},
-    provide a {!Conduit_resolver_lwt} that can perform DNS lookups to return
+    provide a {!Resolver_lwt} that can perform DNS lookups to return
     endpoints. *)
 module Make(DNS:Dns_resolver_mirage.S) : sig
 
   (** Default resolver to use, which is [8.8.8.8] (Google DNS). *)
   val default_ns : Ipaddr.V4.t
 
-  val vchan_resolver : tld:string -> Conduit_resolver_lwt.rewrite_fn
+  val vchan_resolver : tld:string -> Resolver_lwt.rewrite_fn
 
   (** [dns_stub_resolver ?ns ?dns_port dns] will return a resolver that uses
       the stub resolver [ns] on port [ns_port] to resolve URIs via
       the [dns] network interface. *)
   val dns_stub_resolver:
-    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Conduit_resolver_lwt.rewrite_fn
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Resolver_lwt.rewrite_fn
 
   (** [register ?ns ?ns_port ?stack res] TODO *)
   val register:
     ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack ->
-    Conduit_resolver_lwt.t -> unit
+    Resolver_lwt.t -> unit
 end

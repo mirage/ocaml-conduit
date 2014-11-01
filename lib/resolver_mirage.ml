@@ -33,7 +33,7 @@ let get_host uri =
 
 let get_port service uri =
   match Uri.port uri with
-  | None -> service.Conduit_resolver.port
+  | None -> service.Resolver.port
   | Some port -> port
 
 let static_resolver hosts service uri =
@@ -49,13 +49,13 @@ let static_service name =
   | [] -> return None
   | port::_ ->
      let tls = is_tls_service name in
-     let svc = { Conduit_resolver.name; port; tls } in
+     let svc = { Resolver.name; port; tls } in
      return (Some svc)
 
 let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
-  Conduit_resolver_lwt.init ~service ~rewrites ()
+  Resolver_lwt.init ~service ~rewrites ()
 
 let localhost =
   let hosts = Hashtbl.create 3 in
@@ -84,9 +84,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
       (* Strip the tld from the hostname *)
       let remote_name = get_short_host uri in
       Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
-        (Sexplib.Sexp.to_string_hum (Conduit_resolver.sexp_of_service service))
+        (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service service))
         (Uri.to_string uri) remote_name;
-      return (`Vchan_domain_socket (remote_name, service.Conduit_resolver.name))
+      return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 
@@ -106,13 +106,13 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
          (* DNS stub resolver *)
          let dns = DNS.create s in
          let f = dns_stub_resolver ~ns ~ns_port dns in
-         Conduit_resolver_lwt.add_rewrite ~host:"" ~f res
+         Resolver_lwt.add_rewrite ~host:"" ~f res
       | None -> ()
       end;
-      Conduit_resolver_lwt.set_service ~f:static_service res;
+      Resolver_lwt.set_service ~f:static_service res;
       let vchan_tld = ".xen" in
       let vchan_res = vchan_resolver ~tld:vchan_tld in
-      Conduit_resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res
+      Resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res
 
 end
 

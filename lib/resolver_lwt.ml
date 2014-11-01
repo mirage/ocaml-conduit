@@ -15,14 +15,14 @@
  *
 *)
 
-(** Resolve URIs to endpoints using the {{:http://ocsigen.org/lwt}Lwt} library *)
+module IO = struct
+  type 'a t = 'a Lwt.t
+  let (>>=) = Lwt.bind
+  let return = Lwt.return
+end
 
-(** IO module compatible with {!Conduit.IO} that uses Lwt *)
-module IO : Conduit.IO with type 'a t = 'a Lwt.t
-
-(** Module type that specialises {!Conduit.RESOLVER} to use Lwt threads *)
-module type S = Conduit_resolver.S
-  with type svc = Conduit_resolver.service
+module type S = Resolver.S
+  with type svc = Resolver.service
   and  type 'a io = 'a Lwt.t
 
-include S
+include Resolver.Make(IO)

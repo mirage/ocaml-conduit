@@ -13,15 +13,16 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *)
+*)
 
-(** Resolve URIs to endpoints using Unix system calls *)
+(** Resolve URIs to endpoints using the {{:http://ocsigen.org/lwt}Lwt} library *)
 
-(** Use the Unix system name resolver via [getaddrinfo] and
-    [getservbyname] *)
-val system : Conduit_resolver_lwt.t
+(** IO module compatible with {!Conduit.IO} that uses Lwt *)
+module IO : Conduit.IO with type 'a t = 'a Lwt.t
 
-(** [static hosts] constructs a resolver that looks up any resolution
-    requests from the static [hosts] hashtable instead of using the
-    system resolver. *)
-val static : (string, Conduit.endp) Hashtbl.t -> Conduit_resolver_lwt.t
+(** Module type that specialises {!Conduit.RESOLVER} to use Lwt threads *)
+module type S = Resolver.S
+  with type svc = Resolver.service
+  and  type 'a io = 'a Lwt.t
+
+include S

@@ -37,6 +37,11 @@ add_pkg "$SYNTAX_PKG"
 add_pkg "$BASE_PKG"
 add_target "conduit"
 rm -f lib/*.odocl
+echo Conduit > lib/conduit.mllib
+echo Conduit_resolver >> lib/conduit.mllib
+echo Conduit_trie >> lib/conduit.mllib
+cp lib/conduit.mllib lib/conduit.odocl
+
 rm -f _tags
 rm -rf _install
 mkdir -p _install

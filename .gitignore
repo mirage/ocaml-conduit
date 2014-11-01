@@ -1,3 +1,4 @@
+lib/conduit.mllib
 lib/conduit-async.mllib
 lib/conduit-lwt.mllib
 lib/conduit-lwt-unix.mllib

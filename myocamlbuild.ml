@@ -5,6 +5,6 @@ dispatch (
     pflag ["ocaml";"compile";] "define" (fun s -> S [A"-ppopt"; A ("-D"^s)]);
     pflag ["ocaml";"ocamldep";] "define" (fun s -> S [A"-ppopt"; A ("-D"^s)]);
     dep ["ocaml"; "doc"] ["lib/intro.html"];
-    flag ["ocaml"; "doc"] (S[A"-short-functors"; A"-sort"; A"-m"; A"A"; A"-intro"; A"lib/intro.html"; A"-t"; A"Conduit URI resolution"]);
+    flag ["ocaml"; "doc"] (S[A"-hide-warnings"; A"-short-functors"; A"-sort"; A"-m"; A"A"; A"-intro"; A"lib/intro.html"; A"-t"; A"Conduit URI resolution"]);
   | _ -> ()
 )

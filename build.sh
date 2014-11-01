@@ -92,15 +92,17 @@ if [ "$HAVE_LWT" != "" ]; then
       echo "Building with Mirage Vchan support."
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
-    if [ "$HAVE_XEN" != "" ]; then
-      echo "Building with Mirage Vchan/Xen support."
-      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES mirage-xen vchan.xen"
-      echo 'true: define(HAVE_XEN)' >> _tags
-      echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
-      echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
-    fi
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
+    if [ "$HAVE_XEN" != "" ]; then
+      echo "Building with Mirage/Xen support."
+      LWT_MIRAGE_XEN_REQUIRES="$LWT_MIRAGE_XEN_REQUIRES mirage-xen vchan.xen"
+      echo 'true: define(HAVE_MIRAGE_XEN)' >> _tags
+      echo Conduit_xenstore > lib/conduit-lwt-mirage-xen.mllib
+      echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
+      add_target "conduit-lwt-mirage-xen"
+      cp lib/conduit-lwt-mirage-xen.mllib lib/conduit-lwt-mirage-xen.odocl
+    fi
   fi
 
 fi
@@ -120,7 +122,7 @@ fi
 cat lib/*.odocl > lib/conduit-all.odocl
 TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_MIRAGE_XEN_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 
 ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
@@ -134,6 +136,7 @@ sed \
   -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
   -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
   -e "s/@LWT_MIRAGE_REQUIRES@/${LWT_MIRAGE_REQUIRES}/g" \
+  -e "s/@LWT_MIRAGE_XEN_REQUIRES@/${LWT_MIRAGE_XEN_REQUIRES}/g" \
   -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
   META.in > META
 

@@ -2,6 +2,8 @@ lib/conduit-async.mllib
 lib/conduit-lwt.mllib
 lib/conduit-lwt-unix.mllib
 lib/conduit-lwt-mirage.mllib
+lib/conduit-lwt-mirage-xen.mllib
+lib/conduit-lwt-mirage-unix.mllib
 _tags
 META
 _build/

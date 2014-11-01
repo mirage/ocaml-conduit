@@ -23,13 +23,13 @@ type vchan_port = Vchan.Port.t with sexp
 type client = [
   | `TCP of Ipaddr.t * int
   | `Vchan_direct of int * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
 ] with sexp
 
 type server = [
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [`Remote_domid of int] * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
 ] with sexp
 
 type unknown = [ `Unknown of string ]
@@ -132,7 +132,7 @@ end
 
 module type VCHAN_PEER = PEER
   with type uuid = string
-   and type port = string
+   and type port = vchan_port
 
 module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
 
@@ -159,6 +159,13 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct (domid, port))
+    | `Vchan_domain_socket (uuid,  port) ->
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
@@ -173,6 +180,13 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct ((`Remote_domid domid), port))
+    | `Vchan_domain_socket (uuid,  port) ->
+       begin
+         match Vchan.Port.of_string port with 
+         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+         | `Ok p -> return p
+       end >>= fun port ->
+       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
     | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

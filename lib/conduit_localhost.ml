@@ -18,7 +18,7 @@
 type t = unit
 type flow
 type uuid = string
-type port = string
+type port = Vchan.Port.t
 
 let register _ = Lwt.return ()
 let listen _ = Lwt.fail (Failure "Localhost peer only")

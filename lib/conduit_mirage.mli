@@ -30,14 +30,14 @@ type vchan_port = Vchan.Port.t with sexp
 type client = [
   | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
   | `Vchan_direct of int * vchan_port (** Remote Xen domain id and port name *)
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
 ] with sexp
 
 (** Configuration for listening on a server port. *)
 type server = [
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [ `Remote_domid of int ] * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of string ]
+  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
 ] with sexp
 
 (** Module type of a Vchan endpoint *)
@@ -104,7 +104,7 @@ end
 
 module type VCHAN_PEER = PEER
   with type uuid = string
-   and type port = string
+   and type port = vchan_port
 
 type unknown = [ `Unknown of string ]
 module type VCHAN_FLOW = V1_LWT.FLOW

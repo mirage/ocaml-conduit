@@ -42,7 +42,7 @@
 
     All of the name resolvers conform to the {!RESOLVER} module type.
     The OS-specific implementations of this interface are:
-    {!modules: Conduit_resolver_lwt Conduit_resolver_lwt_unix Conduit_resolver_mirage}
+    {!modules: Resolver_lwt Resolver_lwt_unix Resolver_mirage}
    *)
 
 (** End points that can potentially be connected to.

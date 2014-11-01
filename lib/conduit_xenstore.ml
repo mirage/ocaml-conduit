@@ -23,7 +23,7 @@ type t = {
   name: string
 }
 
-type port = string
+type port = Vchan.Port.t
 type uuid = string
 type flow = Vchan_xen.t
 
@@ -45,8 +45,8 @@ let readdir h d =
   OS.Xs.(directory h d) >>= fun dirs ->
   let dirs = List.filter (fun p -> p <> "") dirs in
   match dirs with
-  | [] -> print_endline "readdir restarting"; fail Xs_protocol.Eagain
-  | hd::_ -> print_endline ("readdir returning " ^ hd); return hd
+  | [] -> fail Xs_protocol.Eagain
+  | hd::_ -> return hd
 
 let register name =
   OS.Xs.make () >>= fun xs ->
@@ -66,14 +66,14 @@ let accept {xs; name } =
     readdir h (sprintf "/conduit/%s/%s" name remote_name) >>= fun port ->
     OS.Xs.read h (sprintf "/conduit/%s" remote_name) >>= fun remote_domid ->
     let remote_domid = int_of_string remote_domid in
+    OS.Xs.rm h (sprintf "/conduit/%s/%s" name remote_name) >>= fun () ->
     return (`Vchan_direct (remote_domid, port))
   in
   OS.Xs.wait xs waitfn
 
-let listen v =
+let listen ({name; _} as v) =
   (* TODO cancellation *)
   let conn, push_conn = Lwt_stream.create () in
-  let {xs; name} = v in
   Printf.printf "Conduit_xenstore: listen on %s\n%!" name;
   let rec loop () =
     accept v >>= fun c ->
@@ -84,6 +84,7 @@ let listen v =
   return conn
 
 let connect {xs; name} ~remote_name ~port =
+  let port = Vchan.Port.to_string port in
   get_peer_id xs remote_name
   >>= fun remote_domid ->
   let remote_domid = int_of_string remote_domid in

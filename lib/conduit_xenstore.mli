@@ -19,3 +19,4 @@
 
 include Conduit_mirage.VCHAN_PEER
   with type flow = Vchan_xen.t
+   and type port = Vchan.Port.t

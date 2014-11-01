@@ -43,7 +43,7 @@ package "mirage" (
 package "mirage-xen" (
  version = "@VERSION@"
  description = "Mirage Xen implementations of Conduit libraries"
- requires = "mirage @LWT_MIRAGE_XEN_REQUIRES@"
+ requires = "conduit.mirage @LWT_MIRAGE_XEN_REQUIRES@"
  archive(byte) = "conduit-lwt-mirage-xen.cma"
  archive(byte, plugin) = "conduit-lwt-mirage-xen.cma"
  archive(native) = "conduit-lwt-mirage-xen.cmxa"

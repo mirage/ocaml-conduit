@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -13,23 +13,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
-open Sexplib.Std
-
-(** The resolver will return an [endp], which the Conduit
-    backend must interpret to make a connection. *)
-type endp = [
-  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
-  | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan_direct of int * string        (** domain id, port *)
-  | `Vchan_domain_socket of string * string
-  | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
-  | `Unknown of string            (** failed resolution *)
-] with sexp
-
-module type IO = sig
-  type +'a t
-  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
-  val return : 'a -> 'a t
-end
+include Conduit_mirage.VCHAN_PEER

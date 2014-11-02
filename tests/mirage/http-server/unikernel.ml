@@ -11,21 +11,21 @@ let uri = Uri.of_string "http://localhost"
 
 module Client (C:CONSOLE) (S:STACKV4) = struct
 
-  module CON = Conduit_mirage.Make(S)(Vchan.In_memory)
+  module CON = Conduit_mirage.Make(S)(Conduit_localhost)
 
   let callback c flow ic oc =
-    Console.log_s c "Connection!" >>= fun () ->
+    C.log_s c "Connection!" >>= fun () ->
     return ()
 
-  let start c s =
+  let start c stack =
     let r = Conduit_resolver_mirage.localhost in
-    CON.init s
+    CON.init ~stack ()
     >>= fun ctx ->
     Conduit_resolver_lwt.resolve_uri ~uri r
     >>= fun endp ->
     CON.endp_to_server ~ctx endp
     >>= fun mode ->
-    Console.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
+    C.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
     >>= fun () ->
     CON.serve ~ctx ~mode (callback c)
 end

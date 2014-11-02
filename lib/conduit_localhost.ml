@@ -13,23 +13,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
- *)
+*)
 
-(** Resolve URIs to endpoints *)
+type t = unit
+type flow
+type uuid = string
+type port = Vchan.Port.t
 
-(** Description of a single service.
-    Can be populated from [/etc/services] with the exception of the
-    [tls] field, which indicates if the connection is intended to be
-    TLS/SSL-encrypted or not (e.g. for [https]).  *)
-type service = {
-  name: string;
-  port: int;
-  tls: bool
-} with sexp
+let register _ = Lwt.return ()
+let listen _ = Lwt.fail (Failure "Localhost peer only")
+let connect _ ~remote_name ~port = Lwt.return (`Unknown "localhost peer only")
 
-(** Functor to construct a concrete resolver using a {!Conduit.IO}
-    implementation, usually via either Lwt or Async *)
-module Make (IO : Conduit.IO) : Conduit.RESOLVER
-  with type svc = service
-  and  type 'a io = 'a IO.t
-
+module Endpoint = Vchan.In_memory

@@ -26,7 +26,8 @@ type client = [
   | `OpenSSL of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
-  | `Vchan of int * string
+  | `Vchan_direct of int * string
+  | `Vchan_domain_socket of string * string
 ] with sexp
 
 type server = [
@@ -37,7 +38,8 @@ type server = [
       [ `Port of int ]
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
-  | `Vchan of int * string
+  | `Vchan_direct of int * string
+  | `Vchan_domain_socket of string * string
 ] with sexp
 
 type tls_server_key = [
@@ -180,7 +182,7 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  | `Vchan (domid, sport) ->
+  | `Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
       | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
@@ -192,6 +194,8 @@ IFDEF HAVE_VCHAN_LWT THEN
 ELSE
     fail (Failure "No Vchan support compiled into Conduit")
 END
+  | `Vchan_domain_socket uuid ->
+    fail (Failure "Vchan_domain_socket not implemented")
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -228,7 +232,7 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
-  |`Vchan (domid, sport) ->
+  |`Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
       | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
@@ -239,19 +243,13 @@ IFDEF HAVE_VCHAN_LWT THEN
 ELSE
     fail (Failure "No Vchan support compiled into Conduit")
 END
-
-type endp = [
-  | `TCP of Ipaddr.t * int        (** IP address and destination port *)
-  | `Unix_domain_socket of string (** Unix domain file path *)
-  | `Vchan of int * string        (** domain id * port *)
-  | `TLS of string * endp         (** Wrap in a TLS channel, [hostname,endp] *)
-  | `Unknown of string            (** Failed resolution *)
-] with sexp
+  | `Vchan_domain_socket uuid ->
+    fail (Failure "Vchan_domain_socket not implemented")
 
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)
   | Domain_socket { path; _ } -> `Unix_domain_socket path
-  | Vchan { domid; port } -> `Vchan (domid, port)
+  | Vchan { domid; port } -> `Vchan_direct (domid, port)
 
 (** Use the configuration of the server to interpret how to
     handle a particular endpoint from the resolver into a
@@ -261,7 +259,8 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode
   | `TLS (host, `TCP (ip, port)) -> return (`OpenSSL (host, ip, port))
-  | `Vchan (_, _) as mode -> return mode
+  | `Vchan_direct _ as mode -> return mode
+  | `Vchan_domain_socket _ as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
@@ -276,6 +275,7 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
             pass, `Port port))
      end
   | `TCP (_ip, port) -> return (`TCP (`Port port))
-  | `Vchan (_, _) as mode -> return mode
+  | `Vchan_direct _ as mode -> return mode
+  | `Vchan_domain_socket _ as mode -> return mode
   | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))

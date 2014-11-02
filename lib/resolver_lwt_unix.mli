@@ -13,16 +13,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
-module IO = struct
-  type 'a t = 'a Lwt.t
-  let (>>=) = Lwt.bind
-  let return = Lwt.return
-end
+(** Resolve URIs to endpoints using Unix system calls *)
 
-module type S = Conduit.RESOLVER
-  with type svc = Conduit_resolver.service
-  and  type 'a io = 'a Lwt.t
+(** Use the Unix system name resolver via [getaddrinfo] and
+    [getservbyname] *)
+val system : Resolver_lwt.t
 
-include Conduit_resolver.Make(IO)
+(** [static hosts] constructs a resolver that looks up any resolution
+    requests from the static [hosts] hashtable instead of using the
+    system resolver. *)
+val static : (string, Conduit.endp) Hashtbl.t -> Resolver_lwt.t

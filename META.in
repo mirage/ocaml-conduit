@@ -40,6 +40,17 @@ package "mirage" (
  exists_if = "conduit-lwt-mirage.cma"
 )
 
+package "mirage-xen" (
+ version = "@VERSION@"
+ description = "Mirage Xen implementations of Conduit libraries"
+ requires = "conduit.mirage @LWT_MIRAGE_XEN_REQUIRES@"
+ archive(byte) = "conduit-lwt-mirage-xen.cma"
+ archive(byte, plugin) = "conduit-lwt-mirage-xen.cma"
+ archive(native) = "conduit-lwt-mirage-xen.cmxa"
+ archive(native, plugin) = "conduit-lwt-mirage-xen.cmxs"
+ exists_if = "conduit-lwt-mirage-xen.cma"
+)
+
 package "async" (
  version = "@VERSION@"
  description = "Resolve URIs into Async channels"

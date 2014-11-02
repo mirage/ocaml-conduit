@@ -36,7 +36,7 @@ module Client = struct
   (* SSL TCP connection *)
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Client_context
 
-  let connect ?src sa =
+  let connect ?(ctx=t) ?src sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     let () =
       match src with
@@ -44,7 +44,7 @@ module Client = struct
       | Some src_sa -> Lwt_unix.bind fd src_sa
     in
     Lwt_unix.connect fd sa >>= fun () ->
-    Lwt_ssl.ssl_connect fd t >>= fun sock ->
+    Lwt_ssl.ssl_connect fd ctx >>= fun sock ->
     return (chans_of_fd sock)
 end
 
@@ -52,20 +52,20 @@ module Server = struct
 
   let t = Ssl.create_context Ssl.TLSv1 Ssl.Server_context
 
-  let accept fd =
+  let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
-    Lwt_ssl.ssl_accept afd t >>= fun sock ->
+    Lwt_ssl.ssl_accept afd ctx >>= fun sock ->
     return (chans_of_fd sock)
 
-  let listen ?(nconn=20) ?password ~certfile ~keyfile sa =
+  let listen ?(ctx=t) ?(nconn=20) ?password ~certfile ~keyfile sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     Lwt_unix.(setsockopt fd SO_REUSEADDR true);
     Lwt_unix.bind fd sa;
     Lwt_unix.listen fd nconn;
     (match password with
      | None -> ()
-     | Some fn -> Ssl.set_password_callback t fn);
-    Ssl.use_certificate t certfile keyfile;
+     | Some fn -> Ssl.set_password_callback ctx fn);
+    Ssl.use_certificate ctx certfile keyfile;
     fd
 
   let process_accept ~timeout callback (sa,ic,oc) =
@@ -76,9 +76,9 @@ module Server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
 
-  let init ?(nconn=20) ?password ~certfile ~keyfile
+  let init ?ctx ?(nconn=20) ?password ~certfile ~keyfile
     ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    let s = listen ~nconn ?password ~certfile ~keyfile sa in
+    let s = listen ?ctx ~nconn ?password ~certfile ~keyfile sa in
     let cont = ref true in
     async (fun () ->
       stop >>= fun () ->

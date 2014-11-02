@@ -9,24 +9,25 @@ let blue fmt   = sprintf ("\027[36m"^^fmt^^"\027[m")
 
 let domain = "anil.recoil.org"
 let uri = Uri.of_string "http://anil.recoil.org"
-let ns = Ipaddr.V4.of_string_exn "8.8.8.8"
+let ns = "10.0.1.1"
 
 module Client (C:CONSOLE) (S:STACKV4) = struct
 
   module DNS = Dns_resolver_mirage.Make(OS.Time)(S)
   module RES = Conduit_resolver_mirage.Make(DNS)
-  module CON = Conduit_mirage.Make(S)
+  module CON = Conduit_mirage.Make(S)(Conduit_localhost)
 
-  let start c s =
-    Console.log_s c "Starting to resolve in 3s..." >>= fun () ->
+  let start c stack =
+    C.log_s c (sprintf "Resolving in 3s using DNS server %s" ns) >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
-    let r = RES.system ~ns s in
-    Conduit_resolver_lwt.resolve_uri ~uri r
+    let res = Conduit_resolver_lwt.init () in
+    RES.register ~ns:(Ipaddr.V4.of_string_exn ns) ~stack res;
+    Conduit_resolver_lwt.resolve_uri ~uri res
     >>= fun endp ->
-    lwt ctx = CON.init s in
+    lwt ctx = CON.init ~stack () in
     CON.endp_to_client ~ctx endp
     >>= fun client ->
-    Console.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
+    C.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
     >>= fun () ->
     lwt (conn, ic, oc) = CON.connect ~ctx client in
     let page = Io_page.(to_cstruct (get 1)) in
@@ -34,12 +35,12 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
     Cstruct.blit_from_string http_get 0 page 0 (String.length http_get);
     let buf = Cstruct.sub page 0 (String.length http_get) in
     CON.Flow.write oc buf >>= function
-    | `Eof -> Console.log_s c "EOF on write"
-    | `Error _ -> Console.log_s c "ERR on write"
+    | `Eof -> C.log_s c "EOF on write"
+    | `Error _ -> C.log_s c "ERR on write"
     | `Ok buf -> begin
       CON.Flow.read ic >>= function
-      | `Eof -> Console.log_s c "EOF"
-      | `Error _ -> Console.log_s c "ERR"
-      | `Ok buf -> Console.log_s c (sprintf "OK\n%s\n" (Cstruct.to_string buf))
+      | `Eof -> C.log_s c "EOF"
+      | `Error _ -> C.log_s c "ERR"
+      | `Ok buf -> C.log_s c (sprintf "OK\n%s\n" (Cstruct.to_string buf))
     end
 end

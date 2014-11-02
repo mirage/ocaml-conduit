@@ -4,13 +4,13 @@ let net =
   try match Sys.getenv "NET" with
     | "direct" -> `Direct
     | _        -> `Socket
-  with Not_found -> `Socket
+  with Not_found -> `Direct
 
 let dhcp =
   try match Sys.getenv "ADDR" with
     | "dhcp"   -> `Dhcp
     | "static" -> `Static
-  with Not_found -> `Static
+  with Not_found -> `Dhcp
 
 let stack console =
   match net, dhcp with

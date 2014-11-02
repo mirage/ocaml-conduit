@@ -2,9 +2,10 @@ The {!Conduit} library abstracts the concerns of establishing connections to
 peers that may be running within the same host (e.g. in another virtual
 machine) or on a remote host via TCP.  It consists of:
 
-- The {!Conduit} module with basic type definitions
-- Modules for {{!transport}establishing individual connections}
-- Modules for {{!resolution}name resolvers} that maps URIs to endpoints
+- The {!Conduit} module with basic type definitions for endpoints
+- OS-specific modules for {{!transport}establishing individual connections}
+- The {!Resolver} module for mapping URIs to endpoints
+- OS-specific {{!resolution}name resolvers} that use available resolution mechanisms
 
 {2:transport Connection Establishment} 
 
@@ -24,8 +25,15 @@ The modules dealing with connection establishment are:
 This deals with resolving URIs into a list of {{!Conduit.endp}endp} addresses that can
 then be connected to by the {{!transport}connection establishment} modules.
 
-All of the name resolvers conform to the {!Conduit.RESOLVER} module type.
+All of the name resolvers conform to the {!Resolver.S} module type.
 The OS-specific implementations of this interface are: 
 {!modules: Resolver_lwt Resolver_lwt_unix Resolver_mirage}
+
+{2:resolution Mirage Connections}
+
+On Mirage, the networking stack is configured via the application
+of functors to satisfy various signatures.  Some of the available
+functors are:
+{!modules: Conduit_xenstore Conduit_localhost}
 
 {!indexlist}

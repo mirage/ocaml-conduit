@@ -14,8 +14,19 @@ as well as which library is used (just OpenSSL for now).
 
 Source code is in `lib/`.
 
-* `Conduit_lwt` has the Lwt UNIX modules.
+* `Conduit_lwt_unix` has the Lwt UNIX modules.
 * `Conduit_async` has the Core/Async modules.
+
+There are also resolvers that map URIs to Conduit endpoints.
+See <https://avsm.github.io/ocaml-conduit> for the online `ocamldoc`
+for more details.
+
+### Debugging
+
+Some of the `Lwt_unix`-based modules use a non-empty `CONDUIT_DEBUG`
+environment variable to output debugging information to standard error.
+Just set this variable when running the program to see what URIs
+are being resolved to.
 
 ### Further Informartion
 

@@ -1,9 +1,17 @@
-0.6.0 (trunk):
+0.6.0 (2014-11-04):
 * Add an explicit `ctx` content to track every conduit's runtime state.
 * Allow the source interface for a conduit to be set.
 * Support a `password` callback for the SSL layer (#4).
-* Add a `conn` value to the callback to query more information about the current connection (#2).
 * [lwt] Add stop parameters in main-loop of the server (#5).
+* Add `Conduit_mirage` with Mirage functor suport.
+* Add ocamldoc of most interfaces.
+* Add a `CONDUIT_DEBUG` environment variable to the Unix backends for
+  live debugging.
+* Add a `conn` value to the callback to query more information about the
+  current connection (#2).
+* Expose the representation of `Conduit_lwt_unix.flow` in the external signature.
+  This lets library users obtain the original `Lwt_unix.file_descr` when using
+  Conduit libraries like Cohttp.
 
 0.5.1 (2014-08-07):
 * Reenable Async SSL by default.

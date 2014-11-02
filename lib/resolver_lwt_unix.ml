@@ -17,6 +17,22 @@
 
 open Lwt
 
+let debug = ref false
+let debug_print = ref Printf.eprintf
+let () =
+  try
+    ignore(Sys.getenv "CONDUIT_DEBUG");
+    debug := true
+  with Not_found -> ()
+
+let return_endp name svc uri endp =
+  if !debug then
+    !debug_print "Resolver %s: %s %s -> %s\n%!"
+     name (Uri.to_string uri)
+     (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service svc))
+     (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
+  return endp
+
 let is_tls_service =
   (* TODO fill in the blanks. nowhere else to get this information *)
   function
@@ -62,17 +78,17 @@ let system_resolver service uri =
   let port = get_port service uri in
   getaddrinfo host (string_of_int port) [AI_SOCKTYPE SOCK_STREAM]
   >>= function
-  | [] -> return (`Unknown ("name resolution failed"))
+  | [] -> return_endp "system" service uri (`Unknown ("name resolution failed"))
   | {ai_addr=ADDR_INET (addr,port);_}::_ ->
-      return (`TCP (Ipaddr_unix.of_inet_addr addr, port))
+      return_endp "system" service uri (`TCP (Ipaddr_unix.of_inet_addr addr, port))
   | {ai_addr=ADDR_UNIX file;_}::_ ->
-      return (`Unix_domain_socket file)
+      return_endp "system" service uri (`Unix_domain_socket file)
 
-let static_resolver hosts _service uri =
+let static_resolver hosts service uri =
   try
-    return (Hashtbl.find hosts (get_host uri))
+    return_endp "static" service uri (Hashtbl.find hosts (get_host uri))
   with Not_found ->
-    return (`Unknown ("name resolution failed"))
+    return_endp "static" service uri (`Unknown ("name resolution failed"))
 
 let system =
   let service = system_service in

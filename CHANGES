@@ -6,6 +6,7 @@
 * [lwt] Add stop parameters in main-loop of the server (#5).
 * Add `Conduit_mirage` with Mirage functor suport.
 * Add ocamldoc of most interfaces.
+* Add a `CONDUIT_DEBUG` environment variable to the Unix backends for live debugging.
 
 0.5.1 (2014-08-07):
 * Reenable Async SSL by default.

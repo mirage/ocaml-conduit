@@ -21,6 +21,13 @@ There are also resolvers that map URIs to Conduit endpoints.
 See <https://avsm.github.io/ocaml-conduit> for the online `ocamldoc`
 for more details.
 
+### Debugging
+
+Some of the `Lwt_unix`-based modules use a non-empty `CONDUIT_DEBUG`
+environment variable to output debugging information to standard error.
+Just set this variable when running the program to see what URIs
+are being resolved to.
+
 ### Further Informartion
 
 * **WWW:** https://github.com/mirage/ocaml-conduit

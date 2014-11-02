@@ -18,6 +18,8 @@
 (** Connection establishment using the
     {{:http://ocsigen.org/lwt/api/Lwt_unix}Lwt_unix} library *) 
 
+open Sexplib.Conv
+
 (** Set of supported client connections that are supported by this module. *)
 type client = [
   | `OpenSSL of string * Ipaddr.t * int (** Use OpenSSL to connect to the given [host], [ip], [port] tuple via TCP *)
@@ -44,8 +46,27 @@ type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
-(** Type of an established connection *)
-type flow with sexp
+type tcp_flow = private {
+  fd: Lwt_unix.file_descr sexp_opaque;
+  ip: Ipaddr.t;
+  port: int;
+} with sexp_of
+
+type domain_flow = private {
+  fd: Lwt_unix.file_descr sexp_opaque;
+  path: string;
+} with sexp_of
+
+type vchan_flow = private {
+  domid: int;
+  port: string;
+} with sexp_of
+
+type flow = private
+  | TCP of tcp_flow
+  | Domain_socket of domain_flow
+  | Vchan of vchan_flow
+with sexp_of
 
 (** Type describing where to locate an OpenSSL-format
     key in the filesystem *)

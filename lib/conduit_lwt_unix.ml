@@ -258,10 +258,14 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   match endp with
   | `TCP (_ip, _port) as mode -> return mode
   | `Unix_domain_socket _path as mode -> return mode
-  | `TLS (host, `TCP (ip, port)) -> return (`OpenSSL (host, ip, port))
   | `Vchan_direct _ as mode -> return mode
   | `Vchan_domain_socket _ as mode -> return mode
-  | `TLS (_host, _) -> fail (Failure "TLS to non-TCP currently unsupported")
+  | `TLS (host, (`TCP (ip, port))) -> return (`OpenSSL (host, ip, port))
+  | `TLS (host, endp) -> begin
+       fail (Failure (Printf.sprintf
+         "TLS to non-TCP currently unsupported: host=%s endp=%s"
+         host (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))))
+  end
   | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
 let endp_to_server ~ctx (endp:Conduit.endp) =

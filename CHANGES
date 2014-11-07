@@ -1,3 +1,7 @@
+0.6.1 (2014-11-07):
+* When terminating conduits, always close the output channel first before
+  the input channel, so that any pending data in the underlying fd is flushed.
+
 0.6.0 (2014-11-04):
 * Add an explicit `ctx` content to track every conduit's runtime state.
 * Allow the source interface for a conduit to be set.

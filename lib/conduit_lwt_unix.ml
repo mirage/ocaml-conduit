@@ -119,7 +119,8 @@ end
 module Sockaddr_server = struct
 
   let close (ic, oc) =
-    Lwt.join [ safe_close oc; safe_close ic ]
+    safe_close oc >>= fun () ->
+    safe_close ic
 
   let init_socket sockaddr =
     Unix.handle_unix_error (fun () ->

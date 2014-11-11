@@ -24,6 +24,7 @@ type oc = Lwt_io.output_channel
 
 type client = [
   | `OpenSSL of string * Ipaddr.t * int
+  | `TLS of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
   | `Vchan_direct of int * string
@@ -183,6 +184,15 @@ IFDEF HAVE_LWT_SSL THEN
 ELSE
     fail (Failure "No SSL support compiled into Conduit")
 END
+  | `TLS (host, ip, port) ->
+IFDEF HAVE_LWT_TLS THEN
+    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+    Conduit_lwt_tls.Client.connect ?src:ctx.src host sa >|= fun (fd, ic, oc) ->
+    let flow = TCP { fd ; ip ; port } in
+    (flow, ic, oc)
+ELSE
+    fail (Failure "No OCaml-TLS support compiled into Conduit")
+END
   | `Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
@@ -261,7 +271,12 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `Unix_domain_socket _path as mode -> return mode
   | `Vchan_direct _ as mode -> return mode
   | `Vchan_domain_socket _ as mode -> return mode
-  | `TLS (host, (`TCP (ip, port))) -> return (`OpenSSL (host, ip, port))
+  | `TLS (host, (`TCP (ip, port))) ->
+IFDEF HAVE_LWT_TLS THEN
+  return (`TLS (host, ip, port))
+ELSE
+  return (`OpenSSL (host, ip, port))
+ENDIF
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf
          "TLS to non-TCP currently unsupported: host=%s endp=%s"

@@ -18,7 +18,7 @@
 (** Functorial connection establishment interface that is compatible with
     the Mirage libraries.
 
-    Currently supports two transports: 
+    Currently supports two transports:
 
     - TCPv4 for remote communications using the {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
     - Vchan for inter-VM communication within a single Xen host
@@ -54,7 +54,7 @@ module type ENDPOINT = sig
   ]
 
   (** [server ~domid ~port ?read_size ?write_size] will listen on a connection for
-      a source [domid] and [port] combination, block until a client connects, and 
+      a source [domid] and [port] combination, block until a client connects, and
       then return a {!t} handle to read and write on the resulting connection.
       The size of the shared memory buffer can be controlled by setting [read_size]
       or [write_size] in bytes. *)
@@ -112,7 +112,7 @@ module type VCHAN_FLOW = V1_LWT.FLOW
 
 (** Functor to construct a {!V1_LWT.FLOW} module that internally contains
     all of the supported transport mechanisms, such as TCPv4 and Vchan. *)
-module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) : V1_LWT.FLOW
+module Make_flow(S4:V2_LWT.TCP)(S6:V2_LWT.TCP)(V:VCHAN_FLOW) : V1_LWT.FLOW
 
 module type S = sig
 
@@ -143,6 +143,6 @@ module type S = sig
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER) : 
+module Make(S:V2_LWT.STACK)(V: VCHAN_PEER) :
   S with type stack = S.t
      and type peer = V.t

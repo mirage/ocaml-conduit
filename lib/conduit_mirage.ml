@@ -38,7 +38,7 @@ module type VCHAN_FLOW = V1_LWT.FLOW
   with type error := unknown
 
 (** All the possible connection types supported *)
-module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
+module Make_flow(S4:V2_LWT.TCP)(S6:V2_LWT.TCP)(V:VCHAN_FLOW) = struct
 
   type 'a io = 'a Lwt.t
   type error = [ `Refused | `Timeout | `Unknown of string ]
@@ -46,10 +46,12 @@ module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
   type buffer = Cstruct.t
 
   type flow =
-    | TCPv4 of S.flow
+    | TCPv4 of S4.flow
+    | TCPv6 of S6.flow
     | Vchan of V.flow
 
   let of_tcpv4 f = TCPv4 f
+  let of_tcpv6 f = TCPv6 f
   let of_vchan f = Vchan f
 
   let vchan_error t =
@@ -69,22 +71,26 @@ module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
   let read flow =
     match flow with
     | Vchan t -> vchan_error (V.read t)
-    | TCPv4 t -> stack_error (S.read t)
+    | TCPv4 t -> stack_error (S4.read t)
+    | TCPv6 t -> stack_error (S6.read t)
 
   let write flow buf =
     match flow with
     | Vchan t -> vchan_error (V.write t buf)
-    | TCPv4 t -> stack_error (S.write t buf)
+    | TCPv4 t -> stack_error (S4.write t buf)
+    | TCPv6 t -> stack_error (S6.write t buf)
 
   let writev flow bufv =
     match flow with
     | Vchan t -> vchan_error (V.writev t bufv)
-    | TCPv4 t -> stack_error (S.writev t bufv)
+    | TCPv4 t -> stack_error (S4.writev t bufv)
+    | TCPv6 t -> stack_error (S6.writev t bufv)
 
   let close flow =
     match flow with
     | Vchan t -> V.close t
-    | TCPv4 t -> S.close t
+    | TCPv4 t -> S4.close t
+    | TCPv6 t -> S6.close t
 end
 
 module type ENDPOINT = sig
@@ -134,16 +140,16 @@ module type VCHAN_PEER = PEER
   with type uuid = string
    and type port = vchan_port
 
-module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
+module Make(S:V2_LWT.STACK)(V:VCHAN_PEER) = struct
 
-  module Flow = Make_flow(S.TCPV4)(V.Endpoint)
+  module Flow = Make_flow(S.TCPV4)(S.TCPV6)(V.Endpoint)
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
   type flow = Flow.flow
   type stack = S.t
   type peer = V.t
- 
+
   type ctx = {
     peer: V.t option;
     stack: S.t option;
@@ -154,14 +160,14 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
     | `TCP (_ip, _port) as mode -> return mode
     | `Vchan_direct (domid, port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct (domid, port))
     | `Vchan_domain_socket (uuid,  port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
@@ -175,14 +181,14 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
     | `TCP (_ip, port) -> return (`TCP (`Port port))
     | `Vchan_direct (domid, port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct ((`Remote_domid domid), port))
     | `Vchan_domain_socket (uuid,  port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
@@ -208,7 +214,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
            endp_to_client ~ctx endp
            >>= fun client ->
            connect ~ctx client
-    end   
+    end
     | `Vchan_direct (domid, port), _ ->
       Printf.printf "Conduit.connect: Vchan %d %s\n%!" domid (Vchan.Port.to_string port);
       V.Endpoint.client ~domid ~port ()
@@ -216,9 +222,14 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
       Printf.printf "Conduit.connect: connected!\n%!";
       let flow = Flow.of_vchan flow in
       return (flow, flow, flow)
-    | `TCP (Ipaddr.V6 _ip, _port), _ ->
-      fail (Failure "No IPv6 support compiled into Conduit")
-    | `TCP (Ipaddr.V4 _ip, _port), None ->
+    | `TCP (Ipaddr.V6 ip, port), Some tcp ->
+      S.TCPV6.create_connection (S.tcpv6 tcp) (ip,port) >>= begin function
+        | `Error _err -> fail (Failure "connection failed")
+        | `Ok flow ->
+          let flow = Flow.of_tcpv6 flow in
+          return (flow, flow, flow)
+      end
+    | `TCP _, None ->
       fail (Failure "No stack bound to Conduit")
     | `TCP (Ipaddr.V4 ip, port), Some tcp  ->
       S.TCPV4.create_connection (S.tcpv4 tcp) (ip,port) >>= function
@@ -249,13 +260,18 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
               fn f f f
            | _ -> fail (Failure "TODO")
          ) conns
-    end 
+    end
     |`TCP (`Port _port), None ->
       fail (Failure "No stack bound to Conduit")
     |`TCP (`Port port), Some stack ->
       S.listen_tcpv4 stack ~port
         (fun flow ->
            let f = Flow.of_tcpv4 flow in
+           fn f f f
+        );
+      S.listen_tcpv6 stack ~port
+        (fun flow ->
+           let f = Flow.of_tcpv6 flow in
            fn f f f
         );
       t

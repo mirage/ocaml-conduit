@@ -22,8 +22,7 @@ open Sexplib.Conv
 
 (** Set of supported client connections that are supported by this module. *)
 type client = [
-  | `OpenSSL of string * Ipaddr.t * int (** Use OpenSSL to connect to the given [host], [ip], [port] tuple via TCP *)
-  | `TLS of string * Ipaddr.t * int (** Use OCaml-TLS to connect to the given [host], [ip], [port] tuple via TCP *)
+  | `TLS of string * Ipaddr.t * int (** Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect to the given [host], [ip], [port] tuple via TCP *)
   | `TCP of Ipaddr.t * int (** Use TCP to connect to the given [ip], [port] tuple. *)
   | `Unix_domain_socket of string (** Use UNIX domain sockets to connect to a socket on the [path]. *)
   | `Vchan_direct of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)

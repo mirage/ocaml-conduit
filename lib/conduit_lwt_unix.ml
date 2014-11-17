@@ -18,12 +18,32 @@
 open Lwt
 open Sexplib.Conv
 
+type tls_lib = | OpenSSL | Native | No_tls
+let tls_library = ref No_tls
+let () =
+IFDEF HAVE_LWT_SSL THEN
+  IFDEF HAVE_LWT_TLS THEN
+    tls_library := try
+        match Sys.getenv "CONDUIT_TLS" with
+        | "native" | "Native" | "NATIVE" -> Native
+        | _ -> OpenSSL
+      with Not_found -> Native
+  ELSE
+    tls_library := OpenSSL
+  END
+ELSE
+  IFDEF HAVE_LWT_TLS THEN
+      tls_library := Native
+  ELSE
+      tls_library := No_tls
+  END
+END
+
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type client = [
-  | `OpenSSL of string * Ipaddr.t * int
   | `TLS of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
@@ -174,25 +194,28 @@ let connect ~ctx (mode:client) =
     >>= fun (fd, ic, oc) ->
     let flow = Domain_socket {fd; path} in
     return (flow, ic, oc)
-  | `OpenSSL (_host, ip, port) ->
-IFDEF HAVE_LWT_SSL THEN
-    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-    Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
-    >>= fun (fd, ic, oc) ->
-    let flow = TCP {fd;ip;port} in
-    return (flow, ic, oc)
-ELSE
-    fail (Failure "No SSL support compiled into Conduit")
-END
   | `TLS (host, ip, port) ->
-IFDEF HAVE_LWT_TLS THEN
-    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-    Conduit_lwt_tls.Client.connect ?src:ctx.src host sa >|= fun (fd, ic, oc) ->
-    let flow = TCP { fd ; ip ; port } in
-    (flow, ic, oc)
+    (match !tls_library with
+     | OpenSSL ->
+IFDEF HAVE_LWT_SSL THEN
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+       Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
+       >>= fun (fd, ic, oc) ->
+       let flow = TCP {fd;ip;port} in
+       return (flow, ic, oc)
 ELSE
-    fail (Failure "No OCaml-TLS support compiled into Conduit")
+       fail (Failure "No SSL support compiled into Conduit")
 END
+     | Native ->
+IFDEF HAVE_LWT_TLS THEN
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+       Conduit_lwt_tls.Client.connect ?src:ctx.src host sa >|= fun (fd, ic, oc) ->
+       let flow = TCP { fd ; ip ; port } in
+       (flow, ic, oc)
+ELSE
+       fail (Failure "No TLS support compiled into Conduit")
+END
+     | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit") )
   | `Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
@@ -271,12 +294,7 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `Unix_domain_socket _path as mode -> return mode
   | `Vchan_direct _ as mode -> return mode
   | `Vchan_domain_socket _ as mode -> return mode
-  | `TLS (host, (`TCP (ip, port))) ->
-IFDEF HAVE_LWT_TLS THEN
-  return (`TLS (host, ip, port))
-ELSE
-  return (`OpenSSL (host, ip, port))
-ENDIF
+  | `TLS (host, (`TCP (ip, port))) -> return (`TLS (host, ip, port))
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf
          "TLS to non-TCP currently unsupported: host=%s endp=%s"

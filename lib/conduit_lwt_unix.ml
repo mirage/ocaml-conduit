@@ -27,7 +27,7 @@ IFDEF HAVE_LWT_SSL THEN
         match Sys.getenv "CONDUIT_TLS" with
         | "native" | "Native" | "NATIVE" -> Native
         | _ -> OpenSSL
-      with Not_found -> Native
+      with Not_found -> OpenSSL
   ELSE
     tls_library := OpenSSL
   END

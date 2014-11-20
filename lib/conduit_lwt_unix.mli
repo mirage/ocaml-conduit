@@ -31,7 +31,7 @@ type client = [
 
 (** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
-  | `OpenSSL of
+  | `TLS of
       [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ] *
@@ -68,11 +68,10 @@ type flow = private
   | Vchan of vchan_flow
 with sexp_of
 
-(** Type describing where to locate an OpenSSL-format
-    key in the filesystem *)
+(** Type describing where to locate a PEM key in the filesystem *)
 type tls_server_key = [
  | `None
- | `OpenSSL of
+ | `TLS of
     [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]

@@ -140,7 +140,7 @@ module type VCHAN_PEER = PEER
   with type uuid = string
    and type port = vchan_port
 
-module Make(S:V2_LWT.STACK)(V:VCHAN_PEER) = struct
+module Make(S:V1_LWT.NETSTACK)(V:VCHAN_PEER) = struct
 
   module Flow = Make_flow(S.TCPV4)(S.TCPV6)(V.Endpoint)
   type +'a io = 'a Lwt.t

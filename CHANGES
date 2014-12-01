@@ -1,3 +1,6 @@
+0.6.2 (trunk):
+* Fix the Mirage tests to the Mirage 2.0.1+ Conduit interfaces.
+
 0.6.1 (2014-11-07):
 * When terminating conduits, always close the output channel first before
   the input channel, so that any pending data in the underlying fd is flushed.

@@ -9,20 +9,20 @@ let blue fmt   = sprintf ("\027[36m"^^fmt^^"\027[m")
 
 let domain = "anil.recoil.org"
 let uri = Uri.of_string "http://anil.recoil.org"
-let ns = "10.0.1.1"
+let ns = "8.8.8.8"
 
 module Client (C:CONSOLE) (S:STACKV4) = struct
 
   module DNS = Dns_resolver_mirage.Make(OS.Time)(S)
-  module RES = Conduit_resolver_mirage.Make(DNS)
+  module RES = Resolver_mirage.Make(DNS)
   module CON = Conduit_mirage.Make(S)(Conduit_localhost)
 
   let start c stack =
     C.log_s c (sprintf "Resolving in 3s using DNS server %s" ns) >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
-    let res = Conduit_resolver_lwt.init () in
+    let res = Resolver_lwt.init () in
     RES.register ~ns:(Ipaddr.V4.of_string_exn ns) ~stack res;
-    Conduit_resolver_lwt.resolve_uri ~uri res
+    Resolver_lwt.resolve_uri ~uri res
     >>= fun endp ->
     lwt ctx = CON.init ~stack () in
     CON.endp_to_client ~ctx endp

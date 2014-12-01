@@ -124,8 +124,10 @@ if [ "$HAVE_VCHAN_LWT" != "" ]; then
 fi
 
 # Build all the ocamldoc
-cat lib/*.odocl > lib/conduit-all.odocl
-TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
+if [ "$BUILD_DOC" = "true" ]; then
+  cat lib/*.odocl > lib/conduit-all.odocl
+  TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
+fi
 
 REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_MIRAGE_XEN_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 

@@ -18,10 +18,10 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
     return ()
 
   let start c stack =
-    let r = Conduit_resolver_mirage.localhost in
+    let r = Resolver_mirage.localhost in
     CON.init ~stack ()
     >>= fun ctx ->
-    Conduit_resolver_lwt.resolve_uri ~uri r
+    Resolver_lwt.resolve_uri ~uri r
     >>= fun endp ->
     CON.endp_to_server ~ctx endp
     >>= fun mode ->

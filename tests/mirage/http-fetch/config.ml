@@ -23,4 +23,5 @@ let client =
 
 let () =
   add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage"; "dns.mirage" ];
+  add_to_opam_packages [ "mirage-dns"; "conduit" ];
   register "conduit-client" [ client $ default_console $ stack default_console ]

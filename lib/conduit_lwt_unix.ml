@@ -48,12 +48,26 @@ type tls_server_key = [
       [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ]
-]
+] with sexp
 
 type ctx = {
   src: Unix.sockaddr option;
   tls_server_key: tls_server_key;
 }
+
+let string_of_unix_sockaddr sa =
+  let open Unix in
+  match sa with
+  | ADDR_UNIX s ->
+      Printf.sprintf "ADDR_UNIX(%s)" s
+  | ADDR_INET (ia, port) ->
+      Printf.sprintf "ADDR_INET(%s,%d)" (string_of_inet_addr ia) port
+
+let sexp_of_ctx ctx =
+  <:sexp_of< string option * tls_server_key >>
+    ((match ctx.src with |None -> None
+      |Some sa -> Some (string_of_unix_sockaddr sa)),
+     ctx.tls_server_key)
 
 type tcp_flow = {
   fd: Lwt_unix.file_descr sexp_opaque;

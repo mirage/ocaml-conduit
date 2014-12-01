@@ -87,10 +87,10 @@ module type ENDPOINT = sig
 end
 
 module type PEER = sig
-  type t
-  type flow
-  type uuid
-  type port
+  type t with sexp_of
+  type flow with sexp_of
+  type uuid with sexp_of
+  type port with sexp_of
 
   module Endpoint : ENDPOINT
 
@@ -124,7 +124,7 @@ module type S = sig
   type stack
   type peer
 
-  type ctx
+  type ctx with sexp_of
   val default_ctx : ctx
 
   val init : ?peer:peer -> ?stack:stack -> unit -> ctx io

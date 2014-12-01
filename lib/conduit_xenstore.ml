@@ -17,15 +17,16 @@
 
 open Lwt
 open Printf
+open Sexplib.Conv
 
 type t = {
-  xs: OS.Xs.client;
+  xs: OS.Xs.client sexp_opaque;
   name: string
-}
+} with sexp_of
 
-type port = Vchan.Port.t
-type uuid = string
-type flow = Vchan_xen.t
+type port = Vchan.Port.t with sexp_of
+type uuid = string with sexp_of
+type flow = Vchan_xen.t with sexp_of
 
 module Endpoint = Vchan_xen
  

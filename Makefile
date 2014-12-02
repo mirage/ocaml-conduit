@@ -1,4 +1,4 @@
-.PHONY: all install clean
+.PHONY: all install clean doc github
 
 PREFIX ?= /usr/local/bin
  
@@ -11,7 +11,10 @@ install:
 clean:
 	rm -rf _build _install
 
-github:
+doc:
+	@BUILD_DOC=true ./build.sh
+
+github: doc
 	git checkout gh-pages
 	git merge master --no-edit
 	$(MAKE)

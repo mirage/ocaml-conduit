@@ -1,6 +1,7 @@
 0.6.2 (trunk):
 * Fix the Mirage tests to the Mirage 2.0.1+ Conduit interfaces.
 * Add sexp convertors for `Conduit_lwt_unix.ctx` and `Conduit_mirage.ctx`
+  and the `Resolver` service types.
 
 0.6.1 (2014-11-07):
 * When terminating conduits, always close the output channel first before

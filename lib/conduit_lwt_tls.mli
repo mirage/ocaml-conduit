@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Hannes Mehnert <hannes@mehnert.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,7 +15,7 @@
  *
  *)
 
-(** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
+(** TLS/SSL connections via OCaml-TLS *)
 
 module Client : sig
 

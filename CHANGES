@@ -1,7 +1,11 @@
-0.6.2 (trunk):
-* Fix the Mirage tests to the Mirage 2.0.1+ Conduit interfaces.
+0.7.0 (trunk):
+* Add Lwt-unix support for the native OCaml/TLS stack as an alternative
+  to OpenSSL. This can be activated by setting the `CONDUIT_TLS` environment
+  variable to `native`.  If this is not set and OpenSSL is available, then
+  OpenSSL is used by in preference to the pure OCaml implementation.
 * Add sexp convertors for `Conduit_lwt_unix.ctx` and `Conduit_mirage.ctx`
   and the `Resolver` service types.
+* Fix the Mirage tests to the Mirage 2.0.1+ Conduit interfaces.
 
 0.6.1 (2014-11-07):
 * When terminating conduits, always close the output channel first before

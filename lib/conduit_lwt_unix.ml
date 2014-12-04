@@ -44,8 +44,16 @@ type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
+type client_tls_config =
+  [ `Hostname of string ] *
+  [ `IP of Ipaddr.t ] *
+  [ `Port of int ]
+with sexp
+
 type client = [
-  | `TLS of string * Ipaddr.t * int
+  | `TLS of client_tls_config
+  | `TLS_native of client_tls_config
+  | `OpenSSL of client_tls_config
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
   | `Vchan_direct of int * string
@@ -87,8 +95,9 @@ let string_of_unix_sockaddr sa =
 
 let sexp_of_ctx ctx =
   <:sexp_of< string option * tls_server_key >>
-    ((match ctx.src with |None -> None
-      |Some sa -> Some (string_of_unix_sockaddr sa)),
+    ((match ctx.src with
+      | None -> None
+      | Some sa -> Some (string_of_unix_sockaddr sa)),
      ctx.tls_server_key)
 
 type tcp_flow = {
@@ -145,11 +154,6 @@ module Sockaddr_client = struct
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
     return (fd, ic, oc)
-
-  let close (ic,oc) =
-    safe_close oc >>= fun () ->
-    safe_close ic
-
 end
 
 module Sockaddr_server = struct
@@ -193,8 +197,54 @@ module Sockaddr_server = struct
         loop ()
     in
     loop ()
-
 end
+
+(** TLS client connection functions *)
+
+let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
+IFDEF HAVE_LWT_TLS THEN
+  let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+  Conduit_lwt_tls.Client.connect ?src:ctx.src hostname sa
+  >|= fun (fd, ic, oc) ->
+  let flow = TCP { fd ; ip ; port } in
+  (flow, ic, oc)
+ELSE
+   fail (Failure "No TLS support compiled into Conduit")
+ENDIF
+
+let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
+IFDEF HAVE_LWT_SSL THEN
+  let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+  Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
+  >>= fun (fd, ic, oc) ->
+  let flow = TCP {fd;ip;port} in
+  return (flow, ic, oc)
+ELSE
+  fail (Failure "No SSL support compiled into Conduit")
+END
+
+let connect_with_default_tls ~ctx tls_client_config =
+  match !tls_library with
+  | OpenSSL -> connect_with_openssl ~ctx tls_client_config
+  | Native -> connect_with_tls_native ~ctx tls_client_config
+  | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
+
+(** VChan connection functions *)
+let connect_with_vchan_lwt ~ctx (domid, sport) =
+IFDEF HAVE_VCHAN_LWT THEN
+  (match Vchan.Port.of_string sport with
+   | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
+   | `Ok p -> return p)
+  >>= fun port ->
+  let flow = Vchan { domid; port=sport } in
+  Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
+  return (flow, ic, oc)
+ELSE
+  let _domid = domid in let _sport = sport in
+  fail (Failure "No Vchan support compiled into Conduit")
+END
+
+(** Main connection function *)
 
 let connect ~ctx (mode:client) =
   match mode with
@@ -209,42 +259,11 @@ let connect ~ctx (mode:client) =
     >>= fun (fd, ic, oc) ->
     let flow = Domain_socket {fd; path} in
     return (flow, ic, oc)
-  | `TLS (host, ip, port) ->
-    (match !tls_library with
-     | OpenSSL ->
-IFDEF HAVE_LWT_SSL THEN
-       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-       Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
-       >>= fun (fd, ic, oc) ->
-       let flow = TCP {fd;ip;port} in
-       return (flow, ic, oc)
-ELSE
-       fail (Failure "No SSL support compiled into Conduit")
-END
-     | Native ->
-IFDEF HAVE_LWT_TLS THEN
-       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-       Conduit_lwt_tls.Client.connect ?src:ctx.src host sa >|= fun (fd, ic, oc) ->
-       let flow = TCP { fd ; ip ; port } in
-       (flow, ic, oc)
-ELSE
-       fail (Failure "No TLS support compiled into Conduit")
-END
-     | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit") )
-  | `Vchan_direct (domid, sport) ->
-IFDEF HAVE_VCHAN_LWT THEN
-    begin match Vchan.Port.of_string sport with
-      | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-      | `Ok p -> return p
-    end >>= fun port ->
-    let flow = Vchan { domid; port=sport } in
-    Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
-    return (flow, ic, oc)
-ELSE
-    fail (Failure "No Vchan support compiled into Conduit")
-END
-  | `Vchan_domain_socket uuid ->
-    fail (Failure "Vchan_domain_socket not implemented")
+  | `TLS c -> connect_with_default_tls ~ctx c
+  | `OpenSSL c -> connect_with_openssl ~ctx c
+  | `TLS_native c -> connect_with_tls_native ~ctx c
+  | `Vchan_direct c -> connect_with_vchan_lwt ~ctx c
+  | `Vchan_domain_socket _uuid -> fail (Failure "Vchan_domain_socket not implemented")
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -262,7 +281,7 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
        Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
        >>= fun () -> t
-  |  `Unix_domain_socket (`File path) ->
+  | `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
        Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
@@ -325,7 +344,7 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `Unix_domain_socket _path as mode -> return mode
   | `Vchan_direct _ as mode -> return mode
   | `Vchan_domain_socket _ as mode -> return mode
-  | `TLS (host, (`TCP (ip, port))) -> return (`TLS (host, ip, port))
+  | `TLS (host, (`TCP (ip, port))) -> return (`TLS (`Hostname host, `IP ip, `Port port))
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf
          "TLS to non-TCP currently unsupported: host=%s endp=%s"

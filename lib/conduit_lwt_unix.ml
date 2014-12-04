@@ -1,5 +1,6 @@
 (*
  * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Hannes Mehnert <hannes@mehnert.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -18,12 +19,33 @@
 open Lwt
 open Sexplib.Conv
 
+type tls_lib = | OpenSSL | Native | No_tls
+let tls_library = ref No_tls
+let () =
+IFDEF HAVE_LWT_SSL THEN
+  IFDEF HAVE_LWT_TLS THEN
+    tls_library := try
+        match Sys.getenv "CONDUIT_TLS" with
+        | "native" | "Native" | "NATIVE" -> Native
+        | _ -> OpenSSL
+      with Not_found -> OpenSSL
+  ELSE
+    tls_library := OpenSSL
+  END
+ELSE
+  IFDEF HAVE_LWT_TLS THEN
+      tls_library := Native
+  ELSE
+      tls_library := No_tls
+  END
+END
+
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
 type client = [
-  | `OpenSSL of string * Ipaddr.t * int
+  | `TLS of string * Ipaddr.t * int
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
   | `Vchan_direct of int * string
@@ -31,7 +53,7 @@ type client = [
 ] with sexp
 
 type server = [
-  | `OpenSSL of
+  | `TLS of
       [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ] *
@@ -44,7 +66,7 @@ type server = [
 
 type tls_server_key = [
   | `None
-  | `OpenSSL of
+  | `TLS of
       [ `Crt_file_path of string ] *
       [ `Key_file_path of string ] *
       [ `Password of bool -> string | `No_password ]
@@ -187,16 +209,28 @@ let connect ~ctx (mode:client) =
     >>= fun (fd, ic, oc) ->
     let flow = Domain_socket {fd; path} in
     return (flow, ic, oc)
-  | `OpenSSL (_host, ip, port) ->
+  | `TLS (host, ip, port) ->
+    (match !tls_library with
+     | OpenSSL ->
 IFDEF HAVE_LWT_SSL THEN
-    let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-    Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
-    >>= fun (fd, ic, oc) ->
-    let flow = TCP {fd;ip;port} in
-    return (flow, ic, oc)
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+       Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
+       >>= fun (fd, ic, oc) ->
+       let flow = TCP {fd;ip;port} in
+       return (flow, ic, oc)
 ELSE
-    fail (Failure "No SSL support compiled into Conduit")
+       fail (Failure "No SSL support compiled into Conduit")
 END
+     | Native ->
+IFDEF HAVE_LWT_TLS THEN
+       let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
+       Conduit_lwt_tls.Client.connect ?src:ctx.src host sa >|= fun (fd, ic, oc) ->
+       let flow = TCP { fd ; ip ; port } in
+       (flow, ic, oc)
+ELSE
+       fail (Failure "No TLS support compiled into Conduit")
+END
+     | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit") )
   | `Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
@@ -233,20 +267,36 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
        Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
        >>= fun () -> t
-  | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+  | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+    (match !tls_library with
+     | OpenSSL ->
 IFDEF HAVE_LWT_SSL THEN
-    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-    let password = match pass with
-      | `No_password -> None
-      | `Password fn -> Some fn
-    in
-    Conduit_lwt_unix_ssl.Server.init
-      ?password ~certfile ~keyfile ?timeout  ?stop sockaddr
-      (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
-    t
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+       let password = match pass with
+        | `No_password -> None
+        | `Password fn -> Some fn
+       in
+       Conduit_lwt_unix_ssl.Server.init
+         ?password ~certfile ~keyfile ?timeout ?stop sockaddr
+         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
+       t
 ELSE
-    fail (Failure "No SSL support compiled into Conduit")
+       fail (Failure "No SSL support compiled into Conduit")
 END
+     | Native ->
+IFDEF HAVE_LWT_TLS THEN
+       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+       (match pass with
+        | `No_password -> return ()
+        | `Password _ -> fail (Failure "OCaml-TLS cannot handle encrypted pem files") ) >>= fun () ->
+       Conduit_lwt_tls.Server.init
+         ~certfile ~keyfile ?timeout ?stop sockaddr
+         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
+       t
+ELSE
+       fail (Failure "No TLS support compiled into Conduit")
+END
+     | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit") )
   |`Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
@@ -275,7 +325,7 @@ let endp_to_client ~ctx (endp:Conduit.endp) =
   | `Unix_domain_socket _path as mode -> return mode
   | `Vchan_direct _ as mode -> return mode
   | `Vchan_domain_socket _ as mode -> return mode
-  | `TLS (host, (`TCP (ip, port))) -> return (`OpenSSL (host, ip, port))
+  | `TLS (host, (`TCP (ip, port))) -> return (`TLS (host, ip, port))
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf
          "TLS to non-TCP currently unsupported: host=%s endp=%s"
@@ -289,8 +339,8 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
   | `TLS (_host, `TCP (_ip, port)) -> begin
        match ctx.tls_server_key with
        | `None -> fail (Failure "No TLS server key configured")
-       | `OpenSSL (`Crt_file_path crt, `Key_file_path key, pass) ->
-          return (`OpenSSL (`Crt_file_path crt, `Key_file_path key,
+       | `TLS (`Crt_file_path crt, `Key_file_path key, pass) ->
+          return (`TLS (`Crt_file_path crt, `Key_file_path key,
             pass, `Port port))
      end
   | `TCP (_ip, port) -> return (`TCP (`Port port))

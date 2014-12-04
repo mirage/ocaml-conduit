@@ -21,10 +21,9 @@ depopts: [
   "lwt"
   "ssl"
   "async_ssl"
-  "mirage-types"
-  "dns"
-  "tcpip"
+  "mirage-dns"
   "vchan"
+  "tls"
 ]
 conflicts: [
   "async" {<"109.15.00"}
@@ -32,5 +31,7 @@ conflicts: [
   "async_ssl" {<"111.21.00"}
   "mirage-types" {<"2.0.0"}
   "dns" {<"0.10.0"}
+  "tls" {<"0.2.0"}
+  "vchan" {<"2.0.0"}
 ]
 available: [ocaml-version >= "4.01.0"]

@@ -54,10 +54,10 @@ type client = [
   | `TLS of client_tls_config
   | `TLS_native of client_tls_config
   | `OpenSSL of client_tls_config
-  | `TCP of Ipaddr.t * int
-  | `Unix_domain_socket of string
-  | `Vchan_direct of int * string
-  | `Vchan_domain_socket of string * string
+  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ]
+  | `Unix_domain_socket of [ `File of string ]
+  | `Vchan_direct of [ `Domid of int ] * [ `Port of string ]
+  | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ]
 ] with sexp
 
 type server = [
@@ -230,7 +230,7 @@ let connect_with_default_tls ~ctx tls_client_config =
   | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
 
 (** VChan connection functions *)
-let connect_with_vchan_lwt ~ctx (domid, sport) =
+let connect_with_vchan_lwt ~ctx (`Domid domid, `Port sport) =
 IFDEF HAVE_VCHAN_LWT THEN
   (match Vchan.Port.of_string sport with
    | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
@@ -248,13 +248,13 @@ END
 
 let connect ~ctx (mode:client) =
   match mode with
-  | `TCP (ip,port) ->
+  | `TCP (`IP ip, `Port port) ->
     let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
     Sockaddr_client.connect ?src:ctx.src sa
     >>= fun (fd, ic, oc) ->
     let flow = TCP {fd;ip;port} in
     return (flow, ic, oc)
-  | `Unix_domain_socket path ->
+  | `Unix_domain_socket (`File path) ->
     Sockaddr_client.connect (Unix.ADDR_UNIX path)
     >>= fun (fd, ic, oc) ->
     let flow = Domain_socket {fd; path} in
@@ -338,12 +338,12 @@ let endp_of_flow = function
 (** Use the configuration of the server to interpret how to
     handle a particular endpoint from the resolver into a
     concrete implementation of type [client] *)
-let endp_to_client ~ctx (endp:Conduit.endp) =
+let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
   match endp with
-  | `TCP (_ip, _port) as mode -> return mode
-  | `Unix_domain_socket _path as mode -> return mode
-  | `Vchan_direct _ as mode -> return mode
-  | `Vchan_domain_socket _ as mode -> return mode
+  | `TCP (ip, port) -> return (`TCP (`IP ip, `Port port))
+  | `Unix_domain_socket file -> return (`Unix_domain_socket (`File file))
+  | `Vchan_direct (domid, port) -> return (`Vchan_direct (`Domid domid, `Port port))
+  | `Vchan_domain_socket (name, port) -> return (`Vchan_domain_socket (`Domain_name name, `Port port))
   | `TLS (host, (`TCP (ip, port))) -> return (`TLS (`Hostname host, `IP ip, `Port port))
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf

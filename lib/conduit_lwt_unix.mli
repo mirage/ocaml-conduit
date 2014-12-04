@@ -32,10 +32,10 @@ type client = [
   | `TLS of client_tls_config (** Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect to the given [host], [ip], [port] tuple via TCP *)
   | `TLS_native of client_tls_config (** Force use of native OCaml TLS stack to connect.*)
   | `OpenSSL of client_tls_config  (** Force use of Lwt OpenSSL bindings to connect. *)
-  | `TCP of Ipaddr.t * int (** Use TCP to connect to the given [ip], [port] tuple. *)
-  | `Unix_domain_socket of string (** Use UNIX domain sockets to connect to a socket on the [path]. *)
-  | `Vchan_direct of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)
-  | `Vchan_domain_socket of string * string
+  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ] (** Use TCP to connect to the given [ip], [port] tuple. *)
+  | `Unix_domain_socket of [ `File of string ] (** Use UNIX domain sockets to connect to a socket on the [path]. *)
+  | `Vchan_direct of [ `Domid of int ] * [ `Port of string ] (** Connect to the remote VM on the [domid], [port] tuple. *)
+  | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ] (** Use the Vchan name resolution to connect *)
 ] with sexp
 
 (** Set of supported listening mechanisms that are supported by this module. *)

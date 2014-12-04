@@ -48,8 +48,9 @@ ELSE
   END
 END
 
-let () = !debug_print "Selected TLS library: %s\n"
-  (Sexplib.Sexp.to_string (sexp_of_tls_lib !tls_library))
+let () = if !debug then
+  !debug_print "Selected TLS library: %s\n"
+    (Sexplib.Sexp.to_string (sexp_of_tls_lib !tls_library))
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel

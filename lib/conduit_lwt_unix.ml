@@ -19,7 +19,7 @@
 open Lwt
 open Sexplib.Conv
 
-type tls_lib = | OpenSSL | Native | No_tls
+type tls_lib = | OpenSSL | Native | No_tls with sexp
 let tls_library = ref No_tls
 let () =
 IFDEF HAVE_LWT_SSL THEN

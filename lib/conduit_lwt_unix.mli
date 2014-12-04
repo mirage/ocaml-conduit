@@ -130,3 +130,16 @@ val endp_to_client : ctx:ctx -> Conduit.endp -> client io
 (** [endp_to_server ~ctx endp] converts an [endp] into a
     a concrete connection mechanism of type [client] *)
 val endp_to_server : ctx:ctx -> Conduit.endp -> server io
+
+(** {2 TLS library selection} *)
+
+(** Currently selected method of using TLS for client and servers *)
+type tls_lib =
+ | OpenSSL (** The [Lwt_ssl] bindings to the C OpenSSL library *)
+ | Native  (** A pure OCaml TLS implementation *)
+ | No_tls  (** No TLS implementation available, so any connections will fail *)
+
+(** The default selection is to select {!OpenSSL}, {!Native} and {!No_tls} in
+    decreasing order of priority.  The native OCaml stack can be forced by
+    setting the [CONDUIT_TLS] Unix environment variable to [native]. *)
+val tls_library : tls_lib ref

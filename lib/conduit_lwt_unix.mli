@@ -76,10 +76,10 @@ type tls_server_key = [
     [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
-]
+] with sexp
 
 (** State handler for an active conduit *)
-type ctx
+type ctx with sexp_of
 
 (** Default context that listens on all source addresses with
     no TLS certificate associated with the Conduit *)

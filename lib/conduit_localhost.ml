@@ -15,10 +15,12 @@
  *
 *)
 
-type t = unit
-type flow
-type uuid = string
-type port = Vchan.Port.t
+open Sexplib.Conv
+
+type t = unit with sexp_of
+type flow = unit with sexp_of
+type uuid = string with sexp_of
+type port = Vchan.Port.t with sexp_of
 
 let register _ = Lwt.return ()
 let listen _ = Lwt.fail (Failure "Localhost peer only")

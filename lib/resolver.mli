@@ -41,7 +41,7 @@ module type S = sig
 
   (** Abstract type for a service entry, which maps a URI scheme into
       a protocol handler and TCP port *)
-  type svc
+  type svc with sexp
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)

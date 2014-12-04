@@ -21,6 +21,7 @@
 
 open Sexplib.Conv
 
+(** Configuration fragment for a TLS client connecting to a remote endpoint *)
 type client_tls_config =
   [ `Hostname of string ] *
   [ `IP of Ipaddr.t ] *
@@ -38,13 +39,19 @@ type client = [
   | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ] (** Use the Vchan name resolution to connect *)
 ] with sexp
 
+(** Configuration fragment for a listening TLS server *)
+type server_tls_config =
+  [ `Crt_file_path of string ] *
+  [ `Key_file_path of string ] *
+  [ `Password of bool -> string | `No_password ] *
+  [ `Port of int ]
+with sexp
+
 (** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
-  | `TLS of
-      [ `Crt_file_path of string ] *
-      [ `Key_file_path of string ] *
-      [ `Password of bool -> string | `No_password ] *
-      [ `Port of int ]
+  | `TLS of server_tls_config
+  | `OpenSSL of server_tls_config
+  | `TLS_native of server_tls_config
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string

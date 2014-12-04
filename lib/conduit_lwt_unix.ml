@@ -60,16 +60,23 @@ type client = [
   | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ]
 ] with sexp
 
+(** Configuration fragment for a listening TLS server *)
+type server_tls_config =
+  [ `Crt_file_path of string ] *
+  [ `Key_file_path of string ] *
+  [ `Password of bool -> string | `No_password ] *
+  [ `Port of int ]
+with sexp
+
+(** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
-  | `TLS of
-      [ `Crt_file_path of string ] *
-      [ `Key_file_path of string ] *
-      [ `Password of bool -> string | `No_password ] *
-      [ `Port of int ]
+  | `TLS of server_tls_config
+  | `OpenSSL of server_tls_config
+  | `TLS_native of server_tls_config
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string
-  | `Vchan_domain_socket of string * string
+  | `Vchan_domain_socket of string  * string
 ] with sexp
 
 type tls_server_key = [
@@ -272,6 +279,43 @@ let sockaddr_on_tcp_port ctx port =
   | Some (ADDR_INET (a,_)) -> ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a
   | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
+let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+IFDEF HAVE_LWT_SSL THEN
+  let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+  let password =
+    match pass with
+    | `No_password -> None
+    | `Password fn -> Some fn
+  in
+  Conduit_lwt_unix_ssl.Server.init
+    ?password ~certfile ~keyfile ?timeout ?stop sockaddr
+    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
+  t
+ELSE
+  fail (Failure "No SSL support compiled into Conduit")
+END
+
+let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+IFDEF HAVE_LWT_TLS THEN
+  let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+  (match pass with
+    | `No_password -> return ()
+    | `Password _ -> fail (Failure "OCaml-TLS cannot handle encrypted pem files")
+  ) >>= fun () ->
+  Conduit_lwt_tls.Server.init
+    ~certfile ~keyfile ?timeout ?stop sockaddr
+    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
+  >>= fun () -> t
+ELSE
+  fail (Failure "No TLS support compiled into Conduit")
+END
+
+let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+  match !tls_library with
+  | OpenSSL -> serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  | Native -> serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
+  
 let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
@@ -286,36 +330,12 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
        Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
        >>= fun () -> t
-  | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
-    (match !tls_library with
-     | OpenSSL ->
-IFDEF HAVE_LWT_SSL THEN
-       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       let password = match pass with
-        | `No_password -> None
-        | `Password fn -> Some fn
-       in
-       Conduit_lwt_unix_ssl.Server.init
-         ?password ~certfile ~keyfile ?timeout ?stop sockaddr
-         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
-       t
-ELSE
-       fail (Failure "No SSL support compiled into Conduit")
-END
-     | Native ->
-IFDEF HAVE_LWT_TLS THEN
-       let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       (match pass with
-        | `No_password -> return ()
-        | `Password _ -> fail (Failure "OCaml-TLS cannot handle encrypted pem files") ) >>= fun () ->
-       Conduit_lwt_tls.Server.init
-         ~certfile ~keyfile ?timeout ?stop sockaddr
-         (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
-       t
-ELSE
-       fail (Failure "No TLS support compiled into Conduit")
-END
-     | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit") )
+  |`TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+     serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  |`OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+     serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  |`TLS_native (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+     serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
   |`Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with

@@ -10,6 +10,10 @@ from the precise SSL library used, since there are a variety of ways
 to bind to a library (e.g. the C FFI, or the Ctypes library), as well
 as well as which library is used (just OpenSSL for now).
 
+By default, OpenSSL is used as the preferred connection library, but
+you can force the use of the pure OCaml TLS stack by setting the
+environment variable `CONDUIT_TLS=native` when starting your program.
+
 ### Modules
 
 Source code is in `lib/`.

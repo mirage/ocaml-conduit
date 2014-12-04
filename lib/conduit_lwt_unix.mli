@@ -1,5 +1,6 @@
 (*
  * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Hannes Mehnert <hannes@mehnert.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -20,22 +21,37 @@
 
 open Sexplib.Conv
 
+(** Configuration fragment for a TLS client connecting to a remote endpoint *)
+type client_tls_config =
+  [ `Hostname of string ] *
+  [ `IP of Ipaddr.t ] *
+  [ `Port of int ]
+with sexp
+
 (** Set of supported client connections that are supported by this module. *)
 type client = [
-  | `OpenSSL of string * Ipaddr.t * int (** Use OpenSSL to connect to the given [host], [ip], [port] tuple via TCP *)
-  | `TCP of Ipaddr.t * int (** Use TCP to connect to the given [ip], [port] tuple. *)
-  | `Unix_domain_socket of string (** Use UNIX domain sockets to connect to a socket on the [path]. *)
-  | `Vchan_direct of int * string (** Connect to the remote VM on the [domid], [port] tuple. *)
-  | `Vchan_domain_socket of string * string
+  | `TLS of client_tls_config (** Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect to the given [host], [ip], [port] tuple via TCP *)
+  | `TLS_native of client_tls_config (** Force use of native OCaml TLS stack to connect.*)
+  | `OpenSSL of client_tls_config  (** Force use of Lwt OpenSSL bindings to connect. *)
+  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ] (** Use TCP to connect to the given [ip], [port] tuple. *)
+  | `Unix_domain_socket of [ `File of string ] (** Use UNIX domain sockets to connect to a socket on the [path]. *)
+  | `Vchan_direct of [ `Domid of int ] * [ `Port of string ] (** Connect to the remote VM on the [domid], [port] tuple. *)
+  | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ] (** Use the Vchan name resolution to connect *)
 ] with sexp
+
+(** Configuration fragment for a listening TLS server *)
+type server_tls_config =
+  [ `Crt_file_path of string ] *
+  [ `Key_file_path of string ] *
+  [ `Password of bool -> string | `No_password ] *
+  [ `Port of int ]
+with sexp
 
 (** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
-  | `OpenSSL of
-      [ `Crt_file_path of string ] *
-      [ `Key_file_path of string ] *
-      [ `Password of bool -> string | `No_password ] *
-      [ `Port of int ]
+  | `TLS of server_tls_config
+  | `OpenSSL of server_tls_config
+  | `TLS_native of server_tls_config
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string
@@ -68,11 +84,10 @@ type flow = private
   | Vchan of vchan_flow
 with sexp_of
 
-(** Type describing where to locate an OpenSSL-format
-    key in the filesystem *)
+(** Type describing where to locate a PEM key in the filesystem *)
 type tls_server_key = [
  | `None
- | `OpenSSL of
+ | `TLS of
     [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
@@ -115,3 +130,16 @@ val endp_to_client : ctx:ctx -> Conduit.endp -> client io
 (** [endp_to_server ~ctx endp] converts an [endp] into a
     a concrete connection mechanism of type [client] *)
 val endp_to_server : ctx:ctx -> Conduit.endp -> server io
+
+(** {2 TLS library selection} *)
+
+(** Currently selected method of using TLS for client and servers *)
+type tls_lib =
+ | OpenSSL (** The [Lwt_ssl] bindings to the C OpenSSL library *)
+ | Native  (** A pure OCaml TLS implementation *)
+ | No_tls  (** No TLS implementation available, so any connections will fail *)
+
+(** The default selection is to select {!OpenSSL}, {!Native} and {!No_tls} in
+    decreasing order of priority.  The native OCaml stack can be forced by
+    setting the [CONDUIT_TLS] Unix environment variable to [native]. *)
+val tls_library : tls_lib ref

@@ -19,6 +19,14 @@
 open Lwt
 open Sexplib.Conv
 
+let debug = ref false
+let debug_print = ref Printf.eprintf
+let () =
+  try
+    ignore(Sys.getenv "CONDUIT_DEBUG");
+    debug := true
+  with Not_found -> ()
+
 type tls_lib = | OpenSSL | Native | No_tls with sexp
 let tls_library = ref No_tls
 let () =
@@ -39,6 +47,9 @@ ELSE
       tls_library := No_tls
   END
 END
+
+let () = !debug_print "Selected TLS library: %s\n"
+  (Sexplib.Sexp.to_string (sexp_of_tls_lib !tls_library))
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel

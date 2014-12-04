@@ -6,6 +6,7 @@
 * Add sexp convertors for `Conduit_lwt_unix.ctx` and `Conduit_mirage.ctx`
   and the `Resolver` service types.
 * Fix the Mirage tests to the Mirage 2.0.1+ Conduit interfaces.
+* Add more debugging output when the `CONDUIT_DEBUG` variable is set on Unix.
 * *Interface breaking:* The `client` and `server` types in `Conduit_lwt_unix`
   now explicitly label the fields of the tuples with a polymorphic variant.
   This allows them to remain independent of this library but still be

@@ -139,7 +139,7 @@ fi
 
 REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_MIRAGE_XEN_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 
-ocamlbuild -use-ocamlfind -j ${J_FLAG} -tag ${TAGS} \
+ocamlbuild -use-ocamlfind -no-links -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
   -pkgs `echo $REQS | tr ' ' ','` \
   ${TARGETS}

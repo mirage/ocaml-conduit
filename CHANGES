@@ -1,5 +1,6 @@
 0.7.1 (trunk):
 * Do not emit debug output when the `CONDUIT_DEBUG` variable is not set.
+* Do not create symlinks in a local build, which helps with OPAM pins.
 
 0.7.0 (2014-12-04):
 * Add Lwt-unix support for the native OCaml/TLS stack as an alternative

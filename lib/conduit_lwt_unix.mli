@@ -21,6 +21,8 @@
 
 open Sexplib.Conv
 
+(** {2 Core types} *)
+
 (** Configuration fragment for a TLS client connecting to a remote endpoint *)
 type client_tls_config =
   [ `Hostname of string ] *
@@ -62,22 +64,26 @@ type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
 type oc = Lwt_io.output_channel
 
+(** [tcp_flow] contains the state of a single TCP connection. *)
 type tcp_flow = private {
   fd: Lwt_unix.file_descr sexp_opaque;
   ip: Ipaddr.t;
   port: int;
 } with sexp_of
 
+(** [domain_flow] contains the state of a single Unix domain socket connection. *)
 type domain_flow = private {
   fd: Lwt_unix.file_descr sexp_opaque;
   path: string;
 } with sexp_of
 
+(** [vchan_flow] contains the state of a single Vchan shared memory connection. *)
 type vchan_flow = private {
   domid: int;
   port: string;
 } with sexp_of
 
+(** A [flow] contains the state of a single connection, over a specific transport method. *)
 type flow = private
   | TCP of tcp_flow
   | Domain_socket of domain_flow
@@ -95,6 +101,8 @@ type tls_server_key = [
 
 (** State handler for an active conduit *)
 type ctx with sexp_of
+
+(** {2 Connection and listening} *)
 
 (** Default context that listens on all source addresses with
     no TLS certificate associated with the Conduit *)

@@ -119,7 +119,7 @@ type ctx with sexp_of
     no TLS certificate associated with the Conduit *)
 val default_ctx : ctx
 
-(** [init ?src ?tls_server_key] will initialize a Unix conduit
+(** [init ?src ?tls_server_key ()] will initialize a Unix conduit
     that binds to the [src] interface if specified.  If TLS server
     connections are used, then [tls_server_key] must contain a
     valid certificate to be used to advertise a TLS connection *)

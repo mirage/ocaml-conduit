@@ -55,7 +55,7 @@ module type ENDPOINT = sig
     `Unknown of string
   ]
 
-  (** [server ~domid ~port ?read_size ?write_size] will listen on a
+  (** [server ~domid ~port ?read_size ?write_size ()] will listen on a
       connection for a source [domid] and [port] combination, block
       until a client connects, and then return a {!t} handle to read
       and write on the resulting connection.  The size of the shared
@@ -68,7 +68,7 @@ module type ENDPOINT = sig
     ?write_size:int ->
     unit -> t Lwt.t
 
-  (** [client ~domid ~port] will connect to a remote [domid] and
+  (** [client ~domid ~port ()] will connect to a remote [domid] and
     [port] combination, where a server should already be listening
     after making a call to {!server}.  The call will block until a
     connection is established, after which it will return a {!t}

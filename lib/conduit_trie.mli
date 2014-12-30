@@ -38,4 +38,3 @@ val fold : (string -> 'a -> 'b -> 'b) -> 'b -> 'a t -> 'b
 
 (** [is_prefix a b] returns true if [a] is a prefix of [b] *)
 val is_prefix: string -> string -> bool
-

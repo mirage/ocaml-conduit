@@ -17,7 +17,7 @@
  *)
 
 (** Connection establishment using the
-    {{:http://ocsigen.org/lwt/api/Lwt_unix}Lwt_unix} library *) 
+    {{:http://ocsigen.org/lwt/api/Lwt_unix}Lwt_unix} library *)
 
 open Sexplib.Conv
 
@@ -32,13 +32,21 @@ with sexp
 
 (** Set of supported client connections that are supported by this module. *)
 type client = [
-  | `TLS of client_tls_config (** Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect to the given [host], [ip], [port] tuple via TCP *)
-  | `TLS_native of client_tls_config (** Force use of native OCaml TLS stack to connect.*)
-  | `OpenSSL of client_tls_config  (** Force use of Lwt OpenSSL bindings to connect. *)
-  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ] (** Use TCP to connect to the given [ip], [port] tuple. *)
-  | `Unix_domain_socket of [ `File of string ] (** Use UNIX domain sockets to connect to a socket on the [path]. *)
-  | `Vchan_direct of [ `Domid of int ] * [ `Port of string ] (** Connect to the remote VM on the [domid], [port] tuple. *)
-  | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ] (** Use the Vchan name resolution to connect *)
+  | `TLS of client_tls_config
+  (** Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect to
+      the given [host], [ip], [port] tuple via TCP *)
+  | `TLS_native of client_tls_config
+  (** Force use of native OCaml TLS stack to connect.*)
+  | `OpenSSL of client_tls_config
+  (** Force use of Lwt OpenSSL bindings to connect. *)
+  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ]
+  (** Use TCP to connect to the given [ip], [port] tuple. *)
+  | `Unix_domain_socket of [ `File of string ]
+  (** Use UNIX domain sockets to connect to a socket on the [path]. *)
+  | `Vchan_direct of [ `Domid of int ] * [ `Port of string ]
+  (** Connect to the remote VM on the [domid], [port] tuple. *)
+  | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ]
+  (** Use the Vchan name resolution to connect *)
 ] with sexp
 
 (** Configuration fragment for a listening TLS server *)
@@ -71,19 +79,22 @@ type tcp_flow = private {
   port: int;
 } with sexp_of
 
-(** [domain_flow] contains the state of a single Unix domain socket connection. *)
+(** [domain_flow] contains the state of a single Unix domain socket
+    connection. *)
 type domain_flow = private {
   fd: Lwt_unix.file_descr sexp_opaque;
   path: string;
 } with sexp_of
 
-(** [vchan_flow] contains the state of a single Vchan shared memory connection. *)
+(** [vchan_flow] contains the state of a single Vchan shared memory
+    connection. *)
 type vchan_flow = private {
   domid: int;
   port: string;
 } with sexp_of
 
-(** A [flow] contains the state of a single connection, over a specific transport method. *)
+(** A [flow] contains the state of a single connection, over a specific
+    transport method. *)
 type flow = private
   | TCP of tcp_flow
   | Domain_socket of domain_flow
@@ -108,7 +119,7 @@ type ctx with sexp_of
     no TLS certificate associated with the Conduit *)
 val default_ctx : ctx
 
-(** [init ?src ?tls_server_key] will initialize a Unix conduit
+(** [init ?src ?tls_server_key ()] will initialize a Unix conduit
     that binds to the [src] interface if specified.  If TLS server
     connections are used, then [tls_server_key] must contain a
     valid certificate to be used to advertise a TLS connection *)

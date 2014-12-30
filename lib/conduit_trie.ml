@@ -48,7 +48,7 @@ let string = function
    safe to examine the first characters of the child strings. Moreover since
    common prefixes are always represented as shared nodes, there can be at most
    one child with the same initial character as the key we're looking up. *)
-let choose remaining ns = 
+let choose remaining ns =
   match List.partition (fun x -> (string x).[0] = remaining.[0]) ns with
   | [ n ], rest -> Some(n, rest)
   | [], _ -> None
@@ -88,7 +88,7 @@ let rec fold_over_path f str acc = function
   | _ -> acc
 
 let longest_prefix str t =
-  fold_over_path 
+  fold_over_path
     (fun acc b -> if b = None then acc else b)
     str None t
 

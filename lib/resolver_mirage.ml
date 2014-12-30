@@ -26,7 +26,7 @@ let is_tls_service =
 let get_host uri =
   match Uri.host uri with
   | None -> "localhost"
-  | Some host -> 
+  | Some host ->
       match Ipaddr.of_string host with
       | Some ip -> Ipaddr.to_string ip
       | None -> host
@@ -41,7 +41,7 @@ let static_resolver hosts service uri =
   try
     let fn = Hashtbl.find hosts (get_host uri) in
     return (fn ~port)
-  with Not_found -> 
+  with Not_found ->
     return (`Unknown ("name resolution failed"))
 
 let static_service name =
@@ -59,7 +59,8 @@ let static hosts =
 
 let localhost =
   let hosts = Hashtbl.create 3 in
-  Hashtbl.add hosts "localhost" (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
+  Hashtbl.add hosts "localhost"
+              (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
 module Make(DNS:Dns_resolver_mirage.S) = struct
@@ -90,7 +91,8 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
 
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 
-  let dns_stub_resolver ?(ns=default_ns) ?(ns_port=53) dns service uri : Conduit.endp Lwt.t =
+  let dns_stub_resolver ?(ns=default_ns) ?(ns_port=53) dns service uri
+      : Conduit.endp Lwt.t =
     let host = get_host uri in
     let port = get_port service uri in
     DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
@@ -99,9 +101,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     |> function
     | [] -> return (`Unknown ("name resolution failed"))
     | addr::_ -> return (`TCP (addr,port))
-  
+
   let register ?(ns=default_ns) ?(ns_port=53) ?stack res =
-      begin match stack with 
+      begin match stack with
       | Some s ->
          (* DNS stub resolver *)
          let dns = DNS.create s in
@@ -119,4 +121,3 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     register ?ns ?ns_port ?stack res;
     res
 end
-

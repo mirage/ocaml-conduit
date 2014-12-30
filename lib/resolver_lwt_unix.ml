@@ -60,7 +60,7 @@ let static_service name =
 let get_host uri =
   match Uri.host uri with
   | None -> "localhost"
-  | Some host -> 
+  | Some host ->
       match Ipaddr.of_string host with
       | Some ip -> Ipaddr.to_string ip
       | None -> host
@@ -80,7 +80,8 @@ let system_resolver service uri =
   >>= function
   | [] -> return_endp "system" service uri (`Unknown ("name resolution failed"))
   | {ai_addr=ADDR_INET (addr,port);_}::_ ->
-      return_endp "system" service uri (`TCP (Ipaddr_unix.of_inet_addr addr, port))
+     return_endp "system" service uri
+                 (`TCP (Ipaddr_unix.of_inet_addr addr, port))
   | {ai_addr=ADDR_UNIX file;_}::_ ->
       return_endp "system" service uri (`Unix_domain_socket file)
 

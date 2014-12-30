@@ -144,7 +144,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
   type flow = Flow.flow
   type stack = S.t
   type peer = V.t
- 
+
   type ctx = {
     peer: V.t option;
     stack: S.t option sexp_opaque;
@@ -155,19 +155,20 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
     | `TCP (_ip, _port) as mode -> return mode
     | `Vchan_direct (domid, port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct (domid, port))
     | `Vchan_domain_socket (uuid,  port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `Unix_domain_socket _path ->
+       fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
@@ -176,19 +177,20 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
     | `TCP (_ip, port) -> return (`TCP (`Port port))
     | `Vchan_direct (domid, port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_direct ((`Remote_domid domid), port))
     | `Vchan_domain_socket (uuid,  port) ->
        begin
-         match Vchan.Port.of_string port with 
+         match Vchan.Port.of_string port with
          | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
          | `Ok p -> return p
        end >>= fun port ->
        return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _path -> fail (Failure "Domain sockets not valid on Mirage")
+    | `Unix_domain_socket _path ->
+       fail (Failure "Domain sockets not valid on Mirage")
     | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
     | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
 
@@ -209,9 +211,10 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
            endp_to_client ~ctx endp
            >>= fun client ->
            connect ~ctx client
-    end   
+    end
     | `Vchan_direct (domid, port), _ ->
-      Printf.printf "Conduit.connect: Vchan %d %s\n%!" domid (Vchan.Port.to_string port);
+      Printf.printf "Conduit.connect: Vchan %d %s\n%!"
+                    domid (Vchan.Port.to_string port);
       V.Endpoint.client ~domid ~port ()
       >>= fun flow ->
       Printf.printf "Conduit.connect: connected!\n%!";
@@ -250,7 +253,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
               fn f f f
            | _ -> fail (Failure "TODO")
          ) conns
-    end 
+    end
     |`TCP (`Port _port), None ->
       fail (Failure "No stack bound to Conduit")
     |`TCP (`Port port), Some stack ->

@@ -5,7 +5,8 @@ machine) or on a remote host via TCP.  It consists of:
 - The {!Conduit} module with basic type definitions for endpoints
 - OS-specific modules for {{!transport}establishing individual connections}
 - The {!Resolver} module for mapping URIs to endpoints
-- OS-specific {{!resolution}name resolvers} that use available resolution mechanisms
+- OS-specific {{!resolution}name resolvers} that use available
+  resolution mechanisms
 
 {2:transport Connection Establishment} 
 
@@ -22,7 +23,8 @@ The modules dealing with connection establishment are:
 
 {2:resolution Name Resolution}
 
-This deals with resolving URIs into a list of {{!Conduit.endp}endp} addresses that can
+This deals with resolving URIs into a list of {{!Conduit.endp}endp}
+addresses that can
 then be connected to by the {{!transport}connection establishment} modules.
 
 All of the name resolvers conform to the {!Resolver.S} module type.

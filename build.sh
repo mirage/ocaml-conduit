@@ -159,6 +159,6 @@ if [ "$1" = "true" ]; then
   B=_build/lib/
   ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a > _install/lib
   ocamlfind remove conduit || true
-  FILES=`ls -1 $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a 2>/dev/null || true`
+  FILES=`ls -1 lib/intro.html $B/*.mli $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a 2>/dev/null || true`
   ocamlfind install conduit META $FILES
 fi

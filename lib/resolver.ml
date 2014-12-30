@@ -149,7 +149,8 @@ module Make(IO:Conduit.IO) = struct
           in
           (* Find the longest prefix function that matches this host *)
           let fn =
-            match Conduit_trie.longest_prefix (host_to_domain_list host) trie with
+            match Conduit_trie.longest_prefix (host_to_domain_list host) trie
+            with
             | None -> t.default_lookup
             | Some fn -> fn
           in

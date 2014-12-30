@@ -35,7 +35,7 @@ val connect : ?interrupt:unit io -> addr -> (ic * oc) io
 
 type server = [
   | `OpenSSL of
-    [ `Crt_file_path of string ] * 
+    [ `Crt_file_path of string ] *
     [ `Key_file_path of string ]
   | `TCP
 ] with sexp
@@ -49,5 +49,5 @@ val serve :
     | `Raise ] ->
     server ->
     ('a, 'b) Tcp.Where_to_listen.t ->
-    ('a -> ic -> oc -> unit io) -> 
+    ('a -> ic -> oc -> unit io) ->
     ('a, 'b) Tcp.Server.t io

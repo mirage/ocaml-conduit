@@ -29,7 +29,7 @@ type uuid = string with sexp_of
 type flow = Vchan_xen.t with sexp_of
 
 module Endpoint = Vchan_xen
- 
+
 let get_my_id xs =
   OS.Xs.(immediate xs (fun h -> read h "domid"))
 
@@ -60,7 +60,7 @@ let register name =
   >>= fun () ->
   xenstore_register xs name >>= fun () ->
   return { xs; name }
- 
+
 let accept {xs; name } =
   let waitfn h =
     readdir h (sprintf "/conduit/%s" name) >>= fun remote_name ->

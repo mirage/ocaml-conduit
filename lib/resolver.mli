@@ -86,4 +86,3 @@ end
 module Make (IO : Conduit.IO) : S
   with type svc = service
   and  type 'a io = 'a IO.t
-

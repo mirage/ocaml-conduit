@@ -183,7 +183,8 @@ module Sockaddr_server = struct
 
   let init_socket sockaddr =
     Unix.handle_unix_error (fun () ->
-      let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+      let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr)
+                                 Unix.SOCK_STREAM 0 in
       Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
       Lwt_unix.bind sock sockaddr;
       Lwt_unix.listen sock 15;
@@ -282,7 +283,8 @@ let connect ~ctx (mode:client) =
   | `OpenSSL c -> connect_with_openssl ~ctx c
   | `TLS_native c -> connect_with_tls_native ~ctx c
   | `Vchan_direct c -> connect_with_vchan_lwt ~ctx c
-  | `Vchan_domain_socket _uuid -> fail (Failure "Vchan_domain_socket not implemented")
+  | `Vchan_domain_socket _uuid ->
+     fail (Failure "Vchan_domain_socket not implemented")
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -291,7 +293,8 @@ let sockaddr_on_tcp_port ctx port =
   | Some (ADDR_INET (a,_)) -> ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a
   | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
-let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
+                       ~pass ~port callback t =
 IFDEF HAVE_LWT_SSL THEN
   let sockaddr, ip = sockaddr_on_tcp_port ctx port in
   let password =
@@ -307,7 +310,8 @@ ELSE
   fail (Failure "No SSL support compiled into Conduit")
 END
 
-let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
+                          ~pass ~port callback t =
 IFDEF HAVE_LWT_TLS THEN
   let sockaddr, ip = sockaddr_on_tcp_port ctx port in
   (match pass with
@@ -322,12 +326,15 @@ ELSE
   fail (Failure "No TLS support compiled into Conduit")
 END
 
-let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t =
+let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
+                           ~pass ~port callback t =
   match !tls_library with
-  | OpenSSL -> serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
-  | Native -> serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  | OpenSSL -> serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
+                                 ~pass ~port callback t
+  | Native -> serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
+                                   ~pass ~port callback t
   | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
-  
+
 let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
@@ -342,12 +349,17 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
        Sockaddr_server.init ~sockaddr ?timeout ?stop
          (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
        >>= fun () -> t
-  |`TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
-     serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
-  |`OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
-     serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
-  |`TLS_native (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
-     serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port callback t
+  | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
+     serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
+                            ~pass ~port callback t
+  | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile,
+              pass, `Port port) ->
+     serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
+                        ~pass ~port callback t
+  | `TLS_native (`Crt_file_path certfile, `Key_file_path keyfile,
+                 pass, `Port port) ->
+     serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
+                           ~pass ~port callback t
   |`Vchan_direct (domid, sport) ->
 IFDEF HAVE_VCHAN_LWT THEN
     begin match Vchan.Port.of_string sport with
@@ -374,9 +386,12 @@ let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
   match endp with
   | `TCP (ip, port) -> return (`TCP (`IP ip, `Port port))
   | `Unix_domain_socket file -> return (`Unix_domain_socket (`File file))
-  | `Vchan_direct (domid, port) -> return (`Vchan_direct (`Domid domid, `Port port))
-  | `Vchan_domain_socket (name, port) -> return (`Vchan_domain_socket (`Domain_name name, `Port port))
-  | `TLS (host, (`TCP (ip, port))) -> return (`TLS (`Hostname host, `IP ip, `Port port))
+  | `Vchan_direct (domid, port) ->
+     return (`Vchan_direct (`Domid domid, `Port port))
+  | `Vchan_domain_socket (name, port) ->
+     return (`Vchan_domain_socket (`Domain_name name, `Port port))
+  | `TLS (host, (`TCP (ip, port))) ->
+     return (`TLS (`Hostname host, `IP ip, `Port port))
   | `TLS (host, endp) -> begin
        fail (Failure (Printf.sprintf
          "TLS to non-TCP currently unsupported: host=%s endp=%s"

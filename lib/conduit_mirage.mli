@@ -18,9 +18,10 @@
 (** Functorial connection establishment interface that is compatible with
     the Mirage libraries.
 
-    Currently supports two transports: 
+    Currently supports two transports:
 
-    - TCPv4 for remote communications using the {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
+    - TCPv4 for remote communications using the
+      {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
     - Vchan for inter-VM communication within a single Xen host
   *)
 
@@ -46,18 +47,20 @@ module type ENDPOINT = sig
   (** Type of a single connection *)
   type t with sexp_of
 
-  (** Type of the port name that identifies a unique connection at an endpoint *)
+  (** Type of the port name that identifies a unique connection at an
+      endpoint *)
   type port = vchan_port
 
   type error = [
     `Unknown of string
   ]
 
-  (** [server ~domid ~port ?read_size ?write_size] will listen on a connection for
-      a source [domid] and [port] combination, block until a client connects, and 
-      then return a {!t} handle to read and write on the resulting connection.
-      The size of the shared memory buffer can be controlled by setting [read_size]
-      or [write_size] in bytes. *)
+  (** [server ~domid ~port ?read_size ?write_size] will listen on a
+      connection for a source [domid] and [port] combination, block
+      until a client connects, and then return a {!t} handle to read
+      and write on the resulting connection.  The size of the shared
+      memory buffer can be controlled by setting [read_size] or
+      [write_size] in bytes. *)
   val server :
     domid:int ->
     port:port ->
@@ -65,10 +68,12 @@ module type ENDPOINT = sig
     ?write_size:int ->
     unit -> t Lwt.t
 
-  (** [client ~domid ~port] will connect to a remote [domid] and [port] combination,
-    where a server should already be listening after making a call to {!server}.
-    The call will block until a connection is established, after which it will return
-    a {!t} handle that can be used to read or write on the shared memory connection. *)
+  (** [client ~domid ~port] will connect to a remote [domid] and
+    [port] combination, where a server should already be listening
+    after making a call to {!server}.  The call will block until a
+    connection is established, after which it will return a {!t}
+    handle that can be used to read or write on the shared memory
+    connection. *)
   val client :
     domid:int ->
     port:port ->
@@ -143,6 +148,6 @@ module type S = sig
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER) : 
+module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER) :
   S with type stack = S.t
      and type peer = V.t

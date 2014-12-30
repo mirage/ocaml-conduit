@@ -55,8 +55,8 @@ END
 
 type server = [
   | `OpenSSL of
-    [ `Crt_file_path of string ] * 
-    [ `Key_file_path of string ] 
+    [ `Crt_file_path of string ] *
+    [ `Key_file_path of string ]
   | `TCP
 ] with sexp
 

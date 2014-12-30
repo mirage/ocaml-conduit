@@ -53,6 +53,6 @@ val debug : bool ref
 (** [debug_print] is called by the {!debug} functions to output the
     results of resolution.  Defaults to {!Printf.eprintf} to go to
     the standard error. *)
-val debug_print : 
+val debug_print :
     ((string -> string -> string -> string -> unit, out_channel, unit)
      format -> string -> string -> string -> string -> unit) ref

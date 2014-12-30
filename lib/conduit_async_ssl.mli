@@ -22,9 +22,9 @@ open Async.Std
 (** [ssl_connect rd wr] will establish a client TLS/SSL session
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
     Async connections. *)
-val ssl_connect : 
-  Reader.t -> 
-  Writer.t -> 
+val ssl_connect :
+  Reader.t ->
+  Writer.t ->
   (Reader.t * Writer.t) Deferred.t
 
 (** [ssl_listen ~crt_file ~key_file rd wr] will establish a server

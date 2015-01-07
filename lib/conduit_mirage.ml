@@ -28,6 +28,7 @@ type client = [
 ] with sexp
 
 type server = [
+  | `TLS of Tls.Config.server * server
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [`Remote_domid of int] * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -108,7 +109,26 @@ module type VCHAN_PEER = PEER
   with type uuid = string
    and type port = vchan_port
 
-module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
+module type TLS = sig
+  module FLOW : V1_LWT.FLOW   (* Underlying (encrypted) flow *)
+    with type flow = Dynamic_flow.flow
+  include V1_LWT.FLOW
+  type tracer
+  val server_of_flow :
+    ?trace:tracer ->
+    Tls.Config.server -> FLOW.flow ->
+    [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
+end
+
+module No_TLS : TLS = struct
+  module FLOW = Dynamic_flow
+  include FLOW
+  type tracer = unit
+  let server_of_flow ?trace:_ _config _underlying =
+    return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
+end
+
+module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
 
   module Flow = Dynamic_flow
   type +'a io = 'a Lwt.t
@@ -204,7 +224,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
         let flow = Dynamic_flow.Flow ((module S.TCPV4), flow) in
         return (flow, flow, flow)
 
-  let serve ?(timeout=60) ?stop:_ ~ctx ~(mode:server) fn =
+  let rec serve ?(timeout=60) ?stop ~ctx ~(mode:server) fn =
     let _ = timeout in
     let t, _u = Lwt.task () in
     Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
@@ -241,7 +261,15 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
        >>= fun t ->
        let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
        fn f f f
-
+    |`TLS (config, underlying), _ ->
+        serve ~timeout ?stop ~ctx ~mode:underlying (fun f _ _ ->
+          TLS.server_of_flow config f >>= function
+          | `Error err -> fail (Failure (TLS.error_message err))
+          | `Eof -> fail (Failure "End-of-file from TLS.server_of_flow")
+          | `Ok underlying ->
+              let flow = Dynamic_flow.Flow ((module TLS), underlying) in
+              fn flow flow flow (* XXX: why in triplicate? *)
+        )
 end
 
 module type S = sig

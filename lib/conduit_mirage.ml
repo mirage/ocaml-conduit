@@ -44,6 +44,11 @@ module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
   type 'a io = 'a Lwt.t
   type error = [ `Refused | `Timeout | `Unknown of string ]
 
+  let error_message = function
+  | `Refused -> "Refused"
+  | `Timeout -> "Timeout"
+  | `Unknown msg -> msg
+
   type buffer = Cstruct.t
 
   type flow =

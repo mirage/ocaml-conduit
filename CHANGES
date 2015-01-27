@@ -1,3 +1,7 @@
+0.7.2 (2015-01-26):
+* Add an `error_message` function to simplify error display (#38).
+* Improvements to documentation (#37).
+
 0.7.1 (2014-12-05):
 * Do not emit debug output when the `CONDUIT_DEBUG` variable is not set.
 * Do not create symlinks in a local build, which helps with OPAM pins.

@@ -59,7 +59,7 @@ module Server = struct
   let init ?(nconn=20) ~certfile ~keyfile
       ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
-    let config = Tls.Config.server ~certificate () in
+    let config = Tls.Config.server ~certificates:(`Single certificate) () in
     let s = listen nconn sa in
     let cont = ref true in
     async (fun () ->

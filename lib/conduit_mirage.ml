@@ -28,6 +28,7 @@ type client = [
 ] with sexp
 
 type server = [
+  | `TLS of Tls.Config.server * server
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [`Remote_domid of int] * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -39,58 +40,26 @@ module type VCHAN_FLOW = V1_LWT.FLOW
   with type error := unknown
 
 (** All the possible connection types supported *)
-module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) = struct
+module Dynamic_flow = struct
 
   type 'a io = 'a Lwt.t
-  type error = [ `Refused | `Timeout | `Unknown of string ]
-
-  let error_message = function
-  | `Refused -> "Refused"
-  | `Timeout -> "Timeout"
-  | `Unknown msg -> msg
-
+  type error = unit -> string
   type buffer = Cstruct.t
 
   type flow =
-    | TCPv4 of S.flow
-    | Vchan of V.flow
+    | Flow : (module V1_LWT.FLOW with
+                type flow = 'a) * 'a -> flow
 
-  let of_tcpv4 f = TCPv4 f
-  let of_vchan f = Vchan f
+  let error_message fn = fn ()
+  let wrap_errors (type e) (module F : V1_LWT.FLOW with type error = e) v =
+    v >>= function
+    | `Error (err : e) -> return (`Error (fun () -> F.error_message err))
+    | `Ok _ | `Eof as other -> return other
 
-  let vchan_error t =
-    t >>= function
-      | `Error (`Unknown x) -> return (`Error (`Unknown x))
-      | `Eof -> return (`Eof)
-      | `Ok b -> return (`Ok b)
-
-  let stack_error t =
-    t >>= function
-      | `Error (`Unknown x) -> return (`Error (`Unknown x))
-      | `Error (`Refused) -> return (`Error (`Refused))
-      | `Error (`Timeout) -> return (`Error (`Timeout))
-      | `Eof -> return (`Eof)
-      | `Ok b -> return (`Ok b)
-
-  let read flow =
-    match flow with
-    | Vchan t -> vchan_error (V.read t)
-    | TCPv4 t -> stack_error (S.read t)
-
-  let write flow buf =
-    match flow with
-    | Vchan t -> vchan_error (V.write t buf)
-    | TCPv4 t -> stack_error (S.write t buf)
-
-  let writev flow bufv =
-    match flow with
-    | Vchan t -> vchan_error (V.writev t bufv)
-    | TCPv4 t -> stack_error (S.writev t bufv)
-
-  let close flow =
-    match flow with
-    | Vchan t -> V.close t
-    | TCPv4 t -> S.close t
+  let read (Flow ((module F), flow)) = wrap_errors (module F) (F.read flow)
+  let write (Flow ((module F), flow)) b = wrap_errors (module F) (F.write flow b)
+  let writev (Flow ((module F), flow)) b = wrap_errors (module F) (F.writev flow b)
+  let close (Flow ((module F), flow)) = F.close flow
 end
 
 module type ENDPOINT = sig
@@ -140,9 +109,28 @@ module type VCHAN_PEER = PEER
   with type uuid = string
    and type port = vchan_port
 
-module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
+module type TLS = sig
+  module FLOW : V1_LWT.FLOW   (* Underlying (encrypted) flow *)
+    with type flow = Dynamic_flow.flow
+  include V1_LWT.FLOW
+  type tracer
+  val server_of_flow :
+    ?trace:tracer ->
+    Tls.Config.server -> FLOW.flow ->
+    [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
+end
 
-  module Flow = Make_flow(S.TCPV4)(V.Endpoint)
+module No_TLS : TLS = struct
+  module FLOW = Dynamic_flow
+  include FLOW
+  type tracer = unit
+  let server_of_flow ?trace:_ _config _underlying =
+    return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
+end
+
+module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
+
+  module Flow = Dynamic_flow
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
@@ -223,7 +211,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
       V.Endpoint.client ~domid ~port ()
       >>= fun flow ->
       Printf.printf "Conduit.connect: connected!\n%!";
-      let flow = Flow.of_vchan flow in
+      let flow = Dynamic_flow.Flow ((module V.Endpoint), flow) in
       return (flow, flow, flow)
     | `TCP (Ipaddr.V6 _ip, _port), _ ->
       fail (Failure "No IPv6 support compiled into Conduit")
@@ -233,10 +221,10 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
       S.TCPV4.create_connection (S.tcpv4 tcp) (ip,port) >>= function
       | `Error _err -> fail (Failure "connection failed")
       | `Ok flow ->
-        let flow = Flow.of_tcpv4 flow in
+        let flow = Dynamic_flow.Flow ((module S.TCPV4), flow) in
         return (flow, flow, flow)
 
-  let serve ?(timeout=60) ?stop:_ ~ctx ~(mode:server) fn =
+  let rec serve ?(timeout=60) ?stop ~ctx ~(mode:server) fn =
     let _ = timeout in
     let t, _u = Lwt.task () in
     Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
@@ -254,7 +242,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
            | `Vchan_direct (`Remote_domid domid, port) ->
               V.Endpoint.server ~domid ~port ()
               >>= fun t ->
-              let f = Flow.of_vchan t in
+              let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
               fn f f f
            | _ -> fail (Failure "TODO")
          ) conns
@@ -264,16 +252,24 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER) = struct
     |`TCP (`Port port), Some stack ->
       S.listen_tcpv4 stack ~port
         (fun flow ->
-           let f = Flow.of_tcpv4 flow in
+           let f = Dynamic_flow.Flow ((module S.TCPV4), flow) in
            fn f f f
         );
       t
     |`Vchan_direct (`Remote_domid domid, port), _ ->
        V.Endpoint.server ~domid ~port ()
        >>= fun t ->
-       let f = Flow.of_vchan t in
+       let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
        fn f f f
-
+    |`TLS (config, underlying), _ ->
+        serve ~timeout ?stop ~ctx ~mode:underlying (fun f _ _ ->
+          TLS.server_of_flow config f >>= function
+          | `Error err -> fail (Failure (TLS.error_message err))
+          | `Eof -> fail (Failure "End-of-file from TLS.server_of_flow")
+          | `Ok underlying ->
+              let flow = Dynamic_flow.Flow ((module TLS), underlying) in
+              fn flow flow flow (* XXX: why in triplicate? *)
+        )
 end
 
 module type S = sig

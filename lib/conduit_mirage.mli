@@ -36,6 +36,7 @@ type client = [
 
 (** Configuration for listening on a server port. *)
 type server = [
+  | `TLS of Tls.Config.server * server
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [ `Remote_domid of int ] * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -107,6 +108,8 @@ module type PEER = sig
 
 end
 
+module Dynamic_flow : V1_LWT.FLOW
+
 module type VCHAN_PEER = PEER
   with type uuid = string
    and type port = vchan_port
@@ -115,9 +118,19 @@ type unknown = [ `Unknown of string ]
 module type VCHAN_FLOW = V1_LWT.FLOW
   with type error := unknown
 
-(** Functor to construct a {!V1_LWT.FLOW} module that internally contains
-    all of the supported transport mechanisms, such as TCPv4 and Vchan. *)
-module Make_flow(S:V1_LWT.TCPV4)(V:VCHAN_FLOW) : V1_LWT.FLOW
+module type TLS = sig
+  module FLOW : V1_LWT.FLOW   (* Underlying (encrypted) flow *)
+    with type flow = Dynamic_flow.flow
+  include V1_LWT.FLOW
+  type tracer
+  val server_of_flow :
+    ?trace:tracer ->
+    Tls.Config.server -> FLOW.flow ->
+    [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
+end
+
+module No_TLS : TLS
+(** Dummy TLS module which can be used if you don't want TLS support. *)
 
 module type S = sig
 
@@ -148,6 +161,6 @@ module type S = sig
   val endp_to_server: ctx:ctx -> Conduit.endp -> server io
 end
 
-module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER) :
+module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER)(T:TLS) :
   S with type stack = S.t
      and type peer = V.t

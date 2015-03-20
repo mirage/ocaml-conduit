@@ -1,13 +1,15 @@
-opam-version: "1.1"
-maintainer: "anil@recoil.org"
-tags: [
-  "org:mirage"
-]
-build: [
-  [make]
-  [make "install"]
-]
-remove: ["ocamlfind" "remove" "conduit"]
+opam-version: "1.2"
+maintainer:   "anil@recoil.org"
+authors:      "anil@recoil.org"
+homepage:     "https://github.com/mirage/ocaml-conduit"
+dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
+bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
+tags:         "org:mirage"
+
+build:   [make]
+install: [make "install"]
+remove:  ["ocamlfind" "remove" "conduit"]
+
 depends: [
   "ocamlfind"
   "sexplib" {>="109.15.00"}

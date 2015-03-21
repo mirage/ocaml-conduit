@@ -1,6 +1,8 @@
 opam-version: "1.2"
+name:         "conduit"
+version:      "0.8.0"
 maintainer:   "anil@recoil.org"
-authors:      "anil@recoil.org"
+authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire"]
 homepage:     "https://github.com/mirage/ocaml-conduit"
 dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
 bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
@@ -30,10 +32,10 @@ depopts: [
 conflicts: [
   "async" {<"109.15.00"}
   "lwt" {<"2.4.3"}
-  "async_ssl" {<"111.21.00"}
+  "async_ssl" {<"111.24.00"}
   "mirage-types" {<"2.0.0"}
   "dns" {<"0.10.0"}
-  "tls" {<"0.2.0"}
+  "tls" {<"0.4.0"}
   "vchan" {<"2.0.0"}
 ]
 available: [ocaml-version >= "4.01.0"]

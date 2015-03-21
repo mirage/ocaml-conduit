@@ -1,3 +1,9 @@
+0.8.0 (trunk):
+* Add TLS support using the pure OCaml TLS stack (#46).
+* Use the Async_SSL 111.24.0+ API for the `Conduit_async_ssl`.
+* Replace the Mirage `Make_flow` functor with `Dynamic_flow` that is
+  easier to extend with more flow types.
+
 0.7.2 (2015-01-26):
 * Add an `error_message` function to simplify error display (#38).
 * Improvements to documentation (#37).

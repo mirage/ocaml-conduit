@@ -8,5 +8,5 @@ env:
   - OCAML_VERSION=4.02 DEPOPTS=async
   - OCAML_VERSION=4.02 DEPOPTS=async_ssl
   - OCAML_VERSION=4.02 DEPOPTS=ssl
-  - OCAML_VERSION=4.02 DEPOPTS="dns tcpip mirage-types vchan"
+  - OCAML_VERSION=4.02 DEPOPTS="dns tcpip mirage-types vchan tls"
   - OCAML_VERSION=4.02 PACKAGE="conduit" POST_INSTALL_HOOK="opam install cohttp cowabloga"

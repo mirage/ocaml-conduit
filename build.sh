@@ -21,7 +21,7 @@ esac
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_LWT_TLS=`ocamlfind query tls.lwt 2>/dev/null || true`
-HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip vchan tls 2>/dev/null || true`
+HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage 2>/dev/null || true`
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
 HAVE_XEN=`ocamlfind query mirage-xen xenstore_transport 2>/dev/null || true`
@@ -98,14 +98,13 @@ if [ "$HAVE_LWT" != "" ]; then
     echo "Building with Mirage support."
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
-    echo Conduit_localhost >> lib/conduit-lwt-mirage.mllib
     echo Resolver_mirage >> lib/conduit-lwt-mirage.mllib
     LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
+      echo Conduit_localhost >> lib/conduit-lwt-mirage.mllib
       echo "Building with Mirage Vchan support."
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
-    LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES tls tls.mirage"
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
     if [ "$HAVE_XEN" != "" ]; then
@@ -118,7 +117,6 @@ if [ "$HAVE_LWT" != "" ]; then
       cp lib/conduit-lwt-mirage-xen.mllib lib/conduit-lwt-mirage-xen.odocl
     fi
   fi
-
 fi
 
 if [ "$HAVE_VCHAN" ]; then

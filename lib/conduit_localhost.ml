@@ -20,9 +20,10 @@ open Sexplib.Conv
 type t = unit with sexp_of
 type flow = unit with sexp_of
 type uuid = string with sexp_of
-type port = Vchan.Port.t with sexp_of
+type port = Vchan.Port.t with sexp
+let port_of_string = Vchan.Port.of_string
 
-let register _ = Lwt.return ()
+let register t = Lwt.return_unit
 let listen _ = Lwt.fail (Failure "Localhost peer only")
 let connect _ ~remote_name ~port = Lwt.return (`Unknown "localhost peer only")
 

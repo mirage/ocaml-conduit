@@ -150,7 +150,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
 
   let fail fmt = Printf.ksprintf (fun s -> fail (Failure s)) fmt
   let err_ipv6 = fail "%s: No IPv6 support compiled into Conduit"
-  let err_no_stack =  fail "%s: No TCP stack bound to Conduit"
+  let err_no_stack =  fail "No TCP stack bound to Conduit"
   let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
   let err_tls e = fail "TLS connection failed: %s" (TLS.error_message e)
   let err_eof = fail "%s: End-of-file!"
@@ -232,9 +232,8 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
       connect_vchan_domain_socket ~ctx connect id p
     | `Vchan_direct (domid, port), _ -> connect_vchan_direct domid port
     | `TCP (Ipaddr.V6 _, _), _ -> err_ipv6 "TCP"
-    | `TCP (Ipaddr.V4 _, _), None -> err_no_stack "TCP"
+    | `TCP (Ipaddr.V4 _, _), None -> err_no_stack
     | `TCP (Ipaddr.V4 ip, port), Some tcp  -> connect_tcpv4 tcp ip port
-    | `TLS _, None -> err_no_stack "TLS"
     | `TLS (config, mode), _ -> connect_tls ~ctx connect config mode
 
   let serve_vchan_domain_sockets ~ctx connect fn =
@@ -277,10 +276,10 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     let _ = timeout in
     match mode, ctx.stack with
     | `Vchan_domain_socket _, _ -> serve_vchan_domain_sockets ~ctx connect fn
-    |`TCP (`Port _port), None -> err_no_stack "TCP"
-    |`TCP (`Port port), Some stack -> serve_tcpv4 stack port fn
-    |`Vchan_direct (`Remote_domid id, p), _ -> serve_vchan_direct id p fn
-    |`TLS (config, underlying), _ ->
+    | `TCP (`Port _port), None -> err_no_stack "TCP"
+    | `TCP (`Port port), Some stack -> serve_tcpv4 stack port fn
+    | `Vchan_direct (`Remote_domid id, p), _ -> serve_vchan_direct id p fn
+    | `TLS (config, underlying), _ ->
       serve ~timeout ?stop ~ctx ~mode:underlying (serve_tls config fn)
 
 end

@@ -17,18 +17,13 @@
 
 (** Functorial connection establishment interface that is compatible with
     the Mirage libraries.
-
-    Currently supports two transports:
-
-    - TCPv4 for remote communications using the
-      {{:https://www.ietf.org/rfc/rfc793.txt}TCPv4} protocol
-    - Vchan for inter-VM communication within a single Xen host
   *)
 
 type vchan_port = Vchan.Port.t with sexp
 
 (** Configuration for a single client connection *)
 type client = [
+  | `TLS of Tls.Config.client * client
   | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
   | `Vchan_direct of int * vchan_port (** Remote Xen domain id and port name *)
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -127,6 +122,8 @@ module type TLS = sig
     ?trace:tracer ->
     Tls.Config.server -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
+  val client_of_flow: Tls.Config.client -> FLOW.flow ->
+    [> `Ok of flow | `Error of error | `Eof] Lwt.t
 end
 
 module No_TLS : TLS

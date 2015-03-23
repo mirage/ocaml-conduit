@@ -124,7 +124,7 @@ fi
 if [ "$HAVE_VCHAN" ]; then
   echo "Building with Vchan support."
   echo 'true: define(HAVE_VCHAN)' >> _tags
-fi 
+fi
 
 if [ "$HAVE_VCHAN_LWT" != "" ]; then
     echo "Building with Vchan Lwt_unix support."

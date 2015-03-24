@@ -22,6 +22,7 @@ open Sexplib.Conv
 type vchan_port = Vchan.Port.t with sexp
 
 type client = [
+  | `TLS of Tls.Config.client * client
   | `TCP of Ipaddr.t * int
   | `Vchan_direct of int * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -118,14 +119,18 @@ module type TLS = sig
     ?trace:tracer ->
     Tls.Config.server -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
+  val client_of_flow: Tls.Config.client -> FLOW.flow ->
+    [> `Ok of flow | `Error of error | `Eof] Lwt.t
 end
 
 module No_TLS : TLS = struct
   module FLOW = Dynamic_flow
   include FLOW
   type tracer = unit
-  let server_of_flow ?trace:_ _config _underlying =
+  let error () =
     return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
+  let server_of_flow ?trace:_ _config _underlying = error ()
+  let client_of_flow _config _underlying = error ()
 end
 
 module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
@@ -143,49 +148,49 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     stack: S.t option sexp_opaque;
   } with sexp_of
 
+  let fail fmt = Printf.ksprintf (fun s -> fail (Failure s)) fmt
+  let err_ipv6 = fail "%s: No IPv6 support compiled into Conduit"
+  let err_no_stack =  fail "%s: No TCP stack bound to Conduit"
+  let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
+  let err_tls e = fail "TLS connection failed: %s" (TLS.error_message e)
+  let err_eof = fail "%s: End-of-file!"
+  let err_tls_not_supported = fail "%s: TLS is not supported"
+  let err_vchan_port = fail "%s: invalide Vchan port"
+  let err_domain_socks =
+    fail "Unix domain sockets are not supported inside Unikernels"
+  let err_resolution_failed = fail "%s: resolution failed"
+  let err_todo = fail "%s: TODO"
+
+  let vchan_port_of_string port =
+    match Vchan.Port.of_string port with
+    | `Error s -> err_vchan_port s
+    | `Ok p    -> return p
+
   let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
-    | `TCP (_ip, _port) as mode -> return mode
+    | `TLS _ -> err_tls_not_supported "endp_to_client"
+    | `TCP _ as mode -> return mode
     | `Vchan_direct (domid, port) ->
-       begin
-         match Vchan.Port.of_string port with
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan_direct (domid, port))
+      vchan_port_of_string port >>= fun port ->
+      return (`Vchan_direct (domid, port))
     | `Vchan_domain_socket (uuid,  port) ->
-       begin
-         match Vchan.Port.of_string port with
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _path ->
-       fail (Failure "Domain sockets not valid on Mirage")
-    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+      vchan_port_of_string port >>= fun port ->
+      return (`Vchan_domain_socket (`Uuid uuid, `Port port))
+    | `Unix_domain_socket _ -> err_domain_socks
+    | `Unknown err -> err_resolution_failed err
 
   let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
     match endp with
-    | `TCP (_ip, port) -> return (`TCP (`Port port))
+    | `TLS _ -> err_tls_not_supported "endp_to_server"
+    | `TCP (_, port) -> return (`TCP (`Port port))
     | `Vchan_direct (domid, port) ->
-       begin
-         match Vchan.Port.of_string port with
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan_direct ((`Remote_domid domid), port))
+      vchan_port_of_string port >>= fun port ->
+      return (`Vchan_direct ((`Remote_domid domid), port))
     | `Vchan_domain_socket (uuid,  port) ->
-       begin
-         match Vchan.Port.of_string port with
-         | `Error s -> fail (Failure ("Invalid vchan port: " ^ s))
-         | `Ok p -> return p
-       end >>= fun port ->
-       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _path ->
-       fail (Failure "Domain sockets not valid on Mirage")
-    | `TLS (_host, _) -> fail (Failure "TLS currently unsupported")
-    | `Unknown err -> fail (Failure ("resolution failed: " ^ err))
+      vchan_port_of_string port >>= fun port ->
+      return (`Vchan_domain_socket (`Uuid uuid, `Port port))
+    | `Unix_domain_socket _ -> err_domain_socks
+    | `Unknown err -> err_resolution_failed err
 
   let init ?peer ?stack () =
     return { peer; stack }
@@ -193,83 +198,91 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
   let default_ctx =
     { peer = None; stack = None }
 
+  let connect_vchan_domain_socket ~ctx connect uuid port = match ctx.peer with
+    | None      -> err_todo "connect_vchan"
+    | Some peer ->
+      V.connect peer ~remote_name:uuid ~port  >>= fun endp ->
+      endp_to_client ~ctx endp >>= fun client ->
+      connect ~ctx client
+
+  let connect_vchan_direct domid port =
+    V.Endpoint.client ~domid ~port () >>= fun flow ->
+    let flow = Dynamic_flow.Flow ((module V.Endpoint), flow) in
+    return (flow, flow, flow)
+
+  let connect_tcpv4 tcp ip port =
+    S.TCPV4.create_connection (S.tcpv4 tcp) (ip, port) >>= function
+    | `Error e -> err_tcp e
+    | `Ok flow ->
+      let flow = Dynamic_flow.Flow ((module S.TCPV4), flow) in
+      return (flow, flow, flow)
+
+  let connect_tls ~ctx connect config underlying =
+    connect ~ctx underlying >>= fun (flow, _, _) ->
+    TLS.client_of_flow config flow >>= function
+    | `Error e -> err_tls e
+    | `Eof     -> err_eof "connect_tls"
+    | `Ok flow ->
+      let flow = Dynamic_flow.Flow ((module TLS), flow) in
+      return (flow, flow, flow)
+
   let rec connect ~ctx (mode:client) =
     match mode, ctx.stack with
-    | `Vchan_domain_socket (`Uuid uuid, `Port port), _ -> begin
-       match ctx.peer with
-       | None -> fail (Failure "TODO")
-       | Some peer ->
-           V.connect peer ~remote_name:uuid ~port
-           >>= fun endp ->
-           endp_to_client ~ctx endp
-           >>= fun client ->
-           connect ~ctx client
-    end
-    | `Vchan_direct (domid, port), _ ->
-      Printf.printf "Conduit.connect: Vchan %d %s\n%!"
-                    domid (Vchan.Port.to_string port);
-      V.Endpoint.client ~domid ~port ()
-      >>= fun flow ->
-      Printf.printf "Conduit.connect: connected!\n%!";
-      let flow = Dynamic_flow.Flow ((module V.Endpoint), flow) in
-      return (flow, flow, flow)
-    | `TCP (Ipaddr.V6 _ip, _port), _ ->
-      fail (Failure "No IPv6 support compiled into Conduit")
-    | `TCP (Ipaddr.V4 _ip, _port), None ->
-      fail (Failure "No stack bound to Conduit")
-    | `TCP (Ipaddr.V4 ip, port), Some tcp  ->
-      S.TCPV4.create_connection (S.tcpv4 tcp) (ip,port) >>= function
-      | `Error _err -> fail (Failure "connection failed")
-      | `Ok flow ->
-        let flow = Dynamic_flow.Flow ((module S.TCPV4), flow) in
-        return (flow, flow, flow)
+    | `Vchan_domain_socket (`Uuid id, `Port p), _ ->
+      connect_vchan_domain_socket ~ctx connect id p
+    | `Vchan_direct (domid, port), _ -> connect_vchan_direct domid port
+    | `TCP (Ipaddr.V6 _, _), _ -> err_ipv6 "TCP"
+    | `TCP (Ipaddr.V4 _, _), None -> err_no_stack "TCP"
+    | `TCP (Ipaddr.V4 ip, port), Some tcp  -> connect_tcpv4 tcp ip port
+    | `TLS _, None -> err_no_stack "TLS"
+    | `TLS (config, mode), _ -> connect_tls ~ctx connect config mode
+
+  let serve_vchan_domain_sockets ~ctx connect fn =
+    match ctx.peer with
+    | None      -> err_todo "serve_vchan_domain_sockets"
+    | Some peer ->
+      V.listen peer >>= fun conns ->
+      Lwt_stream.iter_p (fun endp ->
+          endp_to_server ~ctx endp >>= function
+          | `Vchan_direct (`Remote_domid domid, port) ->
+            V.Endpoint.server ~domid ~port () >>= fun t ->
+            let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
+            fn f f f
+          | _ -> err_todo "serve_vchan_domain_sockets"
+        ) conns
+
+  let serve_vchan_direct domid port fn =
+    V.Endpoint.server ~domid ~port () >>= fun t ->
+    let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
+    fn f f f
+
+  let serve_tcpv4 stack port fn =
+    let t, _u = Lwt.task () in
+    Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
+    S.listen_tcpv4 stack ~port (fun flow ->
+        let f = Dynamic_flow.Flow ((module S.TCPV4), flow) in
+        fn f f f
+      );
+    t
+
+  let serve_tls config fn flow _ _ =
+    TLS.server_of_flow config flow >>= function
+    | `Error err -> err_tls err
+    | `Eof -> err_eof "TLS.server_of_flow"
+    | `Ok underlying ->
+      let flow = Dynamic_flow.Flow ((module TLS), underlying) in
+      fn flow flow flow (* XXX: why in triplicate? *)
 
   let rec serve ?(timeout=60) ?stop ~ctx ~(mode:server) fn =
     let _ = timeout in
-    let t, _u = Lwt.task () in
-    Lwt.on_cancel t (fun () -> print_endline "Stopping server thread");
     match mode, ctx.stack with
-    | `Vchan_domain_socket (`Uuid uuid, `Port port), _ -> begin
-      match ctx.peer with
-      | None -> fail (Failure "TODO")
-      | Some peer ->
-         V.listen peer
-         >>= fun conns ->
-         Lwt_stream.iter_p (fun endp ->
-           endp_to_server ~ctx endp
-           >>= fun server ->
-           match server with
-           | `Vchan_direct (`Remote_domid domid, port) ->
-              V.Endpoint.server ~domid ~port ()
-              >>= fun t ->
-              let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
-              fn f f f
-           | _ -> fail (Failure "TODO")
-         ) conns
-    end
-    |`TCP (`Port _port), None ->
-      fail (Failure "No stack bound to Conduit")
-    |`TCP (`Port port), Some stack ->
-      S.listen_tcpv4 stack ~port
-        (fun flow ->
-           let f = Dynamic_flow.Flow ((module S.TCPV4), flow) in
-           fn f f f
-        );
-      t
-    |`Vchan_direct (`Remote_domid domid, port), _ ->
-       V.Endpoint.server ~domid ~port ()
-       >>= fun t ->
-       let f = Dynamic_flow.Flow ((module V.Endpoint), t) in
-       fn f f f
+    | `Vchan_domain_socket _, _ -> serve_vchan_domain_sockets ~ctx connect fn
+    |`TCP (`Port _port), None -> err_no_stack "TCP"
+    |`TCP (`Port port), Some stack -> serve_tcpv4 stack port fn
+    |`Vchan_direct (`Remote_domid id, p), _ -> serve_vchan_direct id p fn
     |`TLS (config, underlying), _ ->
-        serve ~timeout ?stop ~ctx ~mode:underlying (fun f _ _ ->
-          TLS.server_of_flow config f >>= function
-          | `Error err -> fail (Failure (TLS.error_message err))
-          | `Eof -> fail (Failure "End-of-file from TLS.server_of_flow")
-          | `Ok underlying ->
-              let flow = Dynamic_flow.Flow ((module TLS), underlying) in
-              fn flow flow flow (* XXX: why in triplicate? *)
-        )
+      serve ~timeout ?stop ~ctx ~mode:underlying (serve_tls config fn)
+
 end
 
 module type S = sig

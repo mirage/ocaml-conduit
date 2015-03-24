@@ -1,4 +1,6 @@
-0.8.0 (trunk):
+0.8.0 (2015-03-27):
+* Add TLS client support for Mirage (#50)
+* Do not overwrite the default name resolver for Mirage (#49)
 * Add TLS support using the pure OCaml TLS stack (#46).
 * Use the Async_SSL 111.24.0+ API for the `Conduit_async_ssl`.
 * Replace the Mirage `Make_flow` functor with `Dynamic_flow` that is

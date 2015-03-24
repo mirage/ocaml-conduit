@@ -49,6 +49,8 @@ module type S = sig
       it into an {{!Conduit.endp}endpoint}. *)
   type service_fn = string -> svc option io
 
+  val (++): service_fn -> service_fn -> service_fn
+
   (** [init ?service ?rewrites] will initialize the resolver and return
       a state handler.  The {{!service_fn}service} argument should
       contain the system-specific resolution mechanism for URI schemas.
@@ -67,6 +69,7 @@ module type S = sig
   val add_rewrite : host:string -> f:rewrite_fn -> t -> unit
 
   val set_service : f:service_fn -> t -> unit
+  val service: t -> service_fn
 
   (** [resolve_uri ?rewrites ~uri t] will use [t] to resolve the
       [uri] into a concrete endpoint.  Any [rewrites] that are passed
@@ -116,6 +119,13 @@ module Make(IO:Conduit.IO) = struct
 
   let set_service ~f t =
     t.service <- f
+
+  let service t = t.service
+
+  let (++) f g h =
+    f h >>= function
+    | None -> g h
+    | x    -> return x
 
   let init ?(service=default_service) ?(rewrites=[]) () =
     let domains = Conduit_trie.empty in

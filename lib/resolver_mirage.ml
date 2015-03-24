@@ -111,7 +111,8 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
          Resolver_lwt.add_rewrite ~host:"" ~f res
       | None -> ()
       end;
-      Resolver_lwt.set_service ~f:static_service res;
+      let service = Resolver_lwt.(service res ++ static_service) in
+      Resolver_lwt.set_service ~f:service res;
       let vchan_tld = ".xen" in
       let vchan_res = vchan_resolver ~tld:vchan_tld in
       Resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res

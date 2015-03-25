@@ -50,4 +50,9 @@ let ssl_listen ~crt_file ~key_file rd wr =
   >>= fun app_rd ->
   Writer.of_pipe (Info.of_string "async_conduit_ssl_writer") app_wr
   >>| fun (app_wr,_) ->
+  (* Close the pipes we created for ssl when we're done! *)
+  don't_wait_for (
+    Pipe.closed net_to_ssl >>= fun () ->
+    Deferred.all_ignore [Writer.close app_wr; Reader.close app_rd]
+  );
   app_rd, app_wr

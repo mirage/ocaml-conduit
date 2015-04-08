@@ -13,5 +13,6 @@ depends: [
   "tcpip"
   "vchan"
   "conduit" {>= "0.6.0"}
+  "tls"
 ]
 ocaml-version: [>= "4.01.0"]

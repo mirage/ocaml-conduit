@@ -160,19 +160,27 @@ let safe_close t =
     (fun () -> Lwt_io.close t)
     (fun _ -> return_unit)
 
+let with_socket sockaddr f =
+  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+  Lwt.catch (fun () -> f fd) (fun e ->
+      Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> return_unit) >>= fun () ->
+      fail e
+    )
+
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
-    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    let () =
-      match src with
-      | None -> ()
-      | Some src_sa -> Lwt_unix.bind fd src_sa
-    in
-    Lwt_unix.connect fd sa >>= fun () ->
-    let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
-    let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
-    return (fd, ic, oc)
+    with_socket sa (fun fd ->
+        let () =
+          match src with
+          | None -> ()
+          | Some src_sa -> Lwt_unix.bind fd src_sa
+        in
+        Lwt_unix.connect fd sa >>= fun () ->
+        let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
+        let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
+        return (fd, ic, oc)
+      )
 end
 
 module Sockaddr_server = struct

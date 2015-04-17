@@ -3,6 +3,7 @@
 * Add a TLS echo server in `tests/async/`
 * [lwt] Do not leak socket fd when a connect or handshake 
   operation fails (#56 via Edwin Torok).
+* [async] Do not leak pipes in SSL handling (#54 from Trevor Smith).
 
 0.8.0 (2015-03-27):
 * Add TLS client support for Mirage (#50)

@@ -39,7 +39,7 @@ let ssl_listen ~crt_file ~key_file rd wr =
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
   let server = Ssl.server
-      ~crt_file
+    ~crt_file
     ~key_file
     ~app_to_ssl
     ~ssl_to_app

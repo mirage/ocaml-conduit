@@ -19,20 +19,28 @@ open Lwt
 
 let _ = Tls_lwt.rng_init ()
 
+let with_socket sockaddr f =
+  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+  Lwt.catch (fun () -> f fd) (fun e ->
+      Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> return_unit) >>= fun () ->
+      fail e
+    )
+
 module Client = struct
   let connect ?src host sa =
-    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    let () =
-      match src with
-      | None -> ()
-      | Some src_sa -> Lwt_unix.bind fd src_sa
-    in
-    X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
-    let config = Tls.Config.client ~authenticator () in
-    Lwt_unix.connect fd sa >>= fun () ->
-    Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
-    let ic, oc = Tls_lwt.of_t t in
-    (fd, ic, oc)
+    with_socket sa (fun fd ->
+        let () =
+          match src with
+          | None -> ()
+          | Some src_sa -> Lwt_unix.bind fd src_sa
+        in
+        X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
+        let config = Tls.Config.client ~authenticator () in
+        Lwt_unix.connect fd sa >>= fun () ->
+        Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
+        let ic, oc = Tls_lwt.of_t t in
+        (fd, ic, oc)
+      )
 end
 
 module Server = struct

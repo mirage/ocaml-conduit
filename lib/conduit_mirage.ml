@@ -19,27 +19,6 @@ open Lwt
 open Sexplib.Std
 open Sexplib.Conv
 
-type vchan_port = Vchan.Port.t with sexp
-
-type client = [
-  | `TLS of Tls.Config.client * client
-  | `TCP of Ipaddr.t * int
-  | `Vchan_direct of int * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
-] with sexp
-
-type server = [
-  | `TLS of Tls.Config.server * server
-  | `TCP of [ `Port of int ]
-  | `Vchan_direct of [`Remote_domid of int] * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
-] with sexp
-
-type unknown = [ `Unknown of string ]
-
-module type VCHAN_FLOW = V1_LWT.FLOW
-  with type error := unknown
-
 (** All the possible connection types supported *)
 module Dynamic_flow = struct
 
@@ -63,40 +42,34 @@ module Dynamic_flow = struct
   let close (Flow ((module F), flow)) = F.close flow
 end
 
-module type ENDPOINT = sig
-  type t with sexp_of
-  type port = vchan_port
-
-  type error = [
-    `Unknown of string
-  ]
-
-  val server :
-    domid:int ->
-    port:port ->
-    ?read_size:int ->
-    ?write_size:int ->
-    unit -> t Lwt.t
-
-  val client :
-    domid:int ->
-    port:port ->
-    unit -> t Lwt.t
-
-  include V1_LWT.FLOW
-    with type flow = t
-    and  type error := error
-    and  type 'a io = 'a Lwt.t
-    and  type buffer = Cstruct.t
-end
-
-module type PEER = sig
+module type VCHAN = sig
   type t with sexp_of
   type flow with sexp_of
-  type uuid with sexp_of
-  type port with sexp_of
+  type uuid = string
+  type port with sexp
+  val port_of_string: string -> [`Ok of port | `Error of string]
+  module Endpoint : sig
+    type t
+    type error = [`Unknown of string]
 
-  module Endpoint : ENDPOINT
+    val server :
+      domid:int ->
+      port:port ->
+      ?read_size:int ->
+      ?write_size:int ->
+      unit -> t Lwt.t
+
+    val client :
+      domid:int ->
+      port:port ->
+      unit -> t Lwt.t
+
+    include V1_LWT.FLOW
+      with type flow = t
+       and  type error := error
+       and  type 'a io = 'a Lwt.t
+       and  type buffer = Cstruct.t
+  end
 
   val register : uuid -> t Lwt.t
 
@@ -106,26 +79,24 @@ module type PEER = sig
 
 end
 
-module type VCHAN_PEER = PEER
-  with type uuid = string
-   and type port = vchan_port
-
 module type TLS = sig
   module FLOW : V1_LWT.FLOW   (* Underlying (encrypted) flow *)
     with type flow = Dynamic_flow.flow
   include V1_LWT.FLOW
+  type client with sexp
+  type server with sexp
   type tracer
-  val server_of_flow :
-    ?trace:tracer ->
-    Tls.Config.server -> FLOW.flow ->
+  val server_of_flow : ?trace:tracer -> server -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
-  val client_of_flow: Tls.Config.client -> FLOW.flow ->
+  val client_of_flow: client -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof] Lwt.t
 end
 
-module No_TLS : TLS = struct
+module No_TLS: TLS = struct
   module FLOW = Dynamic_flow
   include FLOW
+  type client = unit with sexp
+  type server = unit with sexp
   type tracer = unit
   let error () =
     return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
@@ -133,9 +104,55 @@ module No_TLS : TLS = struct
   let client_of_flow _config _underlying = error ()
 end
 
-module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
+module No_Vchan: VCHAN = struct
+  type t = unit with sexp_of
+  type flow = unit with sexp_of
+  type uuid = string with sexp_of
+  type port = unit with sexp
+  let err_not_supported () = Lwt.fail (Failure "not supported")
+  let port_of_string _ = `Error "not supported"
+  let register _ = Lwt.return ()
+  let listen _ = Lwt.fail (Failure "not supported")
+  let connect _ ~remote_name:_ ~port:_ = Lwt.return (`Unknown "not supported")
+  module Endpoint = struct
+    type t = unit
+    type error = [`Unknown of string]
+    let server ~domid:_ ~port:_ ?read_size:_ ?write_size:_ () =
+      err_not_supported ()
+    let client ~domid:_ ~port:_ () = err_not_supported ()
+    type 'a io = 'a Lwt.t
+    type buffer = Cstruct.t
+    type flow = unit
+    let error_message = function `Unknown x -> x
+    let read _ = err_not_supported ()
+    let write _ _ = err_not_supported ()
+    let writev _ _ = err_not_supported ()
+    let close _ = err_not_supported ()
+  end
+end
+
+module Make(S:V1_LWT.STACKV4)(V:VCHAN)(TLS:TLS) = struct
+
+  type vchan_port = V.port with sexp
+  type tls_client = TLS.client with sexp
+  type tls_server = TLS.server with sexp
+
+  type client = [
+    | `TLS of tls_client * client
+    | `TCP of Ipaddr.t * int
+    | `Vchan_direct of int * vchan_port
+    | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
+  ] with sexp
+
+  type server = [
+    | `TLS of tls_server * server
+    | `TCP of [ `Port of int ]
+    | `Vchan_direct of [`Remote_domid of int] * vchan_port
+    | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
+  ] with sexp
 
   module Flow = Dynamic_flow
+
   type +'a io = 'a Lwt.t
   type ic = Flow.flow
   type oc = Flow.flow
@@ -150,19 +167,19 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
 
   let fail fmt = Printf.ksprintf (fun s -> fail (Failure s)) fmt
   let err_ipv6 = fail "%s: No IPv6 support compiled into Conduit"
-  let err_no_stack =  fail "%s: No TCP stack bound to Conduit"
+  let err_no_stack () =  fail "No TCP stack bound to Conduit"
   let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
   let err_tls e = fail "TLS connection failed: %s" (TLS.error_message e)
   let err_eof = fail "%s: End-of-file!"
   let err_tls_not_supported = fail "%s: TLS is not supported"
   let err_vchan_port = fail "%s: invalide Vchan port"
-  let err_domain_socks =
+  let err_domain_socks () =
     fail "Unix domain sockets are not supported inside Unikernels"
   let err_resolution_failed = fail "%s: resolution failed"
   let err_todo = fail "%s: TODO"
 
   let vchan_port_of_string port =
-    match Vchan.Port.of_string port with
+    match V.port_of_string port with
     | `Error s -> err_vchan_port s
     | `Ok p    -> return p
 
@@ -176,7 +193,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     | `Vchan_domain_socket (uuid,  port) ->
       vchan_port_of_string port >>= fun port ->
       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _ -> err_domain_socks
+    | `Unix_domain_socket _ -> err_domain_socks ()
     | `Unknown err -> err_resolution_failed err
 
   let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
@@ -189,7 +206,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     | `Vchan_domain_socket (uuid,  port) ->
       vchan_port_of_string port >>= fun port ->
       return (`Vchan_domain_socket (`Uuid uuid, `Port port))
-    | `Unix_domain_socket _ -> err_domain_socks
+    | `Unix_domain_socket _ -> err_domain_socks ()
     | `Unknown err -> err_resolution_failed err
 
   let init ?peer ?stack () =
@@ -232,12 +249,11 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
       connect_vchan_domain_socket ~ctx connect id p
     | `Vchan_direct (domid, port), _ -> connect_vchan_direct domid port
     | `TCP (Ipaddr.V6 _, _), _ -> err_ipv6 "TCP"
-    | `TCP (Ipaddr.V4 _, _), None -> err_no_stack "TCP"
+    | `TCP (Ipaddr.V4 _, _), None -> err_no_stack ()
     | `TCP (Ipaddr.V4 ip, port), Some tcp  -> connect_tcpv4 tcp ip port
-    | `TLS _, None -> err_no_stack "TLS"
     | `TLS (config, mode), _ -> connect_tls ~ctx connect config mode
 
-  let serve_vchan_domain_sockets ~ctx connect fn =
+  let serve_vchan_domain_sockets ~ctx _connect fn =
     match ctx.peer with
     | None      -> err_todo "serve_vchan_domain_sockets"
     | Some peer ->
@@ -277,16 +293,30 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     let _ = timeout in
     match mode, ctx.stack with
     | `Vchan_domain_socket _, _ -> serve_vchan_domain_sockets ~ctx connect fn
-    |`TCP (`Port _port), None -> err_no_stack "TCP"
-    |`TCP (`Port port), Some stack -> serve_tcpv4 stack port fn
-    |`Vchan_direct (`Remote_domid id, p), _ -> serve_vchan_direct id p fn
-    |`TLS (config, underlying), _ ->
+    | `TCP (`Port _port), None -> err_no_stack ()
+    | `TCP (`Port port), Some stack -> serve_tcpv4 stack port fn
+    | `Vchan_direct (`Remote_domid id, p), _ -> serve_vchan_direct id p fn
+    | `TLS (config, underlying), _ ->
       serve ~timeout ?stop ~ctx ~mode:underlying (serve_tls config fn)
 
 end
 
 module type S = sig
-
+  type vchan_port
+  type tls_client
+  type tls_server
+  type client = [
+    | `TLS of tls_client * client
+    | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
+    | `Vchan_direct of int * vchan_port (** Remote Xen domain id and port name *)
+    | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
+  ] with sexp
+  type server = [
+    | `TLS of tls_server * server
+    | `TCP of [ `Port of int ]
+    | `Vchan_direct of [ `Remote_domid of int ] * vchan_port
+    | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
+  ] with sexp
   module Flow : V1_LWT.FLOW
   type +'a io = 'a Lwt.t
   type ic = Flow.flow

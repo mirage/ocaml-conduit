@@ -15,4 +15,4 @@
  *
  *)
 
-include Conduit_mirage.VCHAN_PEER
+include Conduit_mirage.VCHAN

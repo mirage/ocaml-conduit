@@ -1,6 +1,8 @@
 0.8.1 (2015-04-17):
 * Support Async_SSL version 112.24.00 and higher.
 * Add a TLS echo server in `tests/async/`
+* [lwt] Do not leak socket fd when a connect or handshake 
+  operation fails (#56 via Edwin Torok).
 
 0.8.0 (2015-03-27):
 * Add TLS client support for Mirage (#50)

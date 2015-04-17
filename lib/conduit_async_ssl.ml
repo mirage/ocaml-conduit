@@ -25,8 +25,8 @@ let ssl_connect net_to_ssl ssl_to_net =
   let ssl_to_net = Writer.pipe ssl_to_net in
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
-  don't_wait_for (Ssl.client ~app_to_ssl ~ssl_to_app ~net_to_ssl
-                             ~ssl_to_net ());
+  let client =  Ssl.client ~app_to_ssl ~ssl_to_app ~net_to_ssl ~ssl_to_net () in
+  don't_wait_for (client >>= fun _con -> return ());
   Reader.of_pipe (Info.of_string "async_conduit_ssl_reader") app_rd
   >>= fun app_rd ->
   Writer.of_pipe (Info.of_string "async_conduit_ssl_writer") app_wr
@@ -38,14 +38,16 @@ let ssl_listen ~crt_file ~key_file rd wr =
   let ssl_to_net = Writer.pipe wr in
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
-  Ssl.server
+  let server = Ssl.server
     ~crt_file
     ~key_file
     ~app_to_ssl
     ~ssl_to_app
     ~net_to_ssl
     ~ssl_to_net
-  () |> don't_wait_for;
+    ()
+  in
+  don't_wait_for (server >>= fun _con -> return ());
   Reader.of_pipe (Info.of_string "async_conduit_ssl_reader") app_rd
   >>= fun app_rd ->
   Writer.of_pipe (Info.of_string "async_conduit_ssl_writer") app_wr

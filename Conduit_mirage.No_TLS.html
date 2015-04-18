@@ -1,0 +1,48 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conduit_mirage.Dynamic_flow.html">
+<link rel="next" href="Conduit_mirage.Make.html">
+<link rel="Up" href="Conduit_mirage.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conduit" rel="Chapter" href="Conduit.html">
+<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
+<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
+<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
+<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
+<link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
+<link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
+<link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
+<link title="Conduit_trie" rel="Chapter" href="Conduit_trie.html">
+<link title="Resolver" rel="Chapter" href="Resolver.html">
+<link title="Resolver_lwt" rel="Chapter" href="Resolver_lwt.html">
+<link title="Resolver_lwt_unix" rel="Chapter" href="Resolver_lwt_unix.html">
+<link title="Resolver_mirage" rel="Chapter" href="Resolver_mirage.html"><title>Conduit URI resolution : Conduit_mirage.No_TLS</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conduit_mirage.Dynamic_flow.html" title="Conduit_mirage.Dynamic_flow">Previous</a>
+&nbsp;<a class="up" href="Conduit_mirage.html" title="Conduit_mirage">Up</a>
+&nbsp;<a class="post" href="Conduit_mirage.Make.html" title="Conduit_mirage.Make">Next</a>
+</div>
+<h1>Module <a href="type_Conduit_mirage.No_TLS.html">Conduit_mirage.No_TLS</a></h1>
+
+<pre><span class="keyword">module</span> No_TLS: <code class="type"><a href="Conduit_mirage.TLS.html">TLS</a></code><code class="type"> </code></pre><div class="info module top">
+Dummy TLS module which can be used if you don't want TLS support.<br>
+</div>
+<hr width="100%">
+
+<pre><span class="keyword">module</span> <a href="Conduit_mirage.TLS.FLOW.html">FLOW</a>: <code class="type">V1_LWT.FLOW</code><code class="type">    (* Underlying (encrypted) flow *)
+    with type flow = Dynamic_flow.flow</code></pre>
+<pre><span class="keyword">include</span> V1_LWT.FLOW</pre>
+
+<pre><span id="TYPEtracer"><span class="keyword">type</span> <code class="type"></code>tracer</span> </pre>
+
+
+<pre><span id="VALserver_of_flow"><span class="keyword">val</span> server_of_flow</span> : <code class="type">?trace:<a href="Conduit_mirage.TLS.html#TYPEtracer">tracer</a> -><br>       <a href="Conduit_mirage.html#TYPEtls_config_server">Conduit_mirage.tls_config_server</a> -><br>       FLOW.flow -><br>       [> `Eof | `Error of error | `Ok of flow ] Lwt.t</code></pre>
+<pre><span id="VALclient_of_flow"><span class="keyword">val</span> client_of_flow</span> : <code class="type"><a href="Conduit_mirage.html#TYPEtls_config_client">Conduit_mirage.tls_config_client</a> -><br>       FLOW.flow -><br>       [> `Eof | `Error of error | `Ok of flow ] Lwt.t</code></pre></body></html>

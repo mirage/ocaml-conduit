@@ -1,0 +1,72 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<link rel="Start" href="index.html">
+<link rel="previous" href="Conduit_mirage.TLS.html">
+<link rel="Up" href="Conduit_mirage.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conduit" rel="Chapter" href="Conduit.html">
+<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
+<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
+<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
+<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
+<link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
+<link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
+<link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
+<link title="Conduit_trie" rel="Chapter" href="Conduit_trie.html">
+<link title="Resolver" rel="Chapter" href="Resolver.html">
+<link title="Resolver_lwt" rel="Chapter" href="Resolver_lwt.html">
+<link title="Resolver_lwt_unix" rel="Chapter" href="Resolver_lwt_unix.html">
+<link title="Resolver_mirage" rel="Chapter" href="Resolver_mirage.html"><title>Conduit URI resolution : Conduit_mirage.S</title>
+</head>
+<body>
+<div class="navbar"><a class="pre" href="Conduit_mirage.TLS.html" title="Conduit_mirage.TLS">Previous</a>
+&nbsp;<a class="up" href="Conduit_mirage.html" title="Conduit_mirage">Up</a>
+&nbsp;</div>
+<h1>Module type <a href="type_Conduit_mirage.S.html">Conduit_mirage.S</a></h1>
+
+<pre><span class="keyword">module type</span> S = <code class="code">sig</code> <a href="Conduit_mirage.S.html">..</a> <code class="code">end</code></pre><hr width="100%">
+
+<pre><span class="keyword">module</span> <a href="Conduit_mirage.S.Flow.html">Flow</a>: <code class="type">V1_LWT.FLOW</code><code class="type"> </code></pre>
+<pre><span id="TYPEio"><span class="keyword">type</span> <code class="type">'a</code> io</span> = <code class="type">'a Lwt.t</code> </pre>
+
+
+<pre><span id="TYPEic"><span class="keyword">type</span> <code class="type"></code>ic</span> = <code class="type">Flow.flow</code> </pre>
+
+
+<pre><span id="TYPEoc"><span class="keyword">type</span> <code class="type"></code>oc</span> = <code class="type">Flow.flow</code> </pre>
+
+
+<pre><span id="TYPEflow"><span class="keyword">type</span> <code class="type"></code>flow</span> = <code class="type">Flow.flow</code> </pre>
+
+
+<pre><span id="TYPEstack"><span class="keyword">type</span> <code class="type"></code>stack</span> </pre>
+
+
+<pre><span id="TYPEpeer"><span class="keyword">type</span> <code class="type"></code>peer</span> </pre>
+
+
+<pre><span id="TYPEctx"><span class="keyword">type</span> <code class="type"></code>ctx</span> </pre>
+
+
+<pre><span id="VALdefault_ctx"><span class="keyword">val</span> default_ctx</span> : <code class="type"><a href="Conduit_mirage.S.html#TYPEctx">ctx</a></code></pre>
+<pre><span id="VALinit"><span class="keyword">val</span> init</span> : <code class="type">?peer:<a href="Conduit_mirage.S.html#TYPEpeer">peer</a> -><br>       ?stack:<a href="Conduit_mirage.S.html#TYPEstack">stack</a> -><br>       unit -> <a href="Conduit_mirage.S.html#TYPEctx">ctx</a> <a href="Conduit_mirage.S.html#TYPEio">io</a></code></pre>
+<pre><span id="VALconnect"><span class="keyword">val</span> connect</span> : <code class="type">ctx:<a href="Conduit_mirage.S.html#TYPEctx">ctx</a> -><br>       <a href="Conduit_mirage.html#TYPEclient">Conduit_mirage.client</a> -><br>       (<a href="Conduit_mirage.S.html#TYPEflow">flow</a> * <a href="Conduit_mirage.S.html#TYPEic">ic</a> * <a href="Conduit_mirage.S.html#TYPEoc">oc</a>)<br>       <a href="Conduit_mirage.S.html#TYPEio">io</a></code></pre>
+<pre><span id="VALserve"><span class="keyword">val</span> serve</span> : <code class="type">?timeout:int -><br>       ?stop:unit <a href="Conduit_mirage.S.html#TYPEio">io</a> -><br>       ctx:<a href="Conduit_mirage.S.html#TYPEctx">ctx</a> -><br>       mode:<a href="Conduit_mirage.html#TYPEserver">Conduit_mirage.server</a> -><br>       (<a href="Conduit_mirage.S.html#TYPEflow">flow</a> -><br>        <a href="Conduit_mirage.S.html#TYPEic">ic</a> -> <a href="Conduit_mirage.S.html#TYPEoc">oc</a> -> unit <a href="Conduit_mirage.S.html#TYPEio">io</a>) -><br>       unit <a href="Conduit_mirage.S.html#TYPEio">io</a></code></pre>
+<pre><span id="VALendp_to_client"><span class="keyword">val</span> endp_to_client</span> : <code class="type">ctx:<a href="Conduit_mirage.S.html#TYPEctx">ctx</a> -><br>       <a href="Conduit.html#TYPEendp">Conduit.endp</a> -> <a href="Conduit_mirage.html#TYPEclient">Conduit_mirage.client</a> <a href="Conduit_mirage.S.html#TYPEio">io</a></code></pre><div class="info ">
+Use the configuration of the server to interpret how to handle a
+      particular endpoint from the resolver into a concrete
+      implementation of type <code class="code">client</code><br>
+</div>
+
+<pre><span id="VALendp_to_server"><span class="keyword">val</span> endp_to_server</span> : <code class="type">ctx:<a href="Conduit_mirage.S.html#TYPEctx">ctx</a> -><br>       <a href="Conduit.html#TYPEendp">Conduit.endp</a> -> <a href="Conduit_mirage.html#TYPEserver">Conduit_mirage.server</a> <a href="Conduit_mirage.S.html#TYPEio">io</a></code></pre>
+<pre><span id="VALsexp_of_ctx"><span class="keyword">val</span> sexp_of_ctx</span> : <code class="type"><a href="Conduit_mirage.S.html#TYPEctx">ctx</a> -> Sexplib.Sexp.t</code></pre><br>
+Use the configuration of the server to interpret how to handle a
+      particular endpoint from the resolver into a concrete
+      implementation of type <code class="code">client</code><br>
+</body></html>

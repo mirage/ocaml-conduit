@@ -21,15 +21,23 @@ open Sexplib.Conv
 
 type vchan_port = Vchan.Port.t with sexp
 
+IFDEF HAVE_MIRAGE_TLS THEN
+type tls_config_client = Tls.Config.client with sexp
+type tls_config_server = Tls.Config.server with sexp
+ELSE
+type tls_config_client = [ `Tls_not_available ] with sexp
+type tls_config_server = [ `Tls_not_available ] with sexp
+ENDIF
+
 type client = [
-  | `TLS of Tls.Config.client * client
+  | `TLS of tls_config_client * client
   | `TCP of Ipaddr.t * int
   | `Vchan_direct of int * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
 ] with sexp
 
 type server = [
-  | `TLS of Tls.Config.server * server
+  | `TLS of tls_config_server * server
   | `TCP of [ `Port of int ]
   | `Vchan_direct of [`Remote_domid of int] * vchan_port
   | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
@@ -115,11 +123,11 @@ module type TLS = sig
     with type flow = Dynamic_flow.flow
   include V1_LWT.FLOW
   type tracer
-  val server_of_flow :
-    ?trace:tracer ->
-    Tls.Config.server -> FLOW.flow ->
+
+  val server_of_flow : ?trace:tracer -> tls_config_server -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
-  val client_of_flow: Tls.Config.client -> FLOW.flow ->
+
+  val client_of_flow: tls_config_client -> FLOW.flow ->
     [> `Ok of flow | `Error of error | `Eof] Lwt.t
 end
 

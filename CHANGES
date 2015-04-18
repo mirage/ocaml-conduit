@@ -1,3 +1,8 @@
+0.8.2 (2015-04-18):
+* Make TLS optional in `Conduit_mirage`, and disable it by default
+  so that it is a developer-only option until it is properly released.
+  It can be enabled by setting the `HAVE_MIRAGE_LWT` env variable.
+
 0.8.1 (2015-04-17):
 * Support Async_SSL version 112.24.00 and higher.
 * Add a TLS echo server in `tests/async/`

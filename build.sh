@@ -21,7 +21,8 @@ esac
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_LWT_TLS=`ocamlfind query tls.lwt 2>/dev/null || true`
-HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip vchan tls 2>/dev/null || true`
+HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip vchan 2>/dev/null || true`
+HAVE_MIRAGE_TLS="" # activate manually for now
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
 HAVE_XEN=`ocamlfind query mirage-xen xenstore_transport 2>/dev/null || true`
@@ -105,7 +106,13 @@ if [ "$HAVE_LWT" != "" ]; then
       echo "Building with Mirage Vchan support."
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
-    LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES tls tls.mirage"
+    if [ "$HAVE_MIRAGE_TLS" != "" ]; then
+      echo "Building with Mirage TLS support."
+      echo 'true: define(HAVE_LWT_TLS)' >> _tags
+      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES tls tls.mirage"
+    else
+      echo Mirage TLS disabled. Edit build.sh to activate it as a developer.
+    fi
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
     if [ "$HAVE_XEN" != "" ]; then
@@ -140,7 +147,7 @@ fi
 
 REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_MIRAGE_XEN_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
 
-ocamlbuild -use-ocamlfind -no-links -j ${J_FLAG} -tag ${TAGS} \
+ocamlbuild -use-ocamlfind -classic-display -no-links -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
   -pkgs `echo $REQS | tr ' ' ','` \
   ${TARGETS}

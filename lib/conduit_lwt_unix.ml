@@ -199,7 +199,12 @@ module Sockaddr_server = struct
       sock) ()
 
   let process_accept ?timeout callback (client,_) =
-    Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true;
+    ( try
+        Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
+      with
+        (* This is expected for Unix domain sockets *)
+        | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ()
+        | e -> raise e );
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
     let c = callback client ic oc in

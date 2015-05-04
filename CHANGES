@@ -1,3 +1,7 @@
+0.8.3 (2015-05-04):
+* Support `ocaml-tls.0.5.0`
+* setsockopt TCP_NODELAY fails on a Unix domain socket (#63 by @djs55)
+
 0.8.2 (2015-04-18):
 * Make TLS optional in `Conduit_mirage`, and disable it by default
   so that it is a developer-only option until it is properly released.
@@ -6,7 +10,7 @@
 0.8.1 (2015-04-17):
 * Support Async_SSL version 112.24.00 and higher.
 * Add a TLS echo server in `tests/async/`
-* [lwt] Do not leak socket fd when a connect or handshake 
+* [lwt] Do not leak socket fd when a connect or handshake
   operation fails (#56 via Edwin Torok).
 * [async] Do not leak pipes in SSL handling (#54 from Trevor Smith).
 

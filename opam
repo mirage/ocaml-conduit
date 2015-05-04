@@ -1,6 +1,4 @@
 opam-version: "1.2"
-name:         "conduit"
-version:      "0.8.2"
 maintainer:   "anil@recoil.org"
 authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire"]
 homepage:     "https://github.com/mirage/ocaml-conduit"

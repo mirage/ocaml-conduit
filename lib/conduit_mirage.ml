@@ -15,9 +15,10 @@
  *
  *)
 
-open Lwt
 open Sexplib.Std
 open Sexplib.Conv
+
+let (>>=) = Lwt.(>>=)
 
 type vchan_port = Vchan.Port.t with sexp
 
@@ -62,8 +63,8 @@ module Dynamic_flow = struct
   let error_message fn = fn ()
   let wrap_errors (type e) (module F : V1_LWT.FLOW with type error = e) v =
     v >>= function
-    | `Error (err : e) -> return (`Error (fun () -> F.error_message err))
-    | `Ok _ | `Eof as other -> return other
+    | `Error (err : e) -> Lwt.return (`Error (fun () -> F.error_message err))
+    | `Ok _ | `Eof as other -> Lwt.return other
 
   let read (Flow ((module F), flow)) = wrap_errors (module F) (F.read flow)
   let write (Flow ((module F), flow)) b = wrap_errors (module F) (F.write flow b)
@@ -136,7 +137,7 @@ module No_TLS : TLS = struct
   include FLOW
   type tracer = unit
   let error () =
-    return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
+    Lwt.return (`Error (fun () -> "No_TLS: TLS support for Conduit is disabled"))
   let server_of_flow ?trace:_ _config _underlying = error ()
   let client_of_flow _config _underlying = error ()
 end
@@ -156,7 +157,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     stack: S.t option sexp_opaque;
   } with sexp_of
 
-  let fail fmt = Printf.ksprintf (fun s -> fail (Failure s)) fmt
+  let fail fmt = Printf.ksprintf (fun s -> Lwt.fail (Failure s)) fmt
   let err_ipv6 = fail "%s: No IPv6 support compiled into Conduit"
   let err_no_stack =  fail "%s: No TCP stack bound to Conduit"
   let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
@@ -172,36 +173,36 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
   let vchan_port_of_string port =
     match Vchan.Port.of_string port with
     | `Error s -> err_vchan_port s
-    | `Ok p    -> return p
+    | `Ok p    -> Lwt.return p
 
   let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
     match endp with
     | `TLS _ -> err_tls_not_supported "endp_to_client"
-    | `TCP _ as mode -> return mode
+    | `TCP _ as mode -> Lwt.return mode
     | `Vchan_direct (domid, port) ->
       vchan_port_of_string port >>= fun port ->
-      return (`Vchan_direct (domid, port))
+      Lwt.return (`Vchan_direct (domid, port))
     | `Vchan_domain_socket (uuid,  port) ->
       vchan_port_of_string port >>= fun port ->
-      return (`Vchan_domain_socket (`Uuid uuid, `Port port))
+      Lwt.return (`Vchan_domain_socket (`Uuid uuid, `Port port))
     | `Unix_domain_socket _ -> err_domain_socks
     | `Unknown err -> err_resolution_failed err
 
   let endp_to_server ~ctx:_ (endp:Conduit.endp) : server Lwt.t =
     match endp with
     | `TLS _ -> err_tls_not_supported "endp_to_server"
-    | `TCP (_, port) -> return (`TCP (`Port port))
+    | `TCP (_, port) -> Lwt.return (`TCP (`Port port))
     | `Vchan_direct (domid, port) ->
       vchan_port_of_string port >>= fun port ->
-      return (`Vchan_direct ((`Remote_domid domid), port))
+      Lwt.return (`Vchan_direct ((`Remote_domid domid), port))
     | `Vchan_domain_socket (uuid,  port) ->
       vchan_port_of_string port >>= fun port ->
-      return (`Vchan_domain_socket (`Uuid uuid, `Port port))
+      Lwt.return (`Vchan_domain_socket (`Uuid uuid, `Port port))
     | `Unix_domain_socket _ -> err_domain_socks
     | `Unknown err -> err_resolution_failed err
 
   let init ?peer ?stack () =
-    return { peer; stack }
+    Lwt.return { peer; stack }
 
   let default_ctx =
     { peer = None; stack = None }
@@ -216,14 +217,14 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
   let connect_vchan_direct domid port =
     V.Endpoint.client ~domid ~port () >>= fun flow ->
     let flow = Dynamic_flow.Flow ((module V.Endpoint), flow) in
-    return (flow, flow, flow)
+    Lwt.return (flow, flow, flow)
 
   let connect_tcpv4 tcp ip port =
     S.TCPV4.create_connection (S.tcpv4 tcp) (ip, port) >>= function
     | `Error e -> err_tcp e
     | `Ok flow ->
       let flow = Dynamic_flow.Flow ((module S.TCPV4), flow) in
-      return (flow, flow, flow)
+      Lwt.return (flow, flow, flow)
 
   let connect_tls ~ctx connect config underlying =
     connect ~ctx underlying >>= fun (flow, _, _) ->
@@ -232,7 +233,7 @@ module Make(S:V1_LWT.STACKV4)(V:VCHAN_PEER)(TLS:TLS) = struct
     | `Eof     -> err_eof "connect_tls"
     | `Ok flow ->
       let flow = Dynamic_flow.Flow ((module TLS), flow) in
-      return (flow, flow, flow)
+      Lwt.return (flow, flow, flow)
 
   let rec connect ~ctx (mode:client) =
     match mode, ctx.stack with

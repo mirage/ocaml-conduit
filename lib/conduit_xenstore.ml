@@ -1,5 +1,6 @@
 (*
- * Copyright (c) 2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014-2015 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c)      2015 Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,81 +16,84 @@
  *
 *)
 
-open Lwt
-open Printf
 open Sexplib.Conv
 
-type t = {
-  xs: OS.Xs.client sexp_opaque;
-  name: string
-} with sexp_of
+type direct = [`Direct of int * Vchan.Port.t]
 
-type port = Vchan.Port.t with sexp_of
-type uuid = string with sexp_of
-type flow = Vchan_xen.t with sexp_of
+let (>>=) = Lwt.(>>=)
+let (/) = Filename.concat
 
-module Endpoint = Vchan_xen
+let fail fmt = Printf.ksprintf (fun m -> Lwt.fail (Failure m)) fmt
+let err_peer_not_found = fail "Conduit_xenstore: %s peer not found"
+let err_no_entry_found () =
+  fail "No /conduit Xenstore entry found. Run `xenstore-conduit-init`"
+let err_port = fail "%s: invalid port"
 
-let get_my_id xs =
-  OS.Xs.(immediate xs (fun h -> read h "domid"))
+module Make (Xs: Xs_client_lwt.S) = struct
 
-let xenstore_register xs myname =
-  get_my_id xs >>= fun domid ->
-  OS.Xs.(immediate xs (fun h -> write h ("/conduit/" ^ myname) domid))
+  type t = { xs: Xs.client sexp_opaque; name: string } with sexp_of
 
-let get_peer_id xs name =
-  Lwt.catch
-   (fun () -> OS.Xs.(immediate xs (fun h -> read h ("/conduit/" ^ name))))
-   (fun _ -> fail (Failure (sprintf "Conduit_xenstore: %s peer not found" name)))
+  let get_my_id xs = Xs.(immediate xs (fun h -> read h "domid"))
 
-let readdir h d =
-  OS.Xs.(directory h d) >>= fun dirs ->
-  let dirs = List.filter (fun p -> p <> "") dirs in
-  match dirs with
-  | [] -> fail Xs_protocol.Eagain
-  | hd::_ -> return hd
+  let xenstore_register xs myname =
+    get_my_id xs >>= fun domid ->
+    Xs.(immediate xs (fun h -> write h ("/conduit" / myname) domid))
 
-let register name =
-  OS.Xs.make () >>= fun xs ->
-  (* Check that a /conduit directory exists *)
-  catch (fun () ->
-    OS.Xs.(immediate xs (fun h -> read h "/conduit"))
-    >>= fun _ -> return_unit)
-    (fun _ -> fail (Failure
-      "No /conduit Xenstore entry found. Run `xenstore-conduit-init`"))
-  >>= fun () ->
-  xenstore_register xs name >>= fun () ->
-  return { xs; name }
+  let get_peer_id xs name =
+    Lwt.catch
+      (fun () -> Xs.(immediate xs (fun h -> read h ("/conduit" / name))))
+      (fun _  -> err_peer_not_found name)
 
-let accept {xs; name } =
-  let waitfn h =
-    readdir h (sprintf "/conduit/%s" name) >>= fun remote_name ->
-    readdir h (sprintf "/conduit/%s/%s" name remote_name) >>= fun port ->
-    OS.Xs.read h (sprintf "/conduit/%s" remote_name) >>= fun remote_domid ->
+  let readdir h d =
+    Xs.(directory h d) >>= fun dirs ->
+    let dirs = List.filter (fun p -> p <> "") dirs in
+    match dirs with
+    | []    -> Lwt.fail Xs_protocol.Eagain
+    | hd::_ -> Lwt.return hd
+
+  let register name =
+    Xs.make () >>= fun xs ->
+    (* Check that a /conduit directory exists *)
+    Lwt.catch
+      (fun () ->
+         Xs.(immediate xs (fun h -> read h "/conduit")) >>= fun _ ->
+         Lwt.return_unit)
+      (fun _ -> err_no_entry_found ())
+    >>= fun () ->
+    xenstore_register xs name >>= fun () ->
+    Lwt.return { xs; name }
+
+  let accept {xs; name } =
+    let waitfn h =
+      readdir h ("/conduit" / name) >>= fun remote_name ->
+      readdir h ("/conduit" / name / remote_name) >>= fun port ->
+      Xs.read h ("/conduit" / remote_name) >>= fun remote_domid ->
+      let remote_domid = int_of_string remote_domid in
+      Xs.rm h ("/conduit" / name / remote_name) >>= fun () ->
+      match Vchan.Port.of_string port with
+      | `Error e -> err_port e
+      | `Ok port -> Lwt.return (`Direct (remote_domid, port))
+    in
+    Xs.wait xs waitfn
+
+  let listen ({name; _} as v) =
+    (* TODO cancellation *)
+    let conn, push_conn = Lwt_stream.create () in
+    Printf.printf "Conduit_xenstore: listen on %s\n%!" name;
+    let rec loop () =
+      accept v >>= fun c ->
+      push_conn (Some c);
+      loop ()
+    in
+    Lwt.ignore_result (loop ());
+    Lwt.return conn
+
+  let connect {xs; name} ~remote_name ~port =
+    let port_str = Vchan.Port.to_string port in
+    get_peer_id xs remote_name >>= fun remote_domid ->
     let remote_domid = int_of_string remote_domid in
-    OS.Xs.rm h (sprintf "/conduit/%s/%s" name remote_name) >>= fun () ->
-    return (`Vchan_direct (remote_domid, port))
-  in
-  OS.Xs.wait xs waitfn
+    let path = "/conduit" / remote_name / name / port_str in
+    Xs.(immediate xs (fun h -> write h path port_str)) >>= fun () ->
+    Lwt.return (`Direct (remote_domid, port))
 
-let listen ({name; _} as v) =
-  (* TODO cancellation *)
-  let conn, push_conn = Lwt_stream.create () in
-  Printf.printf "Conduit_xenstore: listen on %s\n%!" name;
-  let rec loop () =
-    accept v >>= fun c ->
-    push_conn (Some c);
-    loop ()
-  in
-  ignore_result (loop ());
-  return conn
-
-let connect {xs; name} ~remote_name ~port =
-  let port = Vchan.Port.to_string port in
-  get_peer_id xs remote_name
-  >>= fun remote_domid ->
-  let remote_domid = int_of_string remote_domid in
-  OS.Xs.(immediate xs (fun h -> write h
-     (sprintf "/conduit/%s/%s/%s" remote_name name port) port))
-  >>= fun () ->
-  return (`Vchan_direct (remote_domid, port))
+end

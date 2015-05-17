@@ -99,16 +99,16 @@ if [ "$HAVE_LWT" != "" ]; then
     echo "Building with Mirage support."
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
-    echo Conduit_localhost >> lib/conduit-lwt-mirage.mllib
     echo Resolver_mirage >> lib/conduit-lwt-mirage.mllib
     LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
       echo "Building with Mirage Vchan support."
+      echo 'true: define(HAVE_VCHAN)' >> _tags
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
     fi
     if [ "$HAVE_MIRAGE_TLS" != "" ]; then
       echo "Building with Mirage TLS support."
-      echo 'true: define(HAVE_LWT_TLS)' >> _tags
+      echo 'true: define(HAVE_MIRAGE_TLS)' >> _tags
       LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES tls tls.mirage"
     else
       echo Mirage TLS disabled. Edit build.sh to activate it as a developer.

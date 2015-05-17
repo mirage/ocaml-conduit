@@ -331,7 +331,7 @@ let rec client (e:Conduit.endp): client Lwt.t = match e with
 
 let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `TCP (x, y) -> tcp_server x y
-  | `Unix_domain_socket _ -> err_domain_sockets_not_supported "client"
+  | `Unix_domain_socket _ -> err_domain_sockets_not_supported "server"
   | `Vchan_direct _
   | `Vchan_domain_socket _ as x -> vchan_server x
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s

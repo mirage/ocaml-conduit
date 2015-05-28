@@ -21,7 +21,7 @@ esac
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_LWT_TLS=`ocamlfind query tls.lwt 2>/dev/null || true`
-HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip 2>/dev/null || true`
+HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage 2>/dev/null || true`
 HAVE_MIRAGE_TLS=`ocamlfind query tls.mirage 2>/dev/null || true`
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`

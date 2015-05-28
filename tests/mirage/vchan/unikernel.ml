@@ -3,41 +3,43 @@ open Printf
 
 module Server (C: V1_LWT.CONSOLE) = struct
 
+  let conduit = Conduit_mirage.empty
+
   let rec read_all c t =
-    Vchan_xen.read t
-    >>= function
-    |`Eof -> C.log c "EOF"; OS.Time.sleep 5.
+    Vchan_xen.read t >>= function
+    |`Eof     -> C.log c "EOF"; OS.Time.sleep 5.
     |`Error _ -> C.log c "ERR"; OS.Time.sleep 5.
-    |`Ok buf ->
-      let s = Cstruct.to_string buf in
-      C.log c s;
+    |`Ok buf   ->
+      C.log c (Cstruct.to_string buf);
       read_all c t
 
   let start c =
-    Conduit_xenstore.register "foo_server"
-    >>= fun t ->
+    Conduit_mirage.with_vchan conduit (module OS.Xs)
+      (module Vchan_xen) "foo_server" >>= fun conduit ->
     C.log_s c "Server initialising" >>= fun () ->
-    Conduit_xenstore.listen t
-    >>= fun conns ->
-    Lwt_stream.iter_p (fun endp ->
-      return ()
-    ) conns
+    Conduit_mirage.listen conduit (`Vchan `Domain_socket) 
+      (fun _flow -> C.log_s c "Got a new flow!")
 
 end
 
 module Client (C: V1_LWT.CONSOLE) = struct
 
+  let conduit = Conduit_mirage.empty
+
   let start c =
     OS.Time.sleep 2.0 >>= fun () ->
-    Conduit_xenstore.register "foo_client" 
-    >>= fun t ->
+    Conduit_mirage.with_vchan conduit (module OS.Xs)
+      (module Vchan_xen) "foo_client" >>= fun conduit ->
     C.log_s c "Connecting..." >>= fun () ->
-    Conduit_xenstore.connect t ~remote_name:"foo_server" ~port:"flibble"
-    >>= fun endp ->
-    C.log_s c (sprintf "Endpoint: %s"
-      (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp)))
-    >>= fun () ->
-    return ()
+    let endp = match Vchan.Port.of_string "flibble" with
+      | `Ok port -> `Vchan (`Domain_socket ("foo_server", port))
+      | `Error e -> failwith e
+    in
+    Conduit_mirage.sexp_of_client endp 
+    |> Sexplib.Sexp.to_string_hum
+    |> sprintf "Endpoint: %s"
+    |> C.log_s c
+
 (* 
     C.log_s c "Client connected" >>= fun () ->
     let rec write num =

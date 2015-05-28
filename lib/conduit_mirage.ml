@@ -314,7 +314,7 @@ ELSE
 
 let tls_client _ _ = err_tls_not_supported "client"
 let tls_server _ _ = err_tls_not_supported "server"
-let tls _ _ = err_tls_not_supported "register"
+let tls _ = err_tls_not_supported "register"
 
 ENDIF
 

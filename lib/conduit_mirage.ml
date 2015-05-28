@@ -91,7 +91,8 @@ ELSE
 module type VCHAN = sig type t end
 module type XS = sig end
 
-type vchan = [ `Vchan of [`None] ] with sexp
+type vchan_client = [ `Vchan of [`None] ] with sexp
+type vchan_server = [ `Vchan of [`None] ] with sexp
 
 ENDIF
 
@@ -269,7 +270,7 @@ let mk_vchan (type t) (module X: XS) (module V: VCHAN) t =
 
 ELSE
 
-let vchan _ _ = err_vchan_not_supported "register"
+let mk_vchan _ _ _ = err_vchan_not_supported "register"
 let vchan_client _ = err_vchan_not_supported "client"
 let vchan_server _ = err_vchan_not_supported "server"
 

@@ -53,6 +53,9 @@ end
 type tcp_client = [ `TCP of Ipaddr.t * int ] (** address and destination port *)
 and tcp_server  = [ `TCP of int ]                          (** listening port *)
 
+type 'a stackv4
+val stackv4: (module V1_LWT.STACKV4 with type t = 'a) -> 'a stackv4
+
 (** {1 VCHAN} *)
 
 IFDEF HAVE_VCHAN THEN
@@ -71,12 +74,21 @@ type vchan_server = [
 
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
+
 ELSE
+
 type vchan_client = [`Vchan of [`None]]
 type vchan_server = [`Vchan of [`None]]
 module type VCHAN = sig type t end
 module type XS = sig end
+
 ENDIF
+
+type vchan
+type xs
+
+val vchan: (module VCHAN) -> vchan
+val xs: (module XS) -> xs
 
 (** {1 TLS} *)
 
@@ -110,13 +122,13 @@ module type S = sig
   val empty: t
   (** The empty conduit. *)
 
-  val with_tcp: t -> (module V1_LWT.STACKV4 with type t = 'a) -> 'a -> t Lwt.t
+  val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   (** Extend a conduit with an implementation for TCP. *)
 
   val with_tls: t -> t Lwt.t
   (** Extend a conduit with an implementation for TLS. *)
 
-  val with_vchan: t -> (module XS) -> (module VCHAN) -> string -> t Lwt.t
+  val with_vchan: t -> xs -> vchan -> string -> t Lwt.t
   (** Extend a conduit with an implementation for VCHAN. *)
 
   val connect: t -> client -> Flow.flow Lwt.t

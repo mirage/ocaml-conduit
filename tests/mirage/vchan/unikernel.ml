@@ -1,9 +1,11 @@
 open Lwt
 open Printf
 
-module Server (C: V1_LWT.CONSOLE) = struct
+let conduit = Conduit_mirage.empty
+let vchan = Conduit_mirage.vchan (module Vchan_xen) 
+let xs = Conduit_mirage.xs (module OS.Xs) 
 
-  let conduit = Conduit_mirage.empty
+module Server (C: V1_LWT.CONSOLE) = struct
 
   let rec read_all c t =
     Vchan_xen.read t >>= function
@@ -14,11 +16,10 @@ module Server (C: V1_LWT.CONSOLE) = struct
       read_all c t
 
   let start c =
-    Conduit_mirage.with_vchan conduit (module OS.Xs)
-      (module Vchan_xen) "foo_server" >>= fun conduit ->
+    Conduit_mirage.with_vchan conduit xs vchan "foo_server" >>= fun t ->
     C.log_s c "Server initialising" >>= fun () ->
-    Conduit_mirage.listen conduit (`Vchan `Domain_socket) 
-      (fun _flow -> C.log_s c "Got a new flow!")
+    let callback _ = C.log_s c "Got a new flow!" in
+    Conduit_mirage.listen t (`Vchan `Domain_socket) callback
 
 end
 
@@ -28,14 +29,14 @@ module Client (C: V1_LWT.CONSOLE) = struct
 
   let start c =
     OS.Time.sleep 2.0 >>= fun () ->
-    Conduit_mirage.with_vchan conduit (module OS.Xs)
-      (module Vchan_xen) "foo_client" >>= fun conduit ->
+    Conduit_mirage.with_vchan conduit xs vchan "foo_client" >>= fun t ->
     C.log_s c "Connecting..." >>= fun () ->
-    let endp = match Vchan.Port.of_string "flibble" with
+    let client = match Vchan.Port.of_string "flibble" with
       | `Ok port -> `Vchan (`Domain_socket ("foo_server", port))
       | `Error e -> failwith e
     in
-    Conduit_mirage.sexp_of_client endp 
+    Conduit_mirage.connect t client >>= fun _ ->
+    Conduit_mirage.sexp_of_client client
     |> Sexplib.Sexp.to_string_hum
     |> sprintf "Endpoint: %s"
     |> C.log_s c

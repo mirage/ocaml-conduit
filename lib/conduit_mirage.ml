@@ -64,6 +64,9 @@ end
 type tcp_client = [ `TCP of Ipaddr.t * int ] with sexp
 type tcp_server = [ `TCP of int ] with sexp
 
+type 'a stackv4 = (module V1_LWT.STACKV4 with type t = 'a)
+let stackv4 x = x
+
 IFDEF HAVE_VCHAN THEN
 
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
@@ -91,6 +94,12 @@ module type XS = sig end
 type vchan = [ `Vchan of [`None] ] with sexp
 
 ENDIF
+
+type vchan = (module VCHAN)
+type xs = (module XS)
+
+let vchan x = x
+let xs x = x
 
 IFDEF HAVE_MIRAGE_TLS THEN
 
@@ -253,7 +262,7 @@ module Vchan (Xs: Xs_client_lwt.S) (V: VCHAN) = struct
 
 end
 
-let vchan (type t) (module X: XS) (module V: VCHAN) t =
+let mk_vchan (type t) (module X: XS) (module V: VCHAN) t =
   let module V = Vchan(X)(V) in
   V.register t >|= fun t ->
   S ((module V), t)
@@ -266,7 +275,7 @@ let vchan_server _ = err_vchan_not_supported "server"
 
 ENDIF
 
-let with_vchan t x y z = vchan x y z >|= fun x -> { t with vchan = Some x }
+let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
 
@@ -323,9 +332,9 @@ let with_tls t = tls t >|= fun x -> { t with tls = Some x }
 module type S = sig
   type t
   val empty: t
-  val with_tcp: t -> (module V1_LWT.STACKV4 with type t = 'a) -> 'a -> t Lwt.t
+  val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   val with_tls: t -> t Lwt.t
-  val with_vchan: t -> (module XS) -> (module VCHAN) -> string -> t Lwt.t
+  val with_vchan: t -> xs -> vchan -> string -> t Lwt.t
   val connect: t -> client -> Flow.flow Lwt.t
   val listen: t -> server -> callback -> unit Lwt.t
 end

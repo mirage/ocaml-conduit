@@ -56,16 +56,24 @@ and tcp_server  = [ `TCP of int ]                          (** listening port *)
 (** {1 VCHAN} *)
 
 IFDEF HAVE_VCHAN THEN
-type vchan = [
+
+type vchan_client = [
   | `Vchan of [
       | `Direct of int * Vchan.Port.t                   (** domain id, port *)
       | `Domain_socket of string * Vchan.Port.t (** Vchan Xen domain socket *)
-    ]
-] with sexp
+    ]]
+
+type vchan_server = [
+  | `Vchan of [
+      | `Direct of int * Vchan.Port.t                   (** domain id, port *)
+      | `Domain_socket                          (** Vchan Xen domain socket *)
+    ]]
+
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
 ELSE
-type vchan = [`Vchan of [`None]]
+type vchan_client = [`Vchan of [`None]]
+type vchan_server = [`Vchan of [`None]]
 module type VCHAN = sig type t end
 module type XS = sig end
 ENDIF
@@ -81,10 +89,10 @@ type 'a tls_server = [`TLS of [`None]]
 ENDIF
 
 
-type client = [ tcp_client | vchan | client tls_client ] with sexp
+type client = [ tcp_client | vchan_client | client tls_client ] with sexp
 (** The type for client configuration values. *)
 
-type server = [ tcp_server | vchan | server tls_server ] with sexp
+type server = [ tcp_server | vchan_server | server tls_server ] with sexp
 (** The type for server configuration values. *)
 
 val client: Conduit.endp -> client Lwt.t

@@ -69,10 +69,17 @@ IFDEF HAVE_VCHAN THEN
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
 
-type vchan = [
+type vchan_client = [
   | `Vchan of [
       | `Direct of int * Vchan.Port.t                   (** domain id, port *)
       | `Domain_socket of string * Vchan.Port.t (** Vchan Xen domain socket *)
+    ]
+] with sexp
+
+type vchan_server = [
+  | `Vchan of [
+      | `Direct of int * Vchan.Port.t                   (** domain id, port *)
+      | `Domain_socket                          (** Vchan Xen domain socket *)
     ]
 ] with sexp
 
@@ -97,8 +104,8 @@ type 'a tls_server = [`TLS of [`None] ] with sexp
 
 ENDIF
 
-type client = [ tcp_client | vchan | client tls_client ] with sexp
-type server = [ tcp_server | vchan | server tls_server ] with sexp
+type client = [ tcp_client | vchan_client | client tls_client ] with sexp
+type server = [ tcp_server | vchan_server | server tls_server ] with sexp
 
 type tls_client' = client tls_client with sexp
 type tls_server' = server tls_server with sexp
@@ -111,9 +118,9 @@ let tcp_client i p = Lwt.return (`TCP (i, p))
 let tcp_server _ p = Lwt.return (`TCP p)
 
 type t = {
-  tcp: (tcp_client, tcp_server) handler option;
-  tls: (tls_client', tls_server') handler option;
-  vchan: (vchan, vchan) handler option;
+  tcp  : (tcp_client  , tcp_server  ) handler option;
+  tls  : (tls_client' , tls_server' ) handler option;
+  vchan: (vchan_client, vchan_server) handler option;
 }
 
 let empty = { tcp = None; tls = None; vchan = None }
@@ -209,31 +216,33 @@ let vchan_client = function
   | `Vchan_domain_socket (i, p) ->
     port p >|= fun p -> `Vchan (`Domain_socket (i, p))
 
-let vchan_server = vchan_client
+let vchan_server = function
+  | `Vchan_direct (i, p)  -> port p >|= fun p -> `Vchan (`Direct (i, p))
+  | `Vchan_domain_socket _-> Lwt.return (`Vchan `Domain_socket)
 
 module Vchan (Xs: Xs_client_lwt.S) (V: VCHAN) = struct
 
   module XS = Conduit_xenstore.Make(Xs)
 
   type t = XS.t
-  type client = vchan with sexp
-  type server = vchan with sexp
+  type client = vchan_client with sexp
+  type server = vchan_server with sexp
 
   let register = XS.register
 
-  let rec connect t (c:vchan) = match c with
+  let rec connect t (c:vchan_client) = match c with
     | `Vchan (`Domain_socket (uid, port)) ->
       XS.connect t ~remote_name:uid ~port >>= fun endp ->
-      connect t (`Vchan endp :> vchan)
+      connect t (`Vchan endp :> vchan_client)
     | `Vchan (`Direct (domid, port)) ->
       V.client ~domid ~port () >>= fun flow ->
       Lwt.return (Flow.create (module V) flow)
 
-  let listen (t:t) (server:vchan) fn = match server with
+  let listen (t:t) (server:vchan_server) fn = match server with
     | `Vchan (`Direct (domid, port)) ->
       V.server ~domid ~port () >>= fun t ->
       fn (Flow.create (module V) t)
-    | `Vchan (`Domain_socket _) ->
+    | `Vchan `Domain_socket ->
       XS.listen t >>= fun conns ->
       Lwt_stream.iter_p (function
           | `Direct (domid, port) ->

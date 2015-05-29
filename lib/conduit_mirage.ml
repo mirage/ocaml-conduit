@@ -316,7 +316,7 @@ module type S = sig
   val empty: t
   val with_tcp: t -> (module V1_LWT.STACKV4 with type t = 'a) -> 'a -> t Lwt.t
   val with_tls: t -> t Lwt.t
-  val with_vchan: t -> (module XS) -> (module VCHAN) -> bytes -> t Lwt.t
+  val with_vchan: t -> (module XS) -> (module VCHAN) -> string -> t Lwt.t
   val connect: t -> client -> Flow.flow Lwt.t
   val listen: t -> server -> callback -> unit Lwt.t
 end

@@ -108,7 +108,7 @@ module type S = sig
   val with_tls: t -> t Lwt.t
   (** Extend a conduit with an implementation for TLS. *)
 
-  val with_vchan: t -> (module XS) -> (module VCHAN) -> bytes -> t Lwt.t
+  val with_vchan: t -> (module XS) -> (module VCHAN) -> string -> t Lwt.t
   (** Extend a conduit with an implementation for VCHAN. *)
 
   val connect: t -> client -> Flow.flow Lwt.t

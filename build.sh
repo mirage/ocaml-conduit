@@ -25,7 +25,6 @@ HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage tcpip vchan 2>/dev/null || 
 HAVE_MIRAGE_TLS=`ocamlfind query tls.mirage 2>/dev/null || true`
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
-HAVE_XEN=`ocamlfind query mirage-xen xenstore_transport 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
@@ -99,38 +98,24 @@ if [ "$HAVE_LWT" != "" ]; then
     echo "Building with Mirage support."
     echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
-    echo Conduit_localhost >> lib/conduit-lwt-mirage.mllib
     echo Resolver_mirage >> lib/conduit-lwt-mirage.mllib
-    LWT_MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
+    MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
       echo "Building with Mirage Vchan support."
-      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES vchan"
+      echo 'true: define(HAVE_VCHAN)' >> _tags
+      MIRAGE_REQUIRES="$MIRAGE_REQUIRES vchan"
+      echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
+      echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
     fi
     if [ "$HAVE_MIRAGE_TLS" != "" ]; then
       echo "Building with Mirage TLS support."
-      echo 'true: define(HAVE_LWT_TLS)' >> _tags
-      LWT_MIRAGE_REQUIRES="$LWT_MIRAGE_REQUIRES tls tls.mirage"
-    else
-      echo Mirage TLS disabled. Edit build.sh to activate it as a developer.
+      echo 'true: define(HAVE_MIRAGE_TLS)' >> _tags
+      MIRAGE_REQUIRES="$MIRAGE_REQUIRES tls tls.mirage"
     fi
     add_target "conduit-lwt-mirage"
     cp lib/conduit-lwt-mirage.mllib lib/conduit-lwt-mirage.odocl
-    if [ "$HAVE_XEN" != "" ]; then
-      echo "Building with Mirage/Xen support."
-      LWT_MIRAGE_XEN_REQUIRES="$LWT_MIRAGE_XEN_REQUIRES mirage-xen vchan.xen"
-      echo 'true: define(HAVE_MIRAGE_XEN)' >> _tags
-      echo Conduit_xenstore > lib/conduit-lwt-mirage-xen.mllib
-      echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
-      add_target "conduit-lwt-mirage-xen"
-      cp lib/conduit-lwt-mirage-xen.mllib lib/conduit-lwt-mirage-xen.odocl
-    fi
   fi
 
-fi
-
-if [ "$HAVE_VCHAN" ]; then
-  echo "Building with Vchan support."
-  echo 'true: define(HAVE_VCHAN)' >> _tags
 fi
 
 if [ "$HAVE_VCHAN_LWT" != "" ]; then
@@ -145,7 +130,7 @@ if [ "$BUILD_DOC" = "true" ]; then
   TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
 fi
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $LWT_MIRAGE_REQUIRES $LWT_MIRAGE_XEN_REQUIRES $VCHAN_LWT_REQUIRES | tr -s ' '`
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES  | tr -s ' '`
 
 ocamlbuild -use-ocamlfind -classic-display -no-links -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
@@ -158,15 +143,14 @@ sed \
   -e "s/@ASYNC_REQUIRES@/${ASYNC_REQUIRES}/g" \
   -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
   -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
-  -e "s/@LWT_MIRAGE_REQUIRES@/${LWT_MIRAGE_REQUIRES}/g" \
-  -e "s/@LWT_MIRAGE_XEN_REQUIRES@/${LWT_MIRAGE_XEN_REQUIRES}/g" \
+  -e "s/@MIRAGE_REQUIRES@/${MIRAGE_REQUIRES}/g" \
   -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
   META.in > META
 
 if [ "$1" = "true" ]; then
   B=_build/lib/
-  ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a > _install/lib
+  ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo > _install/lib
   ocamlfind remove conduit || true
-  FILES=`ls -1 lib/intro.html $B/*.mli $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a 2>/dev/null || true`
+  FILES=`ls -1 lib/intro.html $B/*.mli $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo 2>/dev/null || true`
   ocamlfind install conduit META $FILES
 fi

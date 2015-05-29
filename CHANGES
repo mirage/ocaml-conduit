@@ -1,5 +1,11 @@
+0.8.4 (2015-05-29):
+* Full support for `ocaml-tls.0.5.0`
+* Breaking API change for mirage-conduit. Now all the flows are dynamic,
+  the functors are becoming first-class values so no big functor to build
+  first.
+
 0.8.3 (2015-05-04):
-* Support `ocaml-tls.0.5.0`
+* Partial support for `ocaml-tls.0.5.0`
 * setsockopt TCP_NODELAY fails on a Unix domain socket (#63 by @djs55)
 
 0.8.2 (2015-04-18):

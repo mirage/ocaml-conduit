@@ -2,8 +2,9 @@
 
 all: mirage
 	@
-mirage: 
-	make -C mirage 
+
+mirage:
+	make -C mirage
 
 async:
 	make -C async

@@ -11,14 +11,16 @@ let uri = Uri.of_string "http://localhost"
 
 module Client (C:CONSOLE) (S:STACKV4) = struct
 
-  let conduit = Conduit_mirage.empty
+  let mk_conduit s =
+    let stackv4 = Conduit_mirage.stackv4 (module S) in
+    Conduit_mirage.with_tcp Conduit_mirage.empty stackv4 s
 
   let callback c _flow =
     C.log_s c "Connection!"
 
   let start c stack =
     let r = Resolver_mirage.localhost in
-    Conduit_mirage.with_tcp conduit (module S) stack >>= fun conduit ->
+    mk_conduit stack >>= fun conduit ->
     Resolver_lwt.resolve_uri ~uri r >>= fun endp ->
     Conduit_mirage.server endp >>= fun mode ->
     let endp = Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp) in

@@ -328,8 +328,10 @@ ENDIF
 
 let with_tls t = tls t >|= fun x -> { t with tls = Some x }
 
+type conduit = t
+
 module type S = sig
-  type t
+  type t = conduit
   val empty: t
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   val with_tls: t -> t Lwt.t

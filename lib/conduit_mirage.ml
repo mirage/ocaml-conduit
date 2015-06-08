@@ -214,7 +214,6 @@ let with_tcp t f x = tcp f x >|= fun x -> { t with tcp = Some x }
 IFDEF HAVE_VCHAN THEN
 
 let err_vchan_port = fail "%s: invalid Vchan port"
-let err_todo = fail "%s: TODO"
 
 let port p =
   match Vchan.Port.of_string p with
@@ -258,7 +257,6 @@ module Vchan (Xs: Xs_client_lwt.S) (V: VCHAN) = struct
           | `Direct (domid, port) ->
             V.server ~domid ~port () >>= fun t ->
             fn (Flow.create (module V) t)
-          | _ -> err_todo "serve_vchan_domain_sockets"
         ) conns
 
 end

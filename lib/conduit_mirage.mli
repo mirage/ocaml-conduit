@@ -113,6 +113,9 @@ val client: Conduit.endp -> client Lwt.t
 val server: Conduit.endp -> server Lwt.t
 (** Resolve a confuit endpoint into a server configuration. *)
 
+type t
+(** The type for conduit values. *)
+
 module type S = sig
   (** The signature for Conduit implementations. *)
 
@@ -139,4 +142,4 @@ module type S = sig
 
 end
 
-include S
+include S with type t := t

@@ -147,7 +147,7 @@ val endp_of_flow : flow -> Conduit.endp
 val endp_to_client : ctx:ctx -> Conduit.endp -> client io
 
 (** [endp_to_server ~ctx endp] converts an [endp] into a
-    a concrete connection mechanism of type [client] *)
+    a concrete connection mechanism of type [server] *)
 val endp_to_server : ctx:ctx -> Conduit.endp -> server io
 
 (** {2 TLS library selection} *)

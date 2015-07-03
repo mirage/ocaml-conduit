@@ -27,6 +27,7 @@ depopts: [
   "mirage-dns"
   "vchan"
   "tls"
+  "mirage-types-lwt"
 ]
 conflicts: [
   "lwt" {<"2.4.4"}

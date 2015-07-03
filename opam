@@ -27,6 +27,7 @@ depopts: [
   "mirage-dns"
   "vchan"
   "tls"
+  "mirage-types-lwt"
 ]
 conflicts: [
   "lwt" {<"2.4.4"}
@@ -35,5 +36,6 @@ conflicts: [
   "dns" {<"0.10.0"}
   "tls" {<"0.4.0"}
   "vchan" {<"2.0.0"}
+  "nocrypto" {<"0.4.0"}
 ]
 available: [ocaml-version >= "4.01.0"]

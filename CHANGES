@@ -1,3 +1,6 @@
+0.8.5 (2015-07-12)
+* Fix client-side `https://` resolution for `Conduit_mirage`
+
 0.8.4 (2015-05-29):
 * Full support for `ocaml-tls.0.5.0`
 * Breaking API change for mirage-conduit. Now all the flows are dynamic,

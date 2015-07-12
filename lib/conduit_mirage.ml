@@ -282,7 +282,10 @@ IFDEF HAVE_MIRAGE_TLS THEN
 
 let err_eof = fail "%s: End-of-file!"
 
-let client_of_bytes str = Tls.Config.client_of_sexp (Sexplib.Sexp.of_string str)
+let client_of_bytes str =
+  (* an https:// request doesn't need client-side authentication *)
+  Tls.Config.client ~authenticator:X509.Authenticator.null ()
+
 let server_of_bytes str = Tls.Config.server_of_sexp (Sexplib.Sexp.of_string str)
 
 let tls_client c x = Lwt.return (`TLS (client_of_bytes c, x))

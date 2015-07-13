@@ -142,3 +142,16 @@ module type S = sig
 end
 
 include S
+
+module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4): sig
+
+  (** {1 Context for MirageOS conduit resolvers} *)
+
+  type t = Resolver_lwt.t * conduit
+  (** The type for contexts of conduit resolvers. *)
+
+  val create: ?tls:bool -> S.t -> t Lwt.t
+  (** Create a new context. If [tls] is specified (by defaut, it is not),
+      set-up the conduit to accept TLS connections. *)
+
+end

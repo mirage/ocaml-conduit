@@ -11,7 +11,7 @@ build:   ["ocamlfind" "query" "conduit.mirage"]
 depends: [
   "mirage-types-lwt" {>= "2.3.0"}
   "mirage-dns" {>= "2.0.0"}
-  "conduit"    {>= "0.8.4"}
+  "conduit"    {>= "0.8.6"}
 ]
 depopts: [
   "vchan"

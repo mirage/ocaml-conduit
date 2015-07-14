@@ -358,3 +358,25 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `Vchan_domain_socket _ as x -> vchan_server x
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s
   | `Unknown s -> err_unknown s
+
+module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) = struct
+
+  type t = Resolver_lwt.t * conduit
+
+  module DNS = Dns_resolver_mirage.Make(T)(S)
+  module RES = Resolver_mirage.Make(DNS)
+
+  let conduit = empty
+  let stackv4 = stackv4 (module S: V1_LWT.STACKV4 with type t = S.t)
+
+  let create ?(tls=false) stack =
+    let res = Resolver_lwt.init () in
+    RES.register ~stack res;
+    with_tcp conduit stackv4 stack >>= fun conduit ->
+    if tls then
+      with_tls conduit >|= fun conduit ->
+      res, conduit
+    else
+      Lwt.return (res, conduit)
+
+end

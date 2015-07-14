@@ -1,3 +1,7 @@
+0.8.6 (2015-07-14)
+* Add a `Conduit_mirage.Context`, a functor for creating HTTP(s) conduit
+  contexts (with a DNS resolver).
+
 0.8.5 (2015-07-12)
 * Fix client-side `https://` resolution for `Conduit_mirage`
 

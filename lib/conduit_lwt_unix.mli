@@ -44,7 +44,7 @@ with sexp
    - [`Vchan_direct (`Domid domid, `Port port)]: Connect to the remote
      VM on the [domid], [port] tuple.
    - [`Vchan_domain_socket (`Domain_name domain, `Port port_name)]:
-     Use the Vchan name resolution to connect )
+     Use the Vchan name resolution to connect.
 
  *)
 type client = [

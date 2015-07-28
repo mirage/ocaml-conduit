@@ -8,10 +8,6 @@
 <link title="Index of modules" rel=Appendix href="index_modules.html">
 <link title="Index of module types" rel=Appendix href="index_module_types.html">
 <link title="Conduit" rel="Chapter" href="Conduit.html">
-<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
-<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
-<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
-<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
 <link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
 <link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
 <link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
@@ -26,18 +22,25 @@
 &nbsp;</div>
 <h1>Index of types</h1>
 <table>
-<tr><td align="left"><br>A</td></tr>
-<tr><td><a href="Conduit_async.html#TYPEaddr">addr</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>C</td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEcallback">callback</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td><div class="info">
+The type for callback values.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#TYPEclient">client</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
+<td><div class="info">
+The type for client configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_mirage.html#TYPEclient">client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td><div class="info">
-Configuration for a single client connection
+The type for client configuration values.
 </div>
 </td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEclient">client</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
-Set of supported client connections that are supported by this module.
+Set of supported client connections that are supported by this module:
 </div>
 </td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEclient_tls_config">client_tls_config</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
@@ -45,8 +48,11 @@ Set of supported client connections that are supported by this module.
 Configuration fragment for a TLS client connecting to a remote endpoint
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEctx">ctx</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEconduit">conduit</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td><div class="info">
+The type for conduit values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEctx">ctx</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 State handler for an active conduit
@@ -65,13 +71,7 @@ State handler for an active conduit
 End points that can potentially be connected to.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#TYPEerror">error</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>F</td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#TYPEflow">flow</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEflow">flow</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEflow">flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 A <code class="code">flow</code> contains the state of a single connection, over a specific
@@ -79,11 +79,7 @@ A <code class="code">flow</code> contains the state of a single connection, over
 </div>
 </td></tr>
 <tr><td align="left"><br>I</td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEic">ic</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEic">ic</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_async.html#TYPEic">ic</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
 <td></td></tr>
 <tr><td><a href="Resolver.S.html#TYPEio">io</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td><div class="info">
@@ -91,30 +87,11 @@ Abstract type of the cooperative threading library used, normally
       defined via the <code class="code">IO</code> module type
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEio">io</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEio">io</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async.html#TYPEio">io</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>O</td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEoc">oc</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEoc">oc</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async.html#TYPEoc">oc</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
-<tr><td align="left"><br>P</td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEpeer">peer</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#TYPEport">port</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#TYPEport">port</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
-<td><div class="info">
-Type of the port name that identifies a unique connection at an
-      endpoint
-</div>
-</td></tr>
 <tr><td align="left"><br>R</td></tr>
 <tr><td><a href="Resolver.S.html#TYPErewrite_fn">rewrite_fn</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td><div class="info">
@@ -123,9 +100,14 @@ A rewrite function resolves a <a href="Resolver.S.html#TYPEsvc">service</a> and 
 </div>
 </td></tr>
 <tr><td align="left"><br>S</td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#TYPEserver">server</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
+<td><div class="info">
+The type for server configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_mirage.html#TYPEserver">server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td><div class="info">
-Configuration for listening on a server port.
+The type for server configuration values.
 </div>
 </td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEserver">server</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
@@ -133,8 +115,6 @@ Configuration for listening on a server port.
 Set of supported listening mechanisms that are supported by this module.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_async.html#TYPEserver">server</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEserver_tls_config">server_tls_config</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Configuration fragment for a listening TLS server
@@ -153,7 +133,7 @@ A service function maps the string (such as <code class="code">http</code> or <c
       it into an endpoint.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#TYPEstack">stack</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<tr><td><a href="Conduit_mirage.html#TYPEstackv4">stackv4</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 <tr><td><a href="Resolver.S.html#TYPEsvc">svc</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td><div class="info">
@@ -172,49 +152,66 @@ State handle for a running resolver
 Radix tree that maps <code class="code">string</code> keys to <code class="code">'a</code> values
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#TYPEt">t</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
+<tr><td><a href="Conduit_mirage.S.html#TYPEt">t</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#TYPEt">t</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
+<tr><td><a href="Conduit_mirage.VCHAN.html#TYPEt">t</a> [<a href="Conduit_mirage.VCHAN.html">Conduit_mirage.VCHAN</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#TYPEt">t</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
 <td><div class="info">
-Type of a single connection
+The type for runtime handlers.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.Context.html#TYPEt">t</a> [<a href="Conduit_mirage.Context.html">Conduit_mirage.Context</a>]</td>
+<td><div class="info">
+The type for contexts of conduit resolvers.
 </div>
 </td></tr>
 <tr><td><a href="Conduit.IO.html#TYPEt">t</a> [<a href="Conduit.IO.html">Conduit.IO</a>]</td>
 <td></td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEtcp_client">tcp_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td><div class="info">
+address and destination port
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEtcp_flow">tcp_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">tcp_flow</code> contains the state of a single TCP connection.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<tr><td><a href="Conduit_mirage.html#TYPEtcp_server">tcp_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td><div class="info">
+listening port
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEtls_client">tls_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEtls_lib">tls_lib</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Currently selected method of using TLS for client and servers
 </div>
 </td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEtls_server">tls_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEtls_server_key">tls_server_key</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Type describing where to locate a PEM key in the filesystem
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.TLS.html#TYPEtracer">tracer</a> [<a href="Conduit_mirage.TLS.html">Conduit_mirage.TLS</a>]</td>
-<td></td></tr>
-<tr><td align="left"><br>U</td></tr>
-<tr><td><a href="Conduit_mirage.html#TYPEunknown">unknown</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#TYPEuuid">uuid</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>V</td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEvchan">vchan</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td></td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPEvchan_client">vchan_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#TYPEvchan_flow">vchan_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">vchan_flow</code> contains the state of a single Vchan shared memory
     connection.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<tr><td><a href="Conduit_mirage.html#TYPEvchan_server">vchan_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>X</td></tr>
+<tr><td><a href="Conduit_mirage.html#TYPExs">xs</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 </table>
 </body>

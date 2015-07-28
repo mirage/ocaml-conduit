@@ -12,10 +12,6 @@
 <link title="Index of modules" rel=Appendix href="index_modules.html">
 <link title="Index of module types" rel=Appendix href="index_module_types.html">
 <link title="Conduit" rel="Chapter" href="Conduit.html">
-<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
-<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
-<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
-<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
 <link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
 <link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
 <link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
@@ -23,7 +19,11 @@
 <link title="Resolver" rel="Chapter" href="Resolver.html">
 <link title="Resolver_lwt" rel="Chapter" href="Resolver_lwt.html">
 <link title="Resolver_lwt_unix" rel="Chapter" href="Resolver_lwt_unix.html">
-<link title="Resolver_mirage" rel="Chapter" href="Resolver_mirage.html"><title>Conduit URI resolution : Conduit_mirage</title>
+<link title="Resolver_mirage" rel="Chapter" href="Resolver_mirage.html"><link title="TCP" rel="Section" href="#1_TCP">
+<link title="VCHAN" rel="Section" href="#1_VCHAN">
+<link title="TLS" rel="Section" href="#1_TLS">
+<link title="Context for MirageOS conduit resolvers" rel="Section" href="#1_ContextforMirageOSconduitresolvers">
+<title>Conduit URI resolution : Conduit_mirage</title>
 </head>
 <body>
 <div class="navbar"><a class="pre" href="Conduit_lwt_unix_ssl.html" title="Conduit_lwt_unix_ssl">Previous</a>
@@ -38,101 +38,137 @@ Functorial connection establishment interface that is compatible with
 </div>
 <hr width="100%">
 
-<pre><span id="TYPEvchan_port"><span class="keyword">type</span> <code class="type"></code>vchan_port</span> = <code class="type">Vchan.Port.t</code> </pre>
+<pre><span class="keyword">module</span> <a href="Conduit_mirage.Flow.html">Flow</a>: <code class="type">V1_LWT.FLOW</code><code class="type"> </code></pre><div class="info">
+Dynamic flows.
+</div>
 
-
-<pre><span id="TYPEtls_config_client"><span class="keyword">type</span> <code class="type"></code>tls_config_client</span> = <code class="type">[ `Tls_not_available ]</code> </pre>
-
-
-<pre><span id="TYPEtls_config_server"><span class="keyword">type</span> <code class="type"></code>tls_config_server</span> = <code class="type">[ `Tls_not_available ]</code> </pre>
-
-
-<pre><span id="TYPEclient"><span class="keyword">type</span> <code class="type"></code>client</span> = <code class="type">[ `TCP of Ipaddr.t * int<br>       | `TLS of <a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a> * client<br>       | `Vchan_direct of int * <a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a><br>       | `Vchan_domain_socket of<br>           [ `Uuid of string ] * [ `Port of <a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a> ] ]</code> </pre>
+<pre><span id="TYPEcallback"><span class="keyword">type</span> <code class="type"></code>callback</span> = <code class="type">Flow.flow -> unit Lwt.t</code> </pre>
 <div class="info ">
-Configuration for a single client connection<br>
+The type for callback values.<br>
 </div>
 
 
-<pre><span id="TYPEserver"><span class="keyword">type</span> <code class="type"></code>server</span> = <code class="type">[ `TCP of [ `Port of int ]<br>       | `TLS of <a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a> * server<br>       | `Vchan_direct of [ `Remote_domid of int ] * <a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a><br>       | `Vchan_domain_socket of<br>           [ `Uuid of string ] * [ `Port of <a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a> ] ]</code> </pre>
+<pre><span class="keyword">module type</span> <a href="Conduit_mirage.Handler.html">Handler</a> = <code class="code">sig</code> <a href="Conduit_mirage.Handler.html">..</a> <code class="code">end</code></pre><br>
+<h1 id="1_TCP">TCP</h1><br>
+<br>
+The type for client connections.<br>
+
+<pre><span id="TYPEtcp_client"><span class="keyword">type</span> <code class="type"></code>tcp_client</span> = <code class="type">[ `TCP of Ipaddr.t * int ]</code> </pre>
 <div class="info ">
-Configuration for listening on a server port.<br>
+address and destination port<br>
 </div>
 
 
-<pre><span class="keyword">module type</span> <a href="Conduit_mirage.ENDPOINT.html">ENDPOINT</a> = <code class="code">sig</code> <a href="Conduit_mirage.ENDPOINT.html">..</a> <code class="code">end</code></pre><div class="info">
-Module type of a Vchan endpoint
+<pre><span id="TYPEtcp_server"><span class="keyword">type</span> <code class="type"></code>tcp_server</span> = <code class="type">[ `TCP of int ]</code> </pre>
+<div class="info ">
+listening port<br>
 </div>
 
-<pre><span class="keyword">module type</span> <a href="Conduit_mirage.PEER.html">PEER</a> = <code class="code">sig</code> <a href="Conduit_mirage.PEER.html">..</a> <code class="code">end</code></pre>
-<pre><span class="keyword">module</span> <a href="Conduit_mirage.Dynamic_flow.html">Dynamic_flow</a>: <code class="type">V1_LWT.FLOW</code><code class="type"> </code></pre>
-<pre><span class="keyword">module type</span> <a href="Conduit_mirage.VCHAN_PEER.html">VCHAN_PEER</a> = <code class="type"><a href="Conduit_mirage.PEER.html">PEER</a></code><code class="type"> 
-  with type uuid = string
-   and type port = vchan_port</code></pre>
-<pre><span id="TYPEunknown"><span class="keyword">type</span> <code class="type"></code>unknown</span> = <code class="type">[ `Unknown of string ]</code> </pre>
+
+<pre><span id="TYPEstackv4"><span class="keyword">type</span> <code class="type">'a</code> stackv4</span> </pre>
 
 
-<pre><span class="keyword">module type</span> <a href="Conduit_mirage.VCHAN_FLOW.html">VCHAN_FLOW</a> = <code class="type">V1_LWT.FLOW</code><code class="type"> 
-  with type error := unknown</code></pre>
-<pre><span class="keyword">module type</span> <a href="Conduit_mirage.TLS.html">TLS</a> = <code class="code">sig</code> <a href="Conduit_mirage.TLS.html">..</a> <code class="code">end</code></pre>
-<pre><span class="keyword">module</span> <a href="Conduit_mirage.No_TLS.html">No_TLS</a>: <code class="type"><a href="Conduit_mirage.TLS.html">TLS</a></code><code class="type"> </code></pre><div class="info">
-Dummy TLS module which can be used if you don't want TLS support.
+<pre><span id="VALstackv4"><span class="keyword">val</span> stackv4</span> : <code class="type">(module V1_LWT.STACKV4 with type t = 'a) -> 'a <a href="Conduit_mirage.html#TYPEstackv4">stackv4</a></code></pre><br>
+<h1 id="1_VCHAN">VCHAN</h1><br>
+<br>
+domain id, port<br>
+<br>
+Vchan Xen domain socket<br>
+<br>
+domain id, port<br>
+<br>
+Vchan Xen domain socket<br>
+
+<pre><span id="TYPEvchan_client"><span class="keyword">type</span> <code class="type"></code>vchan_client</span> = <code class="type">[ `Vchan of [ `None ] ]</code> </pre>
+
+
+<pre><span id="TYPEvchan_server"><span class="keyword">type</span> <code class="type"></code>vchan_server</span> = <code class="type">[ `Vchan of [ `None ] ]</code> </pre>
+
+
+<pre><span class="keyword">module type</span> <a href="Conduit_mirage.VCHAN.html">VCHAN</a> = <code class="code">sig</code> <a href="Conduit_mirage.VCHAN.html">..</a> <code class="code">end</code></pre>
+<pre><span class="keyword">module type</span> <a href="Conduit_mirage.XS.html">XS</a> = <code class="code">sig</code> <a href="Conduit_mirage.XS.html">..</a> <code class="code">end</code></pre>
+<pre><span id="TYPEvchan"><span class="keyword">type</span> <code class="type"></code>vchan</span> </pre>
+
+
+<pre><span id="TYPExs"><span class="keyword">type</span> <code class="type"></code>xs</span> </pre>
+
+
+<pre><span id="VALvchan"><span class="keyword">val</span> vchan</span> : <code class="type">(module Conduit_mirage.VCHAN) -> <a href="Conduit_mirage.html#TYPEvchan">vchan</a></code></pre>
+<pre><span id="VALxs"><span class="keyword">val</span> xs</span> : <code class="type">(module Conduit_mirage.XS) -> <a href="Conduit_mirage.html#TYPExs">xs</a></code></pre><br>
+<h1 id="1_TLS">TLS</h1><br>
+
+<pre><span id="TYPEtls_client"><span class="keyword">type</span> <code class="type">'a</code> tls_client</span> = <code class="type">[ `TLS of [ `None ] ]</code> </pre>
+
+
+<pre><span id="TYPEtls_server"><span class="keyword">type</span> <code class="type">'a</code> tls_server</span> = <code class="type">[ `TLS of [ `None ] ]</code> </pre>
+
+
+<pre><span id="TYPEclient"><span class="keyword">type</span> <code class="type"></code>client</span> = <code class="type">[ `TCP of Ipaddr.t * int | `TLS of [ `None ] | `Vchan of [ `None ] ]</code> </pre>
+<div class="info ">
+The type for client configuration values.<br>
 </div>
+
+
+<pre><span id="TYPEserver"><span class="keyword">type</span> <code class="type"></code>server</span> = <code class="type">[ `TCP of int | `TLS of [ `None ] | `Vchan of [ `None ] ]</code> </pre>
+<div class="info ">
+The type for server configuration values.<br>
+</div>
+
+
+<pre><span id="VALclient"><span class="keyword">val</span> client</span> : <code class="type"><a href="Conduit.html#TYPEendp">Conduit.endp</a> -> <a href="Conduit_mirage.html#TYPEclient">client</a> Lwt.t</code></pre><div class="info ">
+Resolve a conduit endpoint into a client configuration.<br>
+</div>
+
+<pre><span id="VALserver"><span class="keyword">val</span> server</span> : <code class="type"><a href="Conduit.html#TYPEendp">Conduit.endp</a> -> <a href="Conduit_mirage.html#TYPEserver">server</a> Lwt.t</code></pre><div class="info ">
+Resolve a confuit endpoint into a server configuration.<br>
+</div>
+
+<pre><span id="TYPEconduit"><span class="keyword">type</span> <code class="type"></code>conduit</span> </pre>
+<div class="info ">
+The type for conduit values.<br>
+</div>
+
 
 <pre><span class="keyword">module type</span> <a href="Conduit_mirage.S.html">S</a> = <code class="code">sig</code> <a href="Conduit_mirage.S.html">..</a> <code class="code">end</code></pre>
-<pre><span class="keyword">module</span> <a href="Conduit_mirage.Make.html">Make</a> <code class="code">(</code><code class="code">S</code><code class="code"> : </code><code class="type">V1_LWT.STACKV4</code><code class="code">) </code> <code class="code">(</code><code class="code">V</code><code class="code"> : </code><code class="type"><a href="Conduit_mirage.VCHAN_PEER.html">VCHAN_PEER</a></code><code class="code">) </code> <code class="code">(</code><code class="code">T</code><code class="code"> : </code><code class="type"><a href="Conduit_mirage.TLS.html">TLS</a></code><code class="code">) </code>: <code class="type"><a href="Conduit_mirage.S.html">S</a></code><code class="type">  with type stack = S.t
-     and type peer = V.t</code></pre>
-<pre><span id="VALvchan_port_of_sexp"><span class="keyword">val</span> vchan_port_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a></code></pre>
-<pre><span id="VALsexp_of_vchan_port"><span class="keyword">val</span> sexp_of_vchan_port</span> : <code class="type"><a href="Conduit_mirage.html#TYPEvchan_port">vchan_port</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALtls_config_client_of_sexp"><span class="keyword">val</span> tls_config_client_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a></code></pre>
-<pre><span id="VALsexp_of_tls_config_client"><span class="keyword">val</span> sexp_of_tls_config_client</span> : <code class="type"><a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALtls_config_server_of_sexp"><span class="keyword">val</span> tls_config_server_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a></code></pre>
-<pre><span id="VALsexp_of_tls_config_server"><span class="keyword">val</span> sexp_of_tls_config_server</span> : <code class="type"><a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALtls_config_client_of_sexp"><span class="keyword">val</span> tls_config_client_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a></code></pre>
-<pre><span id="VAL__tls_config_client_of_sexp__"><span class="keyword">val</span> __tls_config_client_of_sexp__</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a></code></pre>
-<pre><span id="VALsexp_of_tls_config_client"><span class="keyword">val</span> sexp_of_tls_config_client</span> : <code class="type"><a href="Conduit_mirage.html#TYPEtls_config_client">tls_config_client</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALtls_config_server_of_sexp"><span class="keyword">val</span> tls_config_server_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a></code></pre>
-<pre><span id="VAL__tls_config_server_of_sexp__"><span class="keyword">val</span> __tls_config_server_of_sexp__</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a></code></pre>
-<pre><span id="VALsexp_of_tls_config_server"><span class="keyword">val</span> sexp_of_tls_config_server</span> : <code class="type"><a href="Conduit_mirage.html#TYPEtls_config_server">tls_config_server</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALclient_of_sexp"><span class="keyword">val</span> client_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEclient">client</a></code></pre><div class="info ">
-Configuration for a single client connection<br>
-</div>
+<pre><span class="keyword">include</span> <a href="Conduit_mirage.S.html">Conduit_mirage.S</a></pre>
 
+<pre><span class="keyword">module</span> <a href="Conduit_mirage.Context.html">Context</a> <code class="code">(</code><code class="code">T</code><code class="code"> : </code><code class="type">V1_LWT.TIME</code><code class="code">) </code> <code class="code">(</code><code class="code">S</code><code class="code"> : </code><code class="type">V1_LWT.STACKV4</code><code class="code">) </code>: <code class="code">sig</code> <a href="Conduit_mirage.Context.html">..</a> <code class="code">end</code></pre>
+<pre><span id="VALclient_of_sexp"><span class="keyword">val</span> client_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEclient">client</a></code></pre>
 <pre><span id="VAL__client_of_sexp__"><span class="keyword">val</span> __client_of_sexp__</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEclient">client</a></code></pre>
-<pre><span id="VALsexp_of_client"><span class="keyword">val</span> sexp_of_client</span> : <code class="type"><a href="Conduit_mirage.html#TYPEclient">client</a> -> Sexplib.Sexp.t</code></pre>
-<pre><span id="VALserver_of_sexp"><span class="keyword">val</span> server_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEserver">server</a></code></pre><div class="info ">
-Configuration for listening on a server port.<br>
+<pre><span id="VALsexp_of_client"><span class="keyword">val</span> sexp_of_client</span> : <code class="type"><a href="Conduit_mirage.html#TYPEclient">client</a> -> Sexplib.Sexp.t</code></pre><div class="info ">
+The type for client configuration values.<br>
 </div>
 
+<pre><span id="VALserver_of_sexp"><span class="keyword">val</span> server_of_sexp</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEserver">server</a></code></pre>
 <pre><span id="VAL__server_of_sexp__"><span class="keyword">val</span> __server_of_sexp__</span> : <code class="type">Sexplib.Sexp.t -> <a href="Conduit_mirage.html#TYPEserver">server</a></code></pre>
-<pre><span id="VALsexp_of_server"><span class="keyword">val</span> sexp_of_server</span> : <code class="type"><a href="Conduit_mirage.html#TYPEserver">server</a> -> Sexplib.Sexp.t</code></pre><br>
-Module type of a Vchan endpoint<br>
+<pre><span id="VALsexp_of_server"><span class="keyword">val</span> sexp_of_server</span> : <code class="type"><a href="Conduit_mirage.html#TYPEserver">server</a> -> Sexplib.Sexp.t</code></pre><div class="info ">
+The type for server configuration values.<br>
+</div>
 <br>
-Type of a single connection<br>
+Resolve a conduit endpoint into a client configuration.<br>
 <br>
-Type of the port name that identifies a unique connection at an
-      endpoint<br>
+Resolve a confuit endpoint into a server configuration.<br>
 <br>
-<code class="code">server ~domid ~port ?read_size ?write_size ()</code> will listen on a
-      connection for a source <code class="code">domid</code> and <code class="code">port</code> combination, block
-      until a client connects, and then return a <code class="code">t</code> handle to read
-      and write on the resulting connection.  The size of the shared
-      memory buffer can be controlled by setting <code class="code">read_size</code> or
-      <code class="code">write_size</code> in bytes.<br>
+The type for conduit values.<br>
 <br>
-<code class="code">client ~domid ~port ()</code> will connect to a remote <code class="code">domid</code> and
-    <code class="code">port</code> combination, where a server should already be listening
-    after making a call to <a href="Conduit_mirage.html#TYPEserver"><code class="code">Conduit_mirage.server</code></a>.  The call will block until a
-    connection is established, after which it will return a <code class="code">t</code>
-    handle that can be used to read or write on the shared memory
-    connection.<br>
+The signature for Conduit implementations.<br>
 <br>
-Close a Vchan. This deallocates the Vchan and attempts to free
-      its resources. The other side is notified of the close, but can
-      still read any data pending prior to the close.<br>
+The empty conduit.<br>
 <br>
-Dummy TLS module which can be used if you don't want TLS support.<br>
+Extend a conduit with an implementation for TCP.<br>
 <br>
-Use the configuration of the server to interpret how to handle a
-      particular endpoint from the resolver into a concrete
-      implementation of type <code class="code">client</code><br>
+Extend a conduit with an implementation for TLS.<br>
+<br>
+Extend a conduit with an implementation for VCHAN.<br>
+<br>
+Connect a conduit using a client configuration value.<br>
+<br>
+Configure a server using a conduit configuration value.<br>
+<br>
+<h1 id="1_ContextforMirageOSconduitresolvers">Context for MirageOS conduit resolvers</h1><br>
+<br>
+The type for contexts of conduit resolvers.<br>
+<br>
+Create a new context. If <code class="code">tls</code> is specified (by defaut, it is not),
+      set-up the conduit to accept TLS connections.<br>
 </body></html>

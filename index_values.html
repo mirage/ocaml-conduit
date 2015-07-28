@@ -8,10 +8,6 @@
 <link title="Index of modules" rel=Appendix href="index_modules.html">
 <link title="Index of module types" rel=Appendix href="index_module_types.html">
 <link title="Conduit" rel="Chapter" href="Conduit.html">
-<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
-<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
-<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
-<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
 <link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
 <link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
 <link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
@@ -35,8 +31,6 @@
 </td></tr>
 <tr><td><a href="Conduit.IO.html#VAL(>>=)">(&gt;&gt;=)</a> [<a href="Conduit.IO.html">Conduit.IO</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async.html#VAL__addr_of_sexp__">__addr_of_sexp__</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_mirage.html#VAL__client_of_sexp__">__client_of_sexp__</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VAL__client_of_sexp__">__client_of_sexp__</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
@@ -47,18 +41,10 @@
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VAL__server_of_sexp__">__server_of_sexp__</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async.html#VAL__server_of_sexp__">__server_of_sexp__</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.html#VAL__tls_config_client_of_sexp__">__tls_config_client_of_sexp__</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.html#VAL__tls_config_server_of_sexp__">__tls_config_server_of_sexp__</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VAL__tls_server_key_of_sexp__">__tls_server_key_of_sexp__</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>A</td></tr>
 <tr><td><a href="Conduit_lwt_unix_ssl.Server.html#VALaccept">accept</a> [<a href="Conduit_lwt_unix_ssl.Server.html">Conduit_lwt_unix_ssl.Server</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_lwt_tls.Server.html#VALaccept">accept</a> [<a href="Conduit_lwt_tls.Server.html">Conduit_lwt_tls.Server</a>]</td>
 <td></td></tr>
 <tr><td><a href="Resolver.S.html#VALadd_rewrite">add_rewrite</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td><div class="info">
@@ -66,41 +52,35 @@
       for all the domain names that shortest-prefix match <code class="code">host</code>
 </div>
 </td></tr>
-<tr><td><a href="Conduit_async.html#VALaddr_of_sexp">addr_of_sexp</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td align="left"><br>C</td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#VALclient">client</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
+<tr><td><a href="Conduit_mirage.html#VALclient">client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td><div class="info">
-<code class="code">client ~domid ~port ()</code> will connect to a remote <code class="code">domid</code> and
-    <code class="code">port</code> combination, where a server should already be listening
-    after making a call to <a href="Conduit_mirage.ENDPOINT.html#VALserver"><code class="code">Conduit_mirage.ENDPOINT.server</code></a>.
+Resolve a conduit endpoint into a client configuration.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.TLS.html#VALclient_of_flow">client_of_flow</a> [<a href="Conduit_mirage.TLS.html">Conduit_mirage.TLS</a>]</td>
+<tr><td><a href="Conduit_mirage.Handler.html#VALclient_of_sexp">client_of_sexp</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_mirage.html#VALclient_of_sexp">client_of_sexp</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td><div class="info">
-Configuration for a single client connection
-</div>
-</td></tr>
+<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALclient_of_sexp">client_of_sexp</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
-Set of supported client connections that are supported by this module.
+Set of supported client connections that are supported by this module:
 </div>
 </td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALclient_tls_config_of_sexp">client_tls_config_of_sexp</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#VALclose">close</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
-<td><div class="info">
-Close a Vchan.
-</div>
-</td></tr>
 <tr><td><a href="Conduit_lwt_unix_ssl.html#VALclose">close</a> [<a href="Conduit_lwt_unix_ssl.html">Conduit_lwt_unix_ssl</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALconnect">connect</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_mirage.S.html#VALconnect">connect</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
+<td><div class="info">
+Connect a conduit using a client configuration value.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#VALconnect">connect</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
+<td><div class="info">
+Connect a conduit using client configuration.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix_ssl.Client.html#VALconnect">connect</a> [<a href="Conduit_lwt_unix_ssl.Client.html">Conduit_lwt_unix_ssl.Client</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALconnect">connect</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
@@ -109,10 +89,11 @@ Close a Vchan.
     via the <code class="code">ctx</code> context to the endpoint described by <code class="code">client</code>
 </div>
 </td></tr>
-<tr><td><a href="Conduit_lwt_tls.Client.html#VALconnect">connect</a> [<a href="Conduit_lwt_tls.Client.html">Conduit_lwt_tls.Client</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_async.html#VALconnect">connect</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
+<tr><td><a href="Conduit_mirage.Context.html#VALcreate">create</a> [<a href="Conduit_mirage.Context.html">Conduit_mirage.Context</a>]</td>
+<td><div class="info">
+Create a new context.
+</div>
+</td></tr>
 <tr><td align="left"><br>D</td></tr>
 <tr><td><a href="Resolver_lwt_unix.html#VALdebug">debug</a> [<a href="Resolver_lwt_unix.html">Resolver_lwt_unix</a>]</td>
 <td><div class="info">
@@ -126,8 +107,6 @@ If <code class="code">debug</code> is true, the builtin resolvers will output th
     results of resolution.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALdefault_ctx">default_ctx</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALdefault_ctx">default_ctx</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Default context that listens on all source addresses with
@@ -152,6 +131,11 @@ Default resolver to use, which is <code class="code">8.8.8.8</code> (Google DNS)
 An empty tree
 </div>
 </td></tr>
+<tr><td><a href="Conduit_mirage.S.html#VALempty">empty</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<td><div class="info">
+The empty conduit.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALendp_of_flow">endp_of_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">endp_of_flow flow</code> retrieves the original <a href="Conduit.html#TYPEendp"><code class="code">Conduit.endp</code></a>
@@ -160,25 +144,16 @@ An empty tree
 </td></tr>
 <tr><td><a href="Conduit.html#VALendp_of_sexp">endp_of_sexp</a> [<a href="Conduit.html">Conduit</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALendp_to_client">endp_to_client</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td><div class="info">
-Use the configuration of the server to interpret how to handle a
-      particular endpoint from the resolver into a concrete
-      implementation of type <code class="code">client</code>
-</div>
-</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALendp_to_client">endp_to_client</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">endp_to_client ~ctx endp</code> converts an <code class="code">endp</code> into a
     a concrete connection mechanism of type <code class="code">client</code>
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALendp_to_server">endp_to_server</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALendp_to_server">endp_to_server</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">endp_to_server ~ctx endp</code> converts an <code class="code">endp</code> into a
-    a concrete connection mechanism of type <code class="code">client</code>
+    a concrete connection mechanism of type <code class="code">server</code>
 </div>
 </td></tr>
 <tr><td align="left"><br>F</td></tr>
@@ -199,8 +174,6 @@ Use the configuration of the server to interpret how to handle a
       a state handler.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALinit">init</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix_ssl.Server.html#VALinit">init</a> [<a href="Conduit_lwt_unix_ssl.Server.html">Conduit_lwt_unix_ssl.Server</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALinit">init</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
@@ -209,8 +182,6 @@ Use the configuration of the server to interpret how to handle a
     that binds to the <code class="code">src</code> interface if specified.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_lwt_tls.Server.html#VALinit">init</a> [<a href="Conduit_lwt_tls.Server.html">Conduit_lwt_tls.Server</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_trie.html#VALinsert">insert</a> [<a href="Conduit_trie.html">Conduit_trie</a>]</td>
 <td><div class="info">
 <code class="code">insert key value tree</code> returns a new tree with the
@@ -223,11 +194,14 @@ Use the configuration of the server to interpret how to handle a
 </div>
 </td></tr>
 <tr><td align="left"><br>L</td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALlisten">listen</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
+<tr><td><a href="Conduit_mirage.S.html#VALlisten">listen</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<td><div class="info">
+Configure a server using a conduit configuration value.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#VALlisten">listen</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix_ssl.Server.html#VALlisten">listen</a> [<a href="Conduit_lwt_unix_ssl.Server.html">Conduit_lwt_unix_ssl.Server</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_lwt_tls.Server.html#VALlisten">listen</a> [<a href="Conduit_lwt_tls.Server.html">Conduit_lwt_tls.Server</a>]</td>
 <td></td></tr>
 <tr><td><a href="Resolver_mirage.html#VALlocalhost">localhost</a> [<a href="Resolver_mirage.html">Resolver_mirage</a>]</td>
 <td><div class="info">
@@ -248,8 +222,6 @@ Use the configuration of the server to interpret how to handle a
 <code class="code">register ?ns ?ns_port ?stack res</code> TODO
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALregister">register</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
 <tr><td><a href="Resolver.S.html#VALresolve_uri">resolve_uri</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td><div class="info">
 <code class="code">resolve_uri ?rewrites ~uri t</code> will use <code class="code">t</code> to resolve the
@@ -259,38 +231,26 @@ Use the configuration of the server to interpret how to handle a
 <tr><td><a href="Conduit.IO.html#VALreturn">return</a> [<a href="Conduit.IO.html">Conduit.IO</a>]</td>
 <td></td></tr>
 <tr><td align="left"><br>S</td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALserve">serve</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALserve">serve</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">serve ?timeout ?stop ~ctx ~mode fn</code> establishes a listening
     connection of type <code class="code">mode</code>, using the <code class="code">ctx</code> context.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_async.html#VALserve">serve</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#VALserver">server</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
+<tr><td><a href="Conduit_mirage.html#VALserver">server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td><div class="info">
-<code class="code">server ~domid ~port ?read_size ?write_size ()</code> will listen on a
-      connection for a source <code class="code">domid</code> and <code class="code">port</code> combination, block
-      until a client connects, and then return a <a href="Conduit_mirage.ENDPOINT.html#TYPEt"><code class="code">Conduit_mirage.ENDPOINT.t</code></a> handle to read
-      and write on the resulting connection.
+Resolve a confuit endpoint into a server configuration.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.TLS.html#VALserver_of_flow">server_of_flow</a> [<a href="Conduit_mirage.TLS.html">Conduit_mirage.TLS</a>]</td>
+<tr><td><a href="Conduit_mirage.Handler.html#VALserver_of_sexp">server_of_sexp</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_mirage.html#VALserver_of_sexp">server_of_sexp</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td><div class="info">
-Configuration for listening on a server port.
-</div>
-</td></tr>
+<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALserver_of_sexp">server_of_sexp</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Set of supported listening mechanisms that are supported by this module.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_async.html#VALserver_of_sexp">server_of_sexp</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALserver_tls_config_of_sexp">server_tls_config_of_sexp</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 Configuration fragment for a listening TLS server
@@ -306,15 +266,19 @@ Configuration fragment for a listening TLS server
 <td></td></tr>
 <tr><td><a href="Resolver.S.html#VALset_service">set_service</a> [<a href="Resolver.S.html">Resolver.S</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async.html#VALsexp_of_addr">sexp_of_addr</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
-<td></td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#VALsexp_of_client">sexp_of_client</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
+<td><div class="info">
+The type for client configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_mirage.html#VALsexp_of_client">sexp_of_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The type for client configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_client">sexp_of_client</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_client_tls_config">sexp_of_client_tls_config</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.S.html#VALsexp_of_ctx">sexp_of_ctx</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_ctx">sexp_of_ctx</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
@@ -329,21 +293,23 @@ State handler for an active conduit
 </td></tr>
 <tr><td><a href="Conduit.html#VALsexp_of_endp">sexp_of_endp</a> [<a href="Conduit.html">Conduit</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALsexp_of_flow">sexp_of_flow</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_flow">sexp_of_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 A <code class="code">flow</code> contains the state of a single connection, over a specific
     transport method.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALsexp_of_port">sexp_of_port</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
+<tr><td><a href="Conduit_mirage.Handler.html#VALsexp_of_server">sexp_of_server</a> [<a href="Conduit_mirage.Handler.html">Conduit_mirage.Handler</a>]</td>
+<td><div class="info">
+The type for server configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_mirage.html#VALsexp_of_server">sexp_of_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
+<td><div class="info">
+The type for server configuration values.
+</div>
+</td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_server">sexp_of_server</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_async.html#VALsexp_of_server">sexp_of_server</a> [<a href="Conduit_async.html">Conduit_async</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_server_tls_config">sexp_of_server_tls_config</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td></td></tr>
@@ -355,22 +321,12 @@ A <code class="code">flow</code> contains the state of a single connection, over
 <td></td></tr>
 <tr><td><a href="Conduit_trie.html#VALsexp_of_t">sexp_of_t</a> [<a href="Conduit_trie.html">Conduit_trie</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALsexp_of_t">sexp_of_t</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.ENDPOINT.html#VALsexp_of_t">sexp_of_t</a> [<a href="Conduit_mirage.ENDPOINT.html">Conduit_mirage.ENDPOINT</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_tcp_flow">sexp_of_tcp_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 <code class="code">tcp_flow</code> contains the state of a single TCP connection.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.html#VALsexp_of_tls_config_client">sexp_of_tls_config_client</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.html#VALsexp_of_tls_config_server">sexp_of_tls_config_server</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_tls_server_key">sexp_of_tls_server_key</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.PEER.html#VALsexp_of_uuid">sexp_of_uuid</a> [<a href="Conduit_mirage.PEER.html">Conduit_mirage.PEER</a>]</td>
 <td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALsexp_of_vchan_flow">sexp_of_vchan_flow</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
@@ -378,22 +334,8 @@ A <code class="code">flow</code> contains the state of a single connection, over
     connection.
 </div>
 </td></tr>
-<tr><td><a href="Conduit_mirage.html#VALsexp_of_vchan_port">sexp_of_vchan_port</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<tr><td><a href="Conduit_mirage.html#VALstackv4">stackv4</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_async_ssl.html#VALssl_connect">ssl_connect</a> [<a href="Conduit_async_ssl.html">Conduit_async_ssl</a>]</td>
-<td><div class="info">
-<code class="code">ssl_connect rd wr</code> will establish a client TLS/SSL session
-    over an existing pair of a <code class="code">rd</code> <code class="code">Reader.t</code> and <code class="code">wd</code> <code class="code">Writer.t</code>
-    Async connections.
-</div>
-</td></tr>
-<tr><td><a href="Conduit_async_ssl.html#VALssl_listen">ssl_listen</a> [<a href="Conduit_async_ssl.html">Conduit_async_ssl</a>]</td>
-<td><div class="info">
-<code class="code">ssl_listen ~crt_file ~key_file rd wr</code> will establish a server
-    TLS/SSL session over an existing pair of <code class="code">rd</code> <code class="code">Reader.t</code> and
-    <code class="code">wd</code> <code class="code">Writer.t</code> Async connections.
-</div>
-</td></tr>
 <tr><td><a href="Resolver_mirage.html#VALstatic">static</a> [<a href="Resolver_mirage.html">Resolver_mirage</a>]</td>
 <td><div class="info">
 <code class="code">static hosts</code> constructs a resolver that looks up any resolution
@@ -441,10 +383,6 @@ Perform service lookup using <code class="code">getservbyname</code>
 <td></td></tr>
 <tr><td><a href="Conduit_trie.html#VALt_of_sexp">t_of_sexp</a> [<a href="Conduit_trie.html">Conduit_trie</a>]</td>
 <td></td></tr>
-<tr><td><a href="Conduit_mirage.html#VALtls_config_client_of_sexp">tls_config_client_of_sexp</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
-<tr><td><a href="Conduit_mirage.html#VALtls_config_server_of_sexp">tls_config_server_of_sexp</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
-<td></td></tr>
 <tr><td><a href="Conduit_lwt_unix.html#VALtls_library">tls_library</a> [<a href="Conduit_lwt_unix.html">Conduit_lwt_unix</a>]</td>
 <td><div class="info">
 The default selection is to select <code class="code">OpenSSL</code>, <code class="code">Native</code> and <code class="code">No_tls</code> in
@@ -457,9 +395,28 @@ Type describing where to locate a PEM key in the filesystem
 </div>
 </td></tr>
 <tr><td align="left"><br>V</td></tr>
-<tr><td><a href="Conduit_mirage.html#VALvchan_port_of_sexp">vchan_port_of_sexp</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
+<tr><td><a href="Conduit_mirage.html#VALvchan">vchan</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 <tr><td><a href="Resolver_mirage.Make.html#VALvchan_resolver">vchan_resolver</a> [<a href="Resolver_mirage.Make.html">Resolver_mirage.Make</a>]</td>
+<td></td></tr>
+<tr><td align="left"><br>W</td></tr>
+<tr><td><a href="Conduit_mirage.S.html#VALwith_tcp">with_tcp</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<td><div class="info">
+Extend a conduit with an implementation for TCP.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.S.html#VALwith_tls">with_tls</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<td><div class="info">
+Extend a conduit with an implementation for TLS.
+</div>
+</td></tr>
+<tr><td><a href="Conduit_mirage.S.html#VALwith_vchan">with_vchan</a> [<a href="Conduit_mirage.S.html">Conduit_mirage.S</a>]</td>
+<td><div class="info">
+Extend a conduit with an implementation for VCHAN.
+</div>
+</td></tr>
+<tr><td align="left"><br>X</td></tr>
+<tr><td><a href="Conduit_mirage.html#VALxs">xs</a> [<a href="Conduit_mirage.html">Conduit_mirage</a>]</td>
 <td></td></tr>
 </table>
 </body>

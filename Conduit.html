@@ -4,17 +4,13 @@
 <link rel="stylesheet" href="style.css" type="text/css">
 <meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
 <link rel="Start" href="index.html">
-<link rel="next" href="Conduit_async.html">
+<link rel="next" href="Conduit_lwt_unix.html">
 <link rel="Up" href="index.html">
 <link title="Index of types" rel=Appendix href="index_types.html">
 <link title="Index of values" rel=Appendix href="index_values.html">
 <link title="Index of modules" rel=Appendix href="index_modules.html">
 <link title="Index of module types" rel=Appendix href="index_module_types.html">
 <link title="Conduit" rel="Chapter" href="Conduit.html">
-<link title="Conduit_async" rel="Chapter" href="Conduit_async.html">
-<link title="Conduit_async_ssl" rel="Chapter" href="Conduit_async_ssl.html">
-<link title="Conduit_localhost" rel="Chapter" href="Conduit_localhost.html">
-<link title="Conduit_lwt_tls" rel="Chapter" href="Conduit_lwt_tls.html">
 <link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
 <link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
 <link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
@@ -26,7 +22,7 @@
 </head>
 <body>
 <div class="navbar">&nbsp;<a class="up" href="index.html" title="Index">Up</a>
-&nbsp;<a class="post" href="Conduit_async.html" title="Conduit_async">Next</a>
+&nbsp;<a class="post" href="Conduit_lwt_unix.html" title="Conduit_lwt_unix">Next</a>
 </div>
 <h1>Module <a href="type_Conduit.html">Conduit</a></h1>
 
@@ -62,11 +58,7 @@ Connection establishment using the
     <a href="http://ocsigen.org/lwt/api/Lwt_unix">Lwt_unix</a> library
 </div>
 </td></tr>
-<tr><td class="module"><a href="Conduit_async.html">Conduit_async</a></td><td><div class="info">
-Connection establishment using the
-    <a href="https://github.com/janestreet/async">Async</a> library
-</div>
-</td></tr>
+<tr><td class="module">Conduit_async</td><td></td></tr>
 <tr><td class="module"><a href="Conduit_mirage.html">Conduit_mirage</a></td><td><div class="info">
 Functorial connection establishment interface that is compatible with
     the Mirage libraries.
@@ -105,7 +97,7 @@ Functorial interface for resolving URIs to endpoints.
 </div>
 <hr width="100%">
 
-<pre><span id="TYPEendp"><span class="keyword">type</span> <code class="type"></code>endp</span> = <code class="type">[ `TCP of Ipaddr.t * int<br>       | `TLS of string * endp<br>       | `Unix_domain_socket of string<br>       | `Unknown of string<br>       | `Vchan_direct of int * string<br>       | `Vchan_domain_socket of string * string ]</code> </pre>
+<pre><span id="TYPEendp"><span class="keyword">type</span> <code class="type"></code>endp</span> = <code class="type">[ `TCP of Ipaddr.t * int<br>       | `TLS of string * <a href="Conduit.html#TYPEendp">endp</a><br>       | `Unix_domain_socket of string<br>       | `Unknown of string<br>       | `Vchan_direct of int * string<br>       | `Vchan_domain_socket of string * string ]</code> </pre>
 <div class="info ">
 End points that can potentially be connected to.
     These are typically returned by a call to a resolver.<br>

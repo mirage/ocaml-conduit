@@ -1,0 +1,25 @@
+<html><head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Conduit" rel="Chapter" href="Conduit.html">
+<link title="Conduit_lwt_unix" rel="Chapter" href="Conduit_lwt_unix.html">
+<link title="Conduit_lwt_unix_ssl" rel="Chapter" href="Conduit_lwt_unix_ssl.html">
+<link title="Conduit_mirage" rel="Chapter" href="Conduit_mirage.html">
+<link title="Conduit_trie" rel="Chapter" href="Conduit_trie.html">
+<link title="Resolver" rel="Chapter" href="Resolver.html">
+<link title="Resolver_lwt" rel="Chapter" href="Resolver_lwt.html">
+<link title="Resolver_lwt_unix" rel="Chapter" href="Resolver_lwt_unix.html">
+<link title="Resolver_mirage" rel="Chapter" href="Resolver_mirage.html"><title>Conduit URI resolution : Conduit_mirage.Context</title>
+</head>
+<body>
+<code class="code"><span class="keyword">functor</span>&nbsp;(<span class="constructor">T</span>&nbsp;:&nbsp;<span class="constructor">V1_LWT</span>.<span class="constructor">TIME</span>)&nbsp;(<span class="constructor">S</span>&nbsp;:&nbsp;<span class="constructor">V1_LWT</span>.<span class="constructor">STACKV4</span>)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;<span class="keyword">sig</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;t&nbsp;=&nbsp;<span class="constructor">Resolver_lwt</span>.t&nbsp;*&nbsp;<span class="constructor">Conduit_mirage</span>.conduit<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;create&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;?tls:bool&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conduit_mirage</span>.<span class="constructor">S</span>.t&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Conduit_mirage</span>.<span class="constructor">Context</span>.t&nbsp;<span class="constructor">Lwt</span>.t<br>
+&nbsp;&nbsp;<span class="keyword">end</span></code></body></html>

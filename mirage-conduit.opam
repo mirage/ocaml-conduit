@@ -5,14 +5,19 @@ homepage:     "https://github.com/mirage/ocaml-conduit"
 dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
 bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
 tags:         "org:mirage"
+license:      "ISC"
 
 build:   ["ocamlfind" "query" "conduit.mirage"]
 depends: [
-  "mirage-types" {>= "2.0.0"}
+  "mirage-types-lwt" {>= "2.3.0"}
   "mirage-dns" {>= "2.0.0"}
-  "tcpip"
+  "conduit"    {>= "0.8.6"}
+]
+depopts: [
   "vchan"
-  "conduit" {>= "0.8.0"}
-  "tls" {>= "0.4.0"}
+  "tls"
+]
+conflicts: [
+  "tls" {< "0.5.0"}
 ]
 available: [ocaml-version >="4.01.0"]

@@ -22,7 +22,7 @@ Source code is in `lib/`.
 * `Conduit_async` has the Core/Async modules.
 
 There are also resolvers that map URIs to Conduit endpoints.
-See <https://avsm.github.io/ocaml-conduit> for the online `ocamldoc`
+See <http://mirage.github.io/ocaml-conduit/> for the online `ocamldoc`
 for more details.
 
 ### Debugging

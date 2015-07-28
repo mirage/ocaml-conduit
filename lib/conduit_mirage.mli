@@ -1,5 +1,6 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2012-2015 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c)      2015 Thomas Gazagnaire <thomas@gazagnaire.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,153 +20,138 @@
     the Mirage libraries.
   *)
 
-type vchan_port = Vchan.Port.t with sexp
+module Flow: V1_LWT.FLOW
+(** Dynamic flows. *)
 
-IFDEF HAVE_MIRAGE_TLS THEN
-type tls_config_client = Tls.Config.client with sexp
-type tls_config_server = Tls.Config.server with sexp
+type callback = Flow.flow -> unit Lwt.t
+(** The type for callback values. *)
+
+module type Handler = sig
+  (** The signature for runtime handlers *)
+
+  type t
+  (** The type for runtime handlers. *)
+
+  type client with sexp
+  (** The type for client configuration values. *)
+
+  type server with sexp
+  (** The type for server configuration values. *)
+
+  val connect: t -> client -> Flow.flow Lwt.t
+  (** Connect a conduit using client configuration. *)
+
+  val listen: t -> server -> callback -> unit Lwt.t
+  (** Listen to a conduit using a server configuration. *)
+
+end
+
+(** {1 TCP} *)
+
+(** The type for client connections. *)
+
+type tcp_client = [ `TCP of Ipaddr.t * int ] (** address and destination port *)
+and tcp_server  = [ `TCP of int ]                          (** listening port *)
+
+type 'a stackv4
+val stackv4: (module V1_LWT.STACKV4 with type t = 'a) -> 'a stackv4
+
+(** {1 VCHAN} *)
+
+IFDEF HAVE_VCHAN THEN
+
+type vchan_client = [
+  | `Vchan of [
+      | `Direct of int * Vchan.Port.t                   (** domain id, port *)
+      | `Domain_socket of string * Vchan.Port.t (** Vchan Xen domain socket *)
+    ]]
+
+type vchan_server = [
+  | `Vchan of [
+      | `Direct of int * Vchan.Port.t                   (** domain id, port *)
+      | `Domain_socket                          (** Vchan Xen domain socket *)
+    ]]
+
+module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
+module type XS = Xs_client_lwt.S
+
 ELSE
-type tls_config_client = [ `Tls_not_available ] with sexp
-type tls_config_server = [ `Tls_not_available ] with sexp
+
+type vchan_client = [`Vchan of [`None]]
+type vchan_server = [`Vchan of [`None]]
+module type VCHAN = sig type t end
+module type XS = sig end
+
 ENDIF
 
-(** Configuration for a single client connection *)
-type client = [
-  | `TLS of tls_config_client * client
-  | `TCP of Ipaddr.t * int     (** IP address and TCP port number *)
-  | `Vchan_direct of int * vchan_port (** Remote Xen domain id and port name *)
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
-] with sexp
+type vchan
+type xs
 
-(** Configuration for listening on a server port. *)
-type server = [
-  | `TLS of tls_config_server * server
-  | `TCP of [ `Port of int ]
-  | `Vchan_direct of [ `Remote_domid of int ] * vchan_port
-  | `Vchan_domain_socket of [ `Uuid of string ] * [ `Port of vchan_port ]
-] with sexp
+val vchan: (module VCHAN) -> vchan
+val xs: (module XS) -> xs
 
-(** Module type of a Vchan endpoint *)
-module type ENDPOINT = sig
+(** {1 TLS} *)
 
-  (** Type of a single connection *)
-  type t with sexp_of
+IFDEF HAVE_MIRAGE_TLS THEN
+type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
+type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
+ELSE
+type 'a tls_client = [`TLS of [`None]]
+type 'a tls_server = [`TLS of [`None]]
+ENDIF
 
-  (** Type of the port name that identifies a unique connection at an
-      endpoint *)
-  type port = vchan_port
 
-  type error = [
-    `Unknown of string
-  ]
+type client = [ tcp_client | vchan_client | client tls_client ] with sexp
+(** The type for client configuration values. *)
 
-  (** [server ~domid ~port ?read_size ?write_size ()] will listen on a
-      connection for a source [domid] and [port] combination, block
-      until a client connects, and then return a {!t} handle to read
-      and write on the resulting connection.  The size of the shared
-      memory buffer can be controlled by setting [read_size] or
-      [write_size] in bytes. *)
-  val server :
-    domid:int ->
-    port:port ->
-    ?read_size:int ->
-    ?write_size:int ->
-    unit -> t Lwt.t
+type server = [ tcp_server | vchan_server | server tls_server ] with sexp
+(** The type for server configuration values. *)
 
-  (** [client ~domid ~port ()] will connect to a remote [domid] and
-    [port] combination, where a server should already be listening
-    after making a call to {!server}.  The call will block until a
-    connection is established, after which it will return a {!t}
-    handle that can be used to read or write on the shared memory
-    connection. *)
-  val client :
-    domid:int ->
-    port:port ->
-    unit -> t Lwt.t
+val client: Conduit.endp -> client Lwt.t
+(** Resolve a conduit endpoint into a client configuration. *)
 
-  (** Close a Vchan. This deallocates the Vchan and attempts to free
-      its resources. The other side is notified of the close, but can
-      still read any data pending prior to the close. *)
-  val close : t -> unit Lwt.t
+val server: Conduit.endp -> server Lwt.t
+(** Resolve a confuit endpoint into a server configuration. *)
 
-  include V1_LWT.FLOW
-    with type flow = t
-    and  type error := error
-    and  type 'a io = 'a Lwt.t
-    and  type buffer = Cstruct.t
-end
-
-module type PEER = sig
-  type t with sexp_of
-  type flow with sexp_of
-  type uuid with sexp_of
-  type port with sexp_of
-
-  module Endpoint : ENDPOINT
-
-  val register : uuid -> t Lwt.t
-
-  val listen : t -> Conduit.endp Lwt_stream.t Lwt.t
-
-  val connect : t -> remote_name:uuid -> port:port -> Conduit.endp Lwt.t
-
-end
-
-module Dynamic_flow : V1_LWT.FLOW
-
-module type VCHAN_PEER = PEER
-  with type uuid = string
-   and type port = vchan_port
-
-type unknown = [ `Unknown of string ]
-module type VCHAN_FLOW = V1_LWT.FLOW
-  with type error := unknown
-
-module type TLS = sig
-  module FLOW : V1_LWT.FLOW   (* Underlying (encrypted) flow *)
-    with type flow = Dynamic_flow.flow
-  include V1_LWT.FLOW
-  type tracer
-  val server_of_flow :
-    ?trace:tracer ->
-    tls_config_server -> FLOW.flow ->
-    [> `Ok of flow | `Error of error | `Eof  ] Lwt.t
-  val client_of_flow: tls_config_client -> FLOW.flow ->
-    [> `Ok of flow | `Error of error | `Eof] Lwt.t
-end
-
-module No_TLS : TLS
-(** Dummy TLS module which can be used if you don't want TLS support. *)
+type conduit
+(** The type for conduit values. *)
 
 module type S = sig
+  (** The signature for Conduit implementations. *)
 
-  module Flow : V1_LWT.FLOW
-  type +'a io = 'a Lwt.t
-  type ic = Flow.flow
-  type oc = Flow.flow
-  type flow = Flow.flow
-  type stack
-  type peer
+  type t = conduit
 
-  type ctx with sexp_of
-  val default_ctx : ctx
+  val empty: t
+  (** The empty conduit. *)
 
-  val init : ?peer:peer -> ?stack:stack -> unit -> ctx io
+  val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
+  (** Extend a conduit with an implementation for TCP. *)
 
-  val connect : ctx:ctx -> client -> (flow * ic * oc) io
+  val with_tls: t -> t Lwt.t
+  (** Extend a conduit with an implementation for TLS. *)
 
-  val serve :
-    ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
-     mode:server -> (flow -> ic -> oc -> unit io) -> unit io
+  val with_vchan: t -> xs -> vchan -> string -> t Lwt.t
+  (** Extend a conduit with an implementation for VCHAN. *)
 
-  val endp_to_client: ctx:ctx -> Conduit.endp -> client io
-  (** Use the configuration of the server to interpret how to handle a
-      particular endpoint from the resolver into a concrete
-      implementation of type [client] *)
+  val connect: t -> client -> Flow.flow Lwt.t
+  (** Connect a conduit using a client configuration value. *)
 
-  val endp_to_server: ctx:ctx -> Conduit.endp -> server io
+  val listen: t -> server -> callback -> unit Lwt.t
+  (** Configure a server using a conduit configuration value. *)
+
 end
 
-module Make(S:V1_LWT.STACKV4)(V: VCHAN_PEER)(T:TLS) :
-  S with type stack = S.t
-     and type peer = V.t
+include S
+
+module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4): sig
+
+  (** {1 Context for MirageOS conduit resolvers} *)
+
+  type t = Resolver_lwt.t * conduit
+  (** The type for contexts of conduit resolvers. *)
+
+  val create: ?tls:bool -> S.t -> t Lwt.t
+  (** Create a new context. If [tls] is specified (by defaut, it is not),
+      set-up the conduit to accept TLS connections. *)
+
+end

@@ -17,7 +17,7 @@
 
 open Lwt
 
-let _ = Tls_lwt.rng_init ()
+let _ = Nocrypto_entropy_lwt.initialize ()
 
 let with_socket sockaddr f =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in

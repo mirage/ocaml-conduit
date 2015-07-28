@@ -17,6 +17,11 @@
 
 (** Establish Vchans via named endpoints in XenStore *)
 
-include Conduit_mirage.VCHAN_PEER
-  with type flow = Vchan_xen.t
-   and type port = Vchan.Port.t
+type direct = [`Direct of int * Vchan.Port.t]
+
+module Make (Xs: Xs_client_lwt.S): sig
+  type t
+  val register: string -> t Lwt.t
+  val listen: t -> direct Lwt_stream.t Lwt.t
+  val connect: t -> remote_name:string -> port:Vchan.Port.t -> direct Lwt.t
+end

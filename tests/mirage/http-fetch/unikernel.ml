@@ -15,32 +15,32 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
 
   module DNS = Dns_resolver_mirage.Make(OS.Time)(S)
   module RES = Resolver_mirage.Make(DNS)
-  module CON = Conduit_mirage.Make(S)(Conduit_localhost)
+
+  let mk_conduit s =
+    let stackv4 = Conduit_mirage.stackv4 (module S) in
+    Conduit_mirage.with_tcp Conduit_mirage.empty stackv4 s
 
   let start c stack =
     C.log_s c (sprintf "Resolving in 3s using DNS server %s" ns) >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
     let res = Resolver_lwt.init () in
     RES.register ~ns:(Ipaddr.V4.of_string_exn ns) ~stack res;
-    Resolver_lwt.resolve_uri ~uri res
-    >>= fun endp ->
-    lwt ctx = CON.init ~stack () in
-    CON.endp_to_client ~ctx endp
-    >>= fun client ->
-    C.log_s c (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
-    >>= fun () ->
-    lwt (conn, ic, oc) = CON.connect ~ctx client in
+    Resolver_lwt.resolve_uri ~uri res >>= fun endp ->
+    mk_conduit stack >>= fun conduit ->
+    Conduit_mirage.client endp >>= fun client ->
+    let endp = Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp) in
+    C.log_s c endp >>= fun () ->
+    Conduit_mirage.connect conduit client >>= fun flow ->
     let page = Io_page.(to_cstruct (get 1)) in
     let http_get = "GET / HTTP/1.1\nHost: anil.recoil.org\n\n" in
     Cstruct.blit_from_string http_get 0 page 0 (String.length http_get);
     let buf = Cstruct.sub page 0 (String.length http_get) in
-    CON.Flow.write oc buf >>= function
-    | `Eof -> C.log_s c "EOF on write"
+    Conduit_mirage.Flow.write flow buf >>= function
+    | `Eof    -> C.log_s c "EOF on write"
     | `Error _ -> C.log_s c "ERR on write"
-    | `Ok buf -> begin
-      CON.Flow.read ic >>= function
+    | `Ok buf ->  Conduit_mirage.Flow.read flow >>= function
       | `Eof -> C.log_s c "EOF"
       | `Error _ -> C.log_s c "ERR"
       | `Ok buf -> C.log_s c (sprintf "OK\n%s\n" (Cstruct.to_string buf))
-    end
+
 end

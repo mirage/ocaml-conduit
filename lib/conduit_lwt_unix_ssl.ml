@@ -97,10 +97,10 @@ module Server = struct
       if not !cont then return_unit
       else (
         Lwt.catch
-          (fun () -> accept s >>= process_accept ~timeout callback)
+          (fun () -> accept ?ctx s >>= process_accept ~timeout callback)
           (function
-            | Lwt.Canceled -> cont := false; return ()
-            | _ -> return ())
+            | Lwt.Canceled -> cont := false; return_unit
+            | _ -> return_unit)
         >>= loop
       )
     in

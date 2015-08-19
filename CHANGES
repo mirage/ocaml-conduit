@@ -1,6 +1,9 @@
-0.8.7 (trunk)
+0.8.7 (2015-08-18):
 * Do not ignore custom context when calling `Conduit_lwt_unix_ssl.accept`
   (reported by @jrb467 in #88)
+* `Conduit_lwt_unix.Serve` now passes the client `flow` to the server
+  callback instead of the listening server one.  This lets servers
+  retrieve the peer endpoint correctly (reported by @fxfactorial in #87)
 
 0.8.6 (2015-07-14)
 * Add a `Conduit_mirage.Context`, a functor for creating HTTP(s) conduit

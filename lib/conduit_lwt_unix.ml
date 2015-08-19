@@ -141,6 +141,11 @@ type flow =
   | Vchan of vchan_flow
 with sexp
 
+let flow_of_fd fd sa =
+  match sa with
+  | Unix.ADDR_UNIX path -> Domain_socket { fd; path }
+  | Unix.ADDR_INET (ip,port) -> TCP { fd; ip=Ipaddr_unix.of_inet_addr ip; port }
+
 let default_ctx =
   { src=None; tls_server_key=`None }
 
@@ -198,7 +203,7 @@ module Sockaddr_server = struct
       Lwt_unix.listen sock 15;
       sock) ()
 
-  let process_accept ?timeout callback (client,_) =
+  let process_accept ?timeout callback (client,peeraddr) =
     ( try
         Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
       with
@@ -207,7 +212,7 @@ module Sockaddr_server = struct
         | e -> raise e );
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
-    let c = callback client ic oc in
+    let c = callback (flow_of_fd client peeraddr) ic oc in
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
@@ -354,13 +359,11 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (TCP {fd; ip; port}) ic oc);
+       Sockaddr_server.init ~sockaddr ?timeout ?stop callback
        >>= fun () -> t
   | `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
-       Sockaddr_server.init ~sockaddr ?timeout ?stop
-         (fun fd ic oc -> callback (Domain_socket {fd;path}) ic oc);
+       Sockaddr_server.init ~sockaddr ?timeout ?stop callback
        >>= fun () -> t
   | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
      serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile

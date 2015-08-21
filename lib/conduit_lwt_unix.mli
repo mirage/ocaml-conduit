@@ -147,7 +147,10 @@ val connect : ctx:ctx -> client -> (flow * ic * oc) io
     connection of type [mode], using the [ctx] context.  The
     [stop] thread will terminate the server if it ever becomes
     determined.  Every connection will be served in a new
-    lightweight thread that is invoked via the [fn] callback *)
+    lightweight thread that is invoked via the [fn] callback.
+    The [fn] callback is passed the {!flow} representing the
+    client connection and the associated input {!ic} and output
+    {!oc} channels. *)
 val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io

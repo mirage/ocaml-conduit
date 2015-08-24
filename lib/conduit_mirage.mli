@@ -124,6 +124,10 @@ module type S = sig
   val empty: t
   (** The empty conduit. *)
 
+  module With_tcp (S:V1_LWT.STACKV4) : sig
+    val connect : S.t -> t -> t Lwt.t
+  end
+
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   (** Extend a conduit with an implementation for TCP. *)
 

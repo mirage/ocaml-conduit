@@ -63,7 +63,22 @@ let localhost =
               (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
+
+module type S = sig
+  module DNS : Dns_resolver_mirage.S
+  val default_ns : Ipaddr.V4.t
+  val vchan_resolver : tld:string -> Resolver_lwt.rewrite_fn
+  val dns_stub_resolver:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Resolver_lwt.rewrite_fn
+  val register:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack ->
+    Resolver_lwt.t -> unit
+  val init:
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack -> unit -> Resolver_lwt.t
+end
+
 module Make(DNS:Dns_resolver_mirage.S) = struct
+  module DNS = DNS
 
   type t = {
     dns: DNS.t;
@@ -121,4 +136,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     let res = Resolver_lwt.init () in
     register ?ns ?ns_port ?stack res;
     res
+end
+
+module Make_with_stack (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) = struct
+  module R = Make(Dns_resolver_mirage.Make(T)(S))
+  include Resolver_lwt
 end

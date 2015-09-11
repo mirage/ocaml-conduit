@@ -18,6 +18,7 @@
 
 (** TLS/SSL connection establishment using OpenSSL and Async *)
 open Async.Std
+open Async_ssl.Std
 
 (** [ssl_connect rd wr] will establish a client TLS/SSL session
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
@@ -31,6 +32,7 @@ val ssl_connect :
     TLS/SSL session over an existing pair of [rd] {!Reader.t} and
     [wd] {!Writer.t} Async connections. *)
 val ssl_listen :
+  ?version:Ssl.Version.t ->
   crt_file:string ->
   key_file:string ->
   Reader.t ->

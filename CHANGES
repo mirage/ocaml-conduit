@@ -1,3 +1,12 @@
+0.8.8 (2015-09-15)
+* Expoe a new functor `Conduit_mirage.With_tcp` (#92, by @Drup)
+* Expose a new functor: `Resolver_mirage.Make_with_stack` (#92, by @Drup)
+* Expose `Resolver_mirage.S`, the signature for Mirage's conduit resolvers.
+  Resolvers now also expose their `DNS` implmentation as a submodule of
+  `Resolver_mirage.S` (#92, by @Drup)
+* Expose a ?version arg in Conduit_async_ssl.ssl_listen, default being TLS 1.2
+  (#94, by @vbmithr)
+
 0.8.7 (2015-08-18):
 * Do not ignore custom context when calling `Conduit_lwt_unix_ssl.accept`
   (reported by @jrb467 in #88)

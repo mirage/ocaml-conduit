@@ -30,7 +30,10 @@ val ssl_connect :
 
 (** [ssl_listen ~crt_file ~key_file rd wr] will establish a server
     TLS/SSL session over an existing pair of [rd] {!Reader.t} and
-    [wd] {!Writer.t} Async connections. *)
+    [wd] {!Writer.t} Async connections.
+
+    [version] is the version of SSL being used by the server. If not
+    set, it is [Ssl.Version.Tlsv1_2]. *)
 val ssl_listen :
   ?version:Ssl.Version.t ->
   crt_file:string ->

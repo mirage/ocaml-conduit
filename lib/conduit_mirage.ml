@@ -203,11 +203,15 @@ module TCP (S: V1_LWT.STACKV4) = struct
 
 end
 
-let tcp (type t) (module S: V1_LWT.STACKV4 with type t = t) t =
-  let module TCP = TCP(S) in
-  Lwt.return (S ((module TCP), t))
+module With_tcp(S : V1_LWT.STACKV4) = struct
+  module M = TCP(S)
+  let handler stack = Lwt.return (S ((module M),stack))
+  let connect stack t = handler stack >|= fun x -> { t with tcp = Some x }
+end
 
-let with_tcp t f x = tcp f x >|= fun x -> { t with tcp = Some x }
+let with_tcp (type t) t (module S: V1_LWT.STACKV4 with type t = t) stack =
+  let module M = With_tcp(S) in
+  M.connect stack t
 
 (* VCHAN *)
 
@@ -336,6 +340,9 @@ type conduit = t
 module type S = sig
   type t = conduit
   val empty: t
+  module With_tcp (S:V1_LWT.STACKV4) : sig
+    val connect : S.t -> t -> t Lwt.t
+  end
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   val with_tls: t -> t Lwt.t
   val with_vchan: t -> xs -> vchan -> string -> t Lwt.t

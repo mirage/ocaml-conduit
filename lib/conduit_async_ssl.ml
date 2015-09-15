@@ -33,12 +33,13 @@ let ssl_connect net_to_ssl ssl_to_net =
   >>| fun (app_wr,_) ->
   app_rd, app_wr
 
-let ssl_listen ~crt_file ~key_file rd wr =
+let ssl_listen ?(version=Ssl.Version.Tlsv1_2) ~crt_file ~key_file rd wr =
   let net_to_ssl = Reader.pipe rd in
   let ssl_to_net = Writer.pipe wr in
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
   let server = Ssl.server
+    ~version
     ~crt_file
     ~key_file
     ~app_to_ssl

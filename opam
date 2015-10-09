@@ -26,6 +26,7 @@ depopts: [
   "async_ssl"
   "mirage-dns"
   "vchan"
+  "launchd"
   "tls"
   "mirage-types-lwt"
 ]

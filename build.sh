@@ -25,6 +25,7 @@ HAVE_MIRAGE=`ocamlfind query mirage-types dns.mirage 2>/dev/null || true`
 HAVE_MIRAGE_TLS=`ocamlfind query tls.mirage 2>/dev/null || true`
 HAVE_VCHAN=`ocamlfind query vchan 2>/dev/null || true`
 HAVE_VCHAN_LWT=`ocamlfind query vchan.lwt xen-evtchn.unix 2>/dev/null || true`
+HAVE_LAUNCHD_LWT=`ocamlfind query launchd.lwt 2>/dev/null || true`
 
 add_target () {
   TARGETS="$TARGETS lib/$1.cmxs lib/$1.cma lib/$1.cmxa"
@@ -124,13 +125,19 @@ if [ "$HAVE_VCHAN_LWT" != "" ]; then
     VCHAN_LWT_REQUIRES="vchan.lwt"
 fi
 
+if [ "$HAVE_LAUNCHD_LWT" != "" ]; then
+    echo "Building with Launchd Lwt_unix support."
+    echo 'true: define(HAVE_LAUNCHD_LWT)' >> _tags
+    LAUNCHD_LWT_REQUIRES="launchd.lwt"
+fi
+
 # Build all the ocamldoc
 if [ "$BUILD_DOC" = "true" ]; then
   cat lib/*.odocl > lib/conduit-all.odocl
   TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
 fi
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES  | tr -s ' '`
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES $LAUNCHD_LWT_REQUIRES | tr -s ' '`
 
 ocamlbuild -use-ocamlfind -classic-display -no-links -j ${J_FLAG} -tag ${TAGS} \
   -cflags "-w A-4-33-40-41-42-43-34-44" \
@@ -145,6 +152,7 @@ sed \
   -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
   -e "s/@MIRAGE_REQUIRES@/${MIRAGE_REQUIRES}/g" \
   -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
+  -e "s/@LAUNCHD_LWT_REQUIRES@/${LAUNCHD_LWT_REQUIRES}/g" \
   META.in > META
 
 if [ "$1" = "true" ]; then

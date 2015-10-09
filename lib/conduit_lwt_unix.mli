@@ -80,6 +80,7 @@ type server = [
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
+  | `Launchd of string
 ] with sexp
 
 type 'a io = 'a Lwt.t

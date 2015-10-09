@@ -89,6 +89,7 @@ type server = [
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
+  | `Launchd of string
 ] with sexp
 
 type tls_server_key = [
@@ -219,9 +220,11 @@ module Sockaddr_server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
 
-  let init ~sockaddr ?(stop = fst (Lwt.wait ())) ?timeout callback =
+  let init ~on ?(stop = fst (Lwt.wait ())) ?timeout callback =
     let cont = ref true in
-    let s = init_socket sockaddr in
+    let s = match on with
+    | `Socket s -> s
+    | `Sockaddr sockaddr -> init_socket sockaddr in
     async (fun () ->
       stop >>= fun () ->
       cont := false;
@@ -359,11 +362,11 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       Sockaddr_server.init ~sockaddr ?timeout ?stop callback
+       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?timeout ?stop callback
        >>= fun () -> t
   | `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
-       Sockaddr_server.init ~sockaddr ?timeout ?stop callback
+       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?timeout ?stop callback
        >>= fun () -> t
   | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
      serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
@@ -389,6 +392,22 @@ ELSE
 END
   | `Vchan_domain_socket uuid ->
     fail (Failure "Vchan_domain_socket not implemented")
+  | `Launchd name ->
+IFDEF HAVE_LAUNCHD_LWT THEN
+    Lwt_launchd.activate_socket name
+    >>= fun sockets ->
+    begin match (Launchd.error_to_msg sockets) with
+    | Result.Ok sockets ->
+      Lwt_list.iter_p
+        (fun s ->
+          Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
+        ) sockets
+    | Result.Error (`Msg m) ->
+      fail (Failure m)
+    end >>= fun () -> t
+ELSE
+    fail (Failure "No Launchd support compiled into Conduit")
+END
 
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)

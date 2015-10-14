@@ -1,4 +1,8 @@
-0.8.8 (2015-09-15)
+0.9.0 (2015-10-14):
+* Add a `Launchd` argument for the Conduit_lwt_unix server listener 
+  to support the MacOSX service launcher (#96).
+
+0.8.8 (2015-09-15):
 * Expose a new functor `Conduit_mirage.With_tcp` (#92, by @Drup)
 * Expose a new functor: `Resolver_mirage.Make_with_stack` to build a DNS
   resolver using an existing network stack (#92, by @Drup)

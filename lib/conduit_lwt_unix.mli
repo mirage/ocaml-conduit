@@ -71,7 +71,19 @@ type server_tls_config =
   [ `Port of int ]
 with sexp
 
-(** Set of supported listening mechanisms that are supported by this module. *)
+(** Set of supported listening mechanisms that are supported by this module. 
+   - [`TLS server_tls_config]: Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect
+     to the given [host], [ip], [port] tuple via TCP.
+   - [`TLS_native _]: Force use of native OCaml TLS stack to connect.
+   - [`OpenSSL _]: Force use of Lwt OpenSSL bindings to connect.
+   - [`TCP (`Port port)]: Listen on the specified TCPv4 port.
+   - [`Unix_domain_socket (`File path)]: Use UNIX domain sockets to listen on the path.
+   - [`Vchan_direct (domid, port)]: Listen for the remote VM on the [domid], [port] tuple.
+   - [`Vchan_domain_socket (domain, port_name)]: Use the Vchan name resolution to listen
+   - [`Launchd name]: uses MacOS X launchd to start the service, via the name
+     of the [Sockets] element within the service description plist file.  See the
+     {{:http://mirage.github.io/ocaml-launchd/launchd/}ocaml-launchd} documentation for more.
+*)
 type server = [
   | `TLS of server_tls_config
   | `OpenSSL of server_tls_config

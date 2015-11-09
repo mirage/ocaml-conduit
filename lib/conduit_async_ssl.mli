@@ -36,6 +36,8 @@ val ssl_connect :
     set, it is [Ssl.Version.Tlsv1_2]. *)
 val ssl_listen :
   ?version:Ssl.Version.t ->
+  ?ca_file:string ->
+  ?ca_path:string ->
   crt_file:string ->
   key_file:string ->
   Reader.t ->

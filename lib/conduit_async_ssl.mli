@@ -33,7 +33,11 @@ val ssl_connect :
     [wd] {!Writer.t} Async connections.
 
     [version] is the version of SSL being used by the server. If not
-    set, it is [Ssl.Version.Tlsv1_2]. *)
+    set, it is [Ssl.Version.Tlsv1_2].
+
+    From [Async_ssl.Std.Ssl]: If both [ca_file] and [ca_path] are specified,
+    the certificates in [ca_file] will be searched before the certificates in
+    [ca_path].*)
 val ssl_listen :
   ?version:Ssl.Version.t ->
   ?ca_file:string ->

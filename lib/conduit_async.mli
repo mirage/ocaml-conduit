@@ -33,11 +33,25 @@ type addr = [
 
 val connect : ?interrupt:unit io -> addr -> (ic * oc) io
 
+type trust_chain =
+  [ `Ca_file of string
+  | `Ca_path of string
+  | `Search_file_first_then_path of
+      [ `File of string ] *
+      [ `Path of string ]
+  ] with sexp
+
+type openssl =
+  [ `OpenSSL of
+      [ `Crt_file_path of string ] *
+      [ `Key_file_path of string ]
+  ] with sexp
+
 type server = [
-  | `OpenSSL of
-    [ `Crt_file_path of string ] *
-    [ `Key_file_path of string ]
+  | openssl
   | `TCP
+  | `OpenSSL_with_trust_chain of
+      (openssl * trust_chain)
 ] with sexp
 
 val serve :

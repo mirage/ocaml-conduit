@@ -68,7 +68,7 @@ module Server = struct
     Lwt.pick events
 
   let init ?(nconn=20) ~certfile ~keyfile
-      ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
+        ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
     let s = listen nconn sa in
@@ -82,7 +82,10 @@ module Server = struct
       if not !cont then return_unit
       else (
         Lwt.catch
-          (fun () -> accept config s >>= process_accept ~timeout callback)
+          (fun () ->
+             accept config s >>= fun accepted ->
+             Lwt.ignore_result (process_accept ~timeout callback accepted);
+             Lwt.return_unit)
           (function
             | Lwt.Canceled -> cont := false; return ()
             | _ -> return ())

@@ -65,7 +65,7 @@ module Server = struct
     let events = match timeout with
       | None -> [c]
       | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.pick events
+    Lwt.ignore_result (Lwt.pick events)
 
   let init ?(nconn=20) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
@@ -83,9 +83,7 @@ module Server = struct
       else (
         Lwt.catch
           (fun () ->
-             accept config s >>= fun accepted ->
-             Lwt.ignore_result (process_accept ~timeout callback accepted);
-             Lwt.return_unit)
+             accept config s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return ()
             | _ -> return ())

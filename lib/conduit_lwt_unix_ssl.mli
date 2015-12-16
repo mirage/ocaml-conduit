@@ -18,6 +18,7 @@
 (** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
 
 module Client : sig
+  val default_ctx : Ssl.context
 
   val connect :
     ?ctx:Ssl.context ->
@@ -28,6 +29,8 @@ module Client : sig
 end
 
 module Server : sig
+  val default_ctx : Ssl.context
+
   val accept :
     ?ctx:Ssl.context ->
     Lwt_unix.file_descr ->

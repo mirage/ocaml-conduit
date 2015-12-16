@@ -28,10 +28,10 @@ let chans_of_fd sock =
 
 module Client = struct
   (* SSL TCP connection *)
-  let t = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
-  let () = Ssl.disable_protocols t [Ssl.SSLv23]
+  let default_ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
+  let () = Ssl.disable_protocols default_ctx [Ssl.SSLv23]
 
-  let connect ?(ctx=t) ?src sa =
+  let connect ?(ctx=default_ctx) ?src sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
@@ -46,17 +46,16 @@ end
 
 module Server = struct
 
-  let t = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
-  let () = Ssl.disable_protocols t [Ssl.SSLv23]
+  let default_ctx = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
+  let () = Ssl.disable_protocols default_ctx [Ssl.SSLv23]
 
-
-  let accept ?(ctx=t) fd =
+  let accept ?(ctx=default_ctx) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
     Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept afd ctx)
       (fun sock -> Lwt.return (chans_of_fd sock))
       (fun exn -> Lwt_unix.close afd >>= fun () -> Lwt.fail exn)
 
-  let listen ?(ctx=t) ?backlog ?password ~certfile ~keyfile sa =
+  let listen ?(ctx=default_ctx) ?backlog ?password ~certfile ~keyfile sa =
     let fd = Conduit_lwt_server.listen ?backlog sa in
     (match password with
      | None -> ()
@@ -64,7 +63,7 @@ module Server = struct
     Ssl.use_certificate ctx certfile keyfile;
     fd
 
-  let init ?(ctx=t) ?backlog ?password ~certfile ~keyfile ?stop ?timeout sa cb =
+  let init ?(ctx=default_ctx) ?backlog ?password ~certfile ~keyfile ?stop ?timeout sa cb =
     sa
     |> listen ~ctx ?backlog ?password ~certfile ~keyfile
     |> Conduit_lwt_server.init ?stop (fun (fd, _) ->

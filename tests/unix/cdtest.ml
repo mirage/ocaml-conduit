@@ -35,7 +35,7 @@ let perform () =
     (* connect using low-level operations to check what happens if client closes connection
        without calling ssl_shutdown (e.g. TCP connection is lost) *)
     let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-    let ctx = Ssl.create_context Ssl.TLSv1 Ssl.Client_context in
+    let ctx = Ssl.create_context Ssl.TLSv1_2 Ssl.Client_context in
     Lwt_unix.with_timeout 1. (fun () ->
         Lwt.finalize (fun () ->
             Lwt_unix.connect s sa >>= fun () ->

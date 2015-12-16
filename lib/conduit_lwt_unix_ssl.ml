@@ -44,7 +44,8 @@ let with_socket sockaddr f =
 
 module Client = struct
   (* SSL TCP connection *)
-  let t = Ssl.create_context Ssl.TLSv1 Ssl.Client_context
+  let t = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
+  let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let connect ?(ctx=t) ?src sa =
     with_socket sa (fun fd ->
@@ -61,7 +62,8 @@ end
 
 module Server = struct
 
-  let t = Ssl.create_context Ssl.TLSv1 Ssl.Server_context
+  let t = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
+  let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->

@@ -19,6 +19,14 @@ open Lwt
 
 let _ = Nocrypto_entropy_lwt.initialize ()
 
+let safe_close t =
+  Lwt.catch
+    (fun () -> Lwt_io.close t)
+    (fun _ -> return_unit)
+
+let close (ic, oc) =
+  Lwt.join [ safe_close oc; safe_close ic ]
+
 let with_socket sockaddr f =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
   Lwt.catch (fun () -> f fd) (fun e ->
@@ -65,7 +73,7 @@ module Server = struct
     let events = match timeout with
       | None -> [c]
       | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.ignore_result (Lwt.pick events)
+    Lwt.ignore_result (Lwt.pick events >>= fun () -> close (ic, oc))
 
   let init ?(nconn=20) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =

@@ -62,8 +62,9 @@ module Server = struct
 
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
-    Lwt_ssl.ssl_accept afd ctx >>= fun sock ->
-    return (chans_of_fd sock)
+    Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept afd ctx)
+      (fun sock -> return (chans_of_fd sock))
+      (fun exn -> Lwt_unix.close afd >>= fun () -> fail exn)
 
   let listen ?(ctx=t) ?(nconn=20) ?password ~certfile ~keyfile sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in

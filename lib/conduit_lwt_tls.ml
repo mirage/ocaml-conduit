@@ -53,9 +53,12 @@ module Server = struct
 
   let accept config s =
     Lwt_unix.accept s >>= fun (fd, sa) ->
-    Tls_lwt.Unix.server_of_fd config fd >|= fun t ->
-    let ic, oc = Tls_lwt.of_t t in
-    (fd, ic, oc)
+    Lwt.try_bind (fun () ->
+        Tls_lwt.Unix.server_of_fd config fd)
+      (fun t ->
+        let ic, oc = Tls_lwt.of_t t in
+        return (fd, ic, oc))
+      (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
 
   let process_accept ~timeout callback (cfd, ic, oc) =
     let c = callback cfd ic oc in

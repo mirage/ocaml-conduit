@@ -69,7 +69,7 @@ type openssl = [
 
 type requires_async_ssl = [
   | openssl
-  | `OpenSSL_with_trust_chain of (openssl * trust_chain)
+  | `OpenSSL_with_trust_chain of openssl * trust_chain
 ] with sexp
 
 type server = [

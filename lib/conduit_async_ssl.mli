@@ -24,6 +24,11 @@ open Async_ssl.Std
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
     Async connections. *)
 val ssl_connect :
+  ?version:Ssl.Version.t ->
+  ?name:string ->
+  ?ca_file:string ->
+  ?ca_path:string ->
+  ?session:Ssl.Session.t ->
   Reader.t ->
   Writer.t ->
   (Reader.t * Writer.t) Deferred.t

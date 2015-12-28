@@ -22,12 +22,34 @@ IFDEF HAVE_ASYNC_SSL THEN
 open Async_ssl.Std
 END
 
+module Ssl = struct
+IFDEF HAVE_ASYNC_SSL THEN
+  type config = {
+    version : Ssl.Version.t option;
+    name : string option;
+    ca_file : string option;
+    ca_path : string option;
+    session : Ssl.Session.t option sexp_opaque;
+  } with sexp
+
+  let configure ?version ?name ?ca_file ?ca_path ?session () =
+    { version; name; ca_file; ca_path; session}
+ELSE
+  type config = unit with sexp
+
+  let configure ?version ?name ?ca_file ?ca_path ?session () =
+    let _, _, _, _, _ = (version, name, ca_file, ca_path, session) in
+    ()
+END
+end
+
 type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
   | `OpenSSL of string * Ipaddr.t * int
+  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
 ] with sexp
@@ -43,6 +65,17 @@ IFDEF HAVE_ASYNC_SSL THEN
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       Conduit_async_ssl.ssl_connect rd wr
+ELSE
+      raise (Failure "SSL unsupported")
+END
+  end
+  | `OpenSSL_with_config (host, ip, port, config) -> begin
+IFDEF HAVE_ASYNC_SSL THEN
+      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
+      >>= fun (_, rd, wr) ->
+      let open Ssl in
+      match config with | {version; name; ca_file; ca_path; session} ->
+      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session rd wr
 ELSE
       raise (Failure "SSL unsupported")
 END

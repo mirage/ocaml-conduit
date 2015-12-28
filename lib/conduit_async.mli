@@ -21,12 +21,41 @@
 open Core.Std
 open Async.Std
 
+IFDEF HAVE_ASYNC_SSL THEN
+open Async_ssl.Std
+END
+
+module Ssl : sig
+  type config
+
+IFDEF HAVE_ASYNC_SSL THEN
+  val configure :
+    ?version:Ssl.Version.t ->
+    ?name:string ->
+    ?ca_file:string ->
+    ?ca_path:string ->
+    ?session:Ssl.Session.t ->
+    unit ->
+    config
+ELSE
+  val configure :
+    ?version:'a ->
+    ?name:string ->
+    ?ca_file:string ->
+    ?ca_path:string ->
+    ?session:'e ->
+    unit ->
+    config
+END
+end
+
 type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
   | `OpenSSL of string * Ipaddr.t * int
+  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
 ] with sexp

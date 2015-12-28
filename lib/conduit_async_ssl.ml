@@ -20,12 +20,12 @@ open Core.Std
 open Async.Std
 open Async_ssl.Std
 
-let ssl_connect net_to_ssl ssl_to_net =
+let ssl_connect ?version ?name ?ca_file ?ca_path ?session net_to_ssl ssl_to_net =
   let net_to_ssl = Reader.pipe net_to_ssl in
   let ssl_to_net = Writer.pipe ssl_to_net in
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
-  let client =  Ssl.client ~app_to_ssl ~ssl_to_app ~net_to_ssl ~ssl_to_net () in
+  let client =  Ssl.client ?version ?name ?ca_file ?ca_path ?session ~app_to_ssl ~ssl_to_app ~net_to_ssl ~ssl_to_net () in
   don't_wait_for (client >>= fun _con -> return ());
   Reader.of_pipe (Info.of_string "async_conduit_ssl_reader") app_rd
   >>= fun app_rd ->

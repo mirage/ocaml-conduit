@@ -30,15 +30,16 @@ IFDEF HAVE_ASYNC_SSL THEN
     ca_file : string option;
     ca_path : string option;
     session : Ssl.Session.t option sexp_opaque;
+    verify : (Ssl.Connection.t -> bool Deferred.t) option;
   } with sexp
 
-  let configure ?version ?name ?ca_file ?ca_path ?session () =
-    { version; name; ca_file; ca_path; session}
+  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
+    { version; name; ca_file; ca_path; session; verify}
 ELSE
   type config = unit with sexp
 
-  let configure ?version ?name ?ca_file ?ca_path ?session () =
-    let _, _, _, _, _ = (version, name, ca_file, ca_path, session) in
+  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
+    let _, _, _, _, _, _ = (version, name, ca_file, ca_path, session, verify) in
     ()
 END
 end
@@ -74,8 +75,8 @@ IFDEF HAVE_ASYNC_SSL THEN
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       let open Ssl in
-      match config with | {version; name; ca_file; ca_path; session} ->
-      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session rd wr
+      match config with | {version; name; ca_file; ca_path; session; verify} ->
+      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify rd wr
 ELSE
       raise (Failure "SSL unsupported")
 END

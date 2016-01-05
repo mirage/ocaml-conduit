@@ -35,6 +35,7 @@ IFDEF HAVE_ASYNC_SSL THEN
     ?ca_file:string ->
     ?ca_path:string ->
     ?session:Ssl.Session.t ->
+    ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
     unit ->
     config
 ELSE
@@ -44,6 +45,7 @@ ELSE
     ?ca_file:string ->
     ?ca_path:string ->
     ?session:'e ->
+    ?verify:'f ->
     unit ->
     config
 END

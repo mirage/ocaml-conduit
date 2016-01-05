@@ -29,6 +29,10 @@ module Ssl : sig
   type config
 
 IFDEF HAVE_ASYNC_SSL THEN
+  val verify_certificate :
+    Ssl.Connection.t ->
+    bool Deferred.t
+
   val configure :
     ?version:Ssl.Version.t ->
     ?name:string ->
@@ -39,6 +43,10 @@ IFDEF HAVE_ASYNC_SSL THEN
     unit ->
     config
 ELSE
+  val verify_certificate :
+    'a ->
+    bool Deferred.t
+
   val configure :
     ?version:'a ->
     ?name:string ->

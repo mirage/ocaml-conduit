@@ -33,10 +33,19 @@ IFDEF HAVE_ASYNC_SSL THEN
     verify : (Ssl.Connection.t -> bool Deferred.t) option;
   } with sexp
 
+  let verify_certificate connection =
+    match Ssl.Connection.peer_certificate connection with
+    | None -> return false
+    | Some (Error _) -> return false
+    | Some (Ok _) -> return true
+
   let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
     { version; name; ca_file; ca_path; session; verify}
 ELSE
   type config = unit with sexp
+
+  let verify_certificate connection =
+    let _ = connection in return true
 
   let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
     let _, _, _, _, _, _ = (version, name, ca_file, ca_path, session, verify) in

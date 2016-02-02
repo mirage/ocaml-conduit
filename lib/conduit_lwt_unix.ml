@@ -180,7 +180,6 @@ module Sockaddr_client = struct
 end
 
 module Sockaddr_server = struct
-
   let process_accept ?timeout callback (client,peeraddr) =
     (try
        Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
@@ -194,7 +193,6 @@ module Sockaddr_server = struct
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
     Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
-    |> Lwt.ignore_result
 
   let init ~on ?stop ?backlog ?timeout callback =
     let s =
@@ -203,6 +201,9 @@ module Sockaddr_server = struct
       | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr in
     Conduit_lwt_server.init ?stop (process_accept ?timeout callback) s
 end
+
+let set_max_active maxactive =
+  Conduit_lwt_server.set_max_active maxactive
 
 (** TLS client connection functions *)
 

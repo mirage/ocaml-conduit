@@ -70,8 +70,7 @@ module Server = struct
         Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept fd ctx)
           (fun sock -> Lwt.return (chans_of_fd sock))
           (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
-        >|= Conduit_lwt_server.process_accept ?timeout cb
-        |> Lwt.ignore_result)
+        >>= Conduit_lwt_server.process_accept ?timeout cb)
 
 end
 

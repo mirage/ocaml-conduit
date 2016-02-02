@@ -94,7 +94,7 @@ module Server = struct
              accept config s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return ()
-            | _ -> return ())
+            | _ -> Lwt_unix.yield ())
         >>= loop
       )
     in

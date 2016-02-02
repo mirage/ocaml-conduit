@@ -100,7 +100,7 @@ module Server = struct
           (fun () -> accept ?ctx s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return_unit
-            | _ -> return_unit)
+            | _ -> Lwt_unix.yield ())
         >>= loop
       )
     in

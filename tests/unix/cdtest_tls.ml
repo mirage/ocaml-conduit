@@ -56,5 +56,6 @@ let perform () =
 
 let () =
   Lwt.async_exception_hook := ignore;
+  Sys.(set_signal sigpipe Signal_ignore);
   Lwt_main.run (Lwt_unix.handle_unix_error perform ());
   print_endline "OK"

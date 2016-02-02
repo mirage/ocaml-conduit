@@ -34,12 +34,12 @@ let perform () =
   let wait, wake = Lwt.task () in
   let active = ref 0 in
   let cond = Lwt_condition.create () in
-  let client_test_wait wait =
+  let client_test_wait timeout wait =
     (* connect using low-level operations to check what happens if client closes connection
        without calling ssl_shutdown (e.g. TCP connection is lost) *)
     let s = Lwt_unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
     let ctx = Ssl.create_context Ssl.TLSv1_2 Ssl.Client_context in
-    Lwt_unix.with_timeout 5. (fun () ->
+    Lwt_unix.with_timeout timeout (fun () ->
         Lwt.finalize (fun () ->
             Lwt_unix.connect s sa >>= fun () ->
             Lwt_ssl.ssl_connect s ctx >>= fun ss ->
@@ -48,12 +48,14 @@ let perform () =
             wait)
           (fun () -> Lwt_unix.close s))
   in
-  let client_test _ = client_test_wait Lwt.return_unit in
+  let client_test _ = client_test_wait 1. Lwt.return_unit in
   let limit = 5 in
 
   Conduit_lwt_unix.set_max_active limit;
-  (* when clients = max_active no more clients are allowed and some get errors *)
-  let t = Array.init limit (fun _ -> client_test_wait wait) |> Array.to_list |> Lwt.join in
+  (* when clients = max_active no more clients are allowed and some get errors,
+   * use a higher timeout here so that all these connections are still active
+   * when doing the 2nd test below *)
+  let t = Array.init limit (fun _ -> client_test_wait 10. wait) |> Array.to_list |> Lwt.join in
   Lwt.catch (fun () ->
       (* wait for all 5 threads to connect *)
       let rec wait_all_conn () =
@@ -62,6 +64,7 @@ let perform () =
         else Lwt.return_unit in
       wait_all_conn () >>= fun () ->
       print_endline "Waiting for error";
+      (* use a lower timeout here, these should fail immediately *)
       Array.init (2*limit) client_test |> Array.to_list |> Lwt.pick >>= fun () ->
       prerr_endline "Expected errors, but got none";
       exit 2
@@ -82,5 +85,6 @@ let perform () =
 let () =
   Lwt.async_exception_hook := ignore;
   Sys.(set_signal sigpipe Signal_ignore);
-  Lwt_main.run (Lwt_unix.handle_unix_error perform ());
+  Lwt_main.run (Lwt_unix.with_timeout 60. (fun () ->
+    Lwt_unix.handle_unix_error perform ()));
   print_endline "OK"

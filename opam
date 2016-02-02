@@ -11,6 +11,7 @@ build:   [["./configure"] [make]]
 install: [make "install"]
 remove:  ["ocamlfind" "remove" "conduit"]
 build-doc: [make "doc"]
+build-test:[["./configure"] [make "test"]]
 
 depends: [
   "ocamlfind" {build}

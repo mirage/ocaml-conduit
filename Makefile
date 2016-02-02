@@ -1,4 +1,4 @@
-.PHONY: all install clean doc github
+.PHONY: all install clean doc github test cdtest cdtest_tls
 
 EXT_OBJ:=$(shell ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $$2}')
 EXT_LIB:=$(shell ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $$2}')
@@ -78,3 +78,12 @@ cdtest_tls: ppx
 
 exit_test: ppx
 	$(OCAMLBUILD) exit_test.native
+
+# have(openssl) -> generate test certificates
+# have(lwt.unix tls.lwt ipaddr.unix lwt.ssl openssl) -> build(cdtest) and run(cdtest)
+# have(lwt.unix tls.lwt ipaddr.unix openssl) -> build(cdtest_tls) and run(cdtest_tlsOB)
+test:
+	! openssl version || tests/unix/gen.sh
+	! ocamlfind query lwt.unix tls.lwt ipaddr.unix lwt.ssl || ! openssl version || ($(MAKE) cdtest && ./cdtest.native)
+	! ocamlfind query lwt.unix tls.lwt ipaddr.unix || ! openssl version || ($(MAKE) cdtest_tls && ./cdtest_tls.native)
+	! ocamlfind query lwt.unix tls.lwt ipaddr.unix || ! openssl version || (CONDUIT_TLS=native ./cdtest_tls.native)

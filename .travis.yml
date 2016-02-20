@@ -7,16 +7,15 @@ script: bash ./.travis-docker.sh
 env:
  global:
    - PACKAGE="conduit"
-   - POST_INSTALL_HOOKS="make -C tests"
-   - DEPOPTS="lwt async async_ssl ssl"
+   - POST_INSTALL_HOOK="make -C tests"
  matrix:
-   - DISTRO=debian-stable OCAML_VERSION=4.02.3
-   - DISTRO=debian-testing OCAML_VERSION=4.02.3
-   - DISTRO=debian-unstable OCAML_VERSION=4.02.3
-   - DISTRO=ubuntu-12.04 OCAML_VERSION=4.01.0
-   - DISTRO=ubuntu-15.10 OCAML_VERSION=4.02.3
-   - DISTRO=ubuntu-16.04 OCAML_VERSION=4.02.3
-   - DISTRO=centos-6 OCAML_VERSION=4.01.0
-   - DISTRO=centos-7 OCAML_VERSION=4.02.3
-   - DISTRO=fedora-23 OCAML_VERSION=4.02.3
-   - DISTRO=alpine-3.3 OCAML_VERSION=4.02.3
+   - DISTRO=debian-stable OCAML_VERSION=4.02.3 DEPOPTS="lwt"
+   - DISTRO=debian-testing OCAML_VERSION=4.02.3 DEPOPTS="lwt ssl tls"
+   - DISTRO=debian-unstable OCAML_VERSION=4.02.3 DEPOPTS="async_ssl.113.00.01"
+   - DISTRO=ubuntu-12.04 OCAML_VERSION=4.01.0 DEPOPTS="lwt ssl async"
+   - DISTRO=ubuntu-15.10 OCAML_VERSION=4.02.3 DEPOPTS="lwt async_ssl.113.00.01"
+   - DISTRO=ubuntu-16.04 OCAML_VERSION=4.02.3 DEPOPTS="lwt async_ssl.113.00.01"
+   - DISTRO=centos-6 OCAML_VERSION=4.01.0 DEPOPTS="lwt ssl async"
+   - DISTRO=centos-7 OCAML_VERSION=4.02.3 DEPOPTS="lwt async_ssl.113.00.01"
+   - DISTRO=fedora-23 OCAML_VERSION=4.02.3 DEPOPTS="lwt async_ssl.113.00.01"
+   - DISTRO=alpine-3.3 OCAML_VERSION=4.02.3 DEPOPTS="lwt"

@@ -12,7 +12,8 @@ install: [make "install"]
 remove:  ["ocamlfind" "remove" "conduit"]
 
 depends: [
-  "ocamlfind"
+  "ocamlfind" {build}
+  "ocamlbuild" {build}
   "sexplib" {>="109.15.00"}
   "stringext"
   "uri"

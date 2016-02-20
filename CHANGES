@@ -1,3 +1,5 @@
+* Add multi-distro Travis testing script.
+
 0.10.0 (2015-12-25):
 * Add support for CA certificates in [Conduit_async.serve] (#98).
 * Fix file descriptor leak in Lwt backend (#101 from @hannesm).

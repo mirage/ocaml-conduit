@@ -7,7 +7,6 @@ script: bash ./.travis-docker.sh
 env:
  global:
    - PACKAGE="conduit"
-   - POST_INSTALL_HOOK="make -C tests"
  matrix:
    - DISTRO=debian-stable OCAML_VERSION=4.02.3 DEPOPTS="lwt"
    - DISTRO=debian-testing OCAML_VERSION=4.02.3 DEPOPTS="lwt ssl tls"

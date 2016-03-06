@@ -45,11 +45,12 @@ ELSE
   type config = unit with sexp
 
   let verify_certificate connection =
-    let _ = connection in return true
+    let _ = connection in
+    raise (Failure "SSL unsupported")
 
   let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
     let _, _, _, _, _, _ = (version, name, ca_file, ca_path, session, verify) in
-    ()
+    raise (Failure "SSL unsupported")
 END
 end
 

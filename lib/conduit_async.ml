@@ -18,6 +18,8 @@
 open Core.Std
 open Async.Std
 
+exception Ssl_unsupported with sexp
+
 IFDEF HAVE_ASYNC_SSL THEN
 open Async_ssl.Std
 END
@@ -44,13 +46,11 @@ IFDEF HAVE_ASYNC_SSL THEN
 ELSE
   type config = unit with sexp
 
-  let verify_certificate connection =
-    let _ = connection in
-    raise (Failure "SSL unsupported")
+  let verify_certificate _ =
+    raise Ssl_unsupported
 
   let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    let _, _, _, _, _, _ = (version, name, ca_file, ca_path, session, verify) in
-    raise (Failure "SSL unsupported")
+    raise Ssl_unsupported
 END
 end
 
@@ -77,7 +77,7 @@ IFDEF HAVE_ASYNC_SSL THEN
       >>= fun (_, rd, wr) ->
       Conduit_async_ssl.ssl_connect rd wr
 ELSE
-      raise (Failure "SSL unsupported")
+      raise Ssl_unsupported
 END
   end
   | `OpenSSL_with_config (host, ip, port, config) -> begin
@@ -88,7 +88,7 @@ IFDEF HAVE_ASYNC_SSL THEN
       match config with | {version; name; ca_file; ca_path; session; verify} ->
       Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify rd wr
 ELSE
-      raise (Failure "SSL unsupported")
+      raise Ssl_unsupported
 END
   end
   | `Unix_domain_socket file -> begin
@@ -147,7 +147,7 @@ IFDEF HAVE_ASYNC_SSL THEN
         Conduit_async_ssl.ssl_listen ?ca_file ?ca_path ~crt_file ~key_file rd wr
         >>= fun (rd,wr) -> handle_request sock rd wr
 ELSE
-        raise (Failure "SSL unsupported in Conduit")
+        raise Ssl_unsupported
 END
     in
     Tcp.Server.create ?max_connections ?max_pending_connections

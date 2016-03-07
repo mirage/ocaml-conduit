@@ -21,6 +21,8 @@
 open Core.Std
 open Async.Std
 
+exception Ssl_unsupported with sexp
+
 IFDEF HAVE_ASYNC_SSL THEN
 open Async_ssl.Std
 END

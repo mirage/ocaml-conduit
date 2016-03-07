@@ -17,6 +17,7 @@
 *)
 
 (** TLS/SSL connection establishment using OpenSSL and Async *)
+open Core.Std
 open Async.Std
 open Async_ssl.Std
 
@@ -24,6 +25,12 @@ open Async_ssl.Std
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
     Async connections. *)
 val ssl_connect :
+  ?version:Ssl.Version.t ->
+  ?name:string ->
+  ?ca_file:string ->
+  ?ca_path:string ->
+  ?session:Ssl.Session.t ->
+  ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
   Reader.t ->
   Writer.t ->
   (Reader.t * Writer.t) Deferred.t

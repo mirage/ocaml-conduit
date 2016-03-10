@@ -68,7 +68,6 @@ if [ "$HAVE_ASYNC" != "" ]; then
 
   if [ "$HAVE_ASYNC_SSL" != "" ]; then
     echo "Building with Async/SSL support."
-    echo 'true: define(HAVE_ASYNC_SSL)' >> _tags
     ASYNC_REQUIRES="$ASYNC_REQUIRES async_ssl"
     echo Conduit_async_ssl >> lib/conduit-async.mllib
   fi
@@ -89,14 +88,12 @@ if [ "$HAVE_LWT" != "" ]; then
 
   if [ "$HAVE_LWT_SSL" != "" ]; then
     echo "Building with Lwt/SSL support."
-    echo 'true: define(HAVE_LWT_SSL)' >> _tags
     LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES lwt.ssl"
     echo Conduit_lwt_unix_ssl >> lib/conduit-lwt-unix.mllib
   fi
 
   if [ "$HAVE_LWT_TLS" != "" ]; then
     echo "Building with Lwt/TLS support."
-    echo 'true: define(HAVE_LWT_TLS)' >> _tags
     LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES tls tls.lwt"
     echo Conduit_lwt_tls >> lib/conduit-lwt-unix.mllib
   fi
@@ -106,20 +103,17 @@ if [ "$HAVE_LWT" != "" ]; then
 
   if [ "$HAVE_MIRAGE" != "" ]; then
     echo "Building with Mirage support."
-    echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
     echo Resolver_mirage >> lib/conduit-lwt-mirage.mllib
     MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
       echo "Building with Mirage Vchan support."
-      echo 'true: define(HAVE_VCHAN)' >> _tags
       MIRAGE_REQUIRES="$MIRAGE_REQUIRES vchan"
       echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
       echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
     fi
     if [ "$HAVE_MIRAGE_TLS" != "" ]; then
       echo "Building with Mirage TLS support."
-      echo 'true: define(HAVE_MIRAGE_TLS)' >> _tags
       MIRAGE_REQUIRES="$MIRAGE_REQUIRES tls tls.mirage"
     fi
     add_target "conduit-lwt-mirage"
@@ -130,13 +124,11 @@ fi
 
 if [ "$HAVE_VCHAN_LWT" != "" ]; then
     echo "Building with Vchan Lwt_unix support."
-    echo 'true: define(HAVE_VCHAN_LWT)' >> _tags
     VCHAN_LWT_REQUIRES="vchan.lwt"
 fi
 
 if [ "$HAVE_LAUNCHD_LWT" != "" ]; then
     echo "Building with Launchd Lwt_unix support."
-    echo 'true: define(HAVE_LAUNCHD_LWT)' >> _tags
     LAUNCHD_LWT_REQUIRES="launchd.lwt"
 fi
 

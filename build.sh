@@ -24,12 +24,11 @@ add_pkg () {
   PKG="$PKG $1"
 }
 
-CONDUIT_CONFIG=""
 mlh_exp() {
   if [ "$1" != "" ]; then
-    CONDUIT_CONFIG="$CONDUIT_CONFIG\n#let $2 = true"
+    echo "#let $2 = true" >> lib/conduit_config.mlh
   else
-    CONDUIT_CONFIG="$CONDUIT_CONFIG\n#let $2 = false"
+    echo "#let $2 = false" >> lib/conduit_config.mlh
   fi
 }
 
@@ -44,8 +43,6 @@ mlh_exp "$HAVE_VCHAN" HAVE_VCHAN
 mlh_exp "$HAVE_VCHAN_LWT" HAVE_VCHAN_LWT
 mlh_exp "$HAVE_LAUNCHD_LWT" HAVE_LAUNCHD_LWT
 
-echo $CONDUIT_CONFIG > lib/conduit_config.mlh
-
 add_pkg "$BASE_PKG"
 add_target "conduit"
 rm -f lib/*.odocl
@@ -58,7 +55,9 @@ rm -f _tags
 rm -rf _install
 mkdir -p _install
 
-echo 'true: pp(/Users/rgrinberg/reps/ml/ocaml-conduit/ppx)' >> _tags
+echo "true: config" >> _tags
+
+echo "true: pp($(pwd)/ppx)" >> _tags
 
 if [ "$HAVE_ASYNC" != "" ]; then
   echo "Building with Async support."

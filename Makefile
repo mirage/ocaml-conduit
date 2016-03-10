@@ -2,16 +2,16 @@
 
 PREFIX ?= /usr/local/bin
 
-all:
+all: ppx
 	@./build.sh
 
-install:
+install: ppx
 	@./build.sh true
 
 clean:
-	rm -rf _build _install
+	rm -rf _build _install ppx lib/conduit_config.mlh
 
-doc:
+doc: ppx
 	@BUILD_DOC=true ./build.sh
 
 github: doc
@@ -39,3 +39,7 @@ release:
 pr:
 	opam publish prepare $(NAME).$(VERSION) $(ARCHIVE)
 	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
+
+ppx:
+	ocamlfind ocamlopt -predicates ppx_driver -o ppx -linkpkg \
+	  -package ppx_sexp_conv ppx_driver_runner.cmxa

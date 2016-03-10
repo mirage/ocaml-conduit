@@ -4,20 +4,9 @@ TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
 BASE_PKG="sexplib ipaddr cstruct uri stringext"
-SYNTAX_PKG="camlp4.macro pa_sexp_conv"
 
-# The Async backend is only supported in OCaml 4.01.0+
-OCAML_VERSION=`ocamlc -version`
-case $OCAML_VERSION in
-4.01.*|4.00.*|3.*)
-  echo Minimum OCaml version is 4.02
-  ;;
-*)
 HAVE_ASYNC=`ocamlfind query async 2>/dev/null || true`
 HAVE_ASYNC_SSL=`ocamlfind query async_ssl 2>/dev/null || true`
-;;
-esac
-
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_LWT_TLS=`ocamlfind query tls.lwt 2>/dev/null || true`
@@ -35,7 +24,28 @@ add_pkg () {
   PKG="$PKG $1"
 }
 
-add_pkg "$SYNTAX_PKG"
+CONDUIT_CONFIG=""
+mlh_exp() {
+  if [ "$1" != "" ]; then
+    CONDUIT_CONFIG="$CONDUIT_CONFIG\n#let $2 = true"
+  else
+    CONDUIT_CONFIG="$CONDUIT_CONFIG\n#let $2 = false"
+  fi
+}
+
+mlh_exp "$HAVE_ASYNC" HAVE_ASYNC
+mlh_exp "$HAVE_ASYNC_SSL" HAVE_ASYNC_SSL
+mlh_exp "$HAVE_LWT" HAVE_LWT
+mlh_exp "$HAVE_LWT_SSL" HAVE_LWT_SSL
+mlh_exp "$HAVE_LWT_TLS" HAVE_LWT_TLS
+mlh_exp "$HAVE_MIRAGE" HAVE_MIRAGE
+mlh_exp "$HAVE_MIRAGE_TLS" HAVE_MIRAGE_TLS
+mlh_exp "$HAVE_VCHAN" HAVE_VCHAN
+mlh_exp "$HAVE_VCHAN_LWT" HAVE_VCHAN_LWT
+mlh_exp "$HAVE_LAUNCHD_LWT" HAVE_LAUNCHD_LWT
+
+echo $CONDUIT_CONFIG > lib/conduit_config.mlh
+
 add_pkg "$BASE_PKG"
 add_target "conduit"
 rm -f lib/*.odocl
@@ -48,7 +58,7 @@ rm -f _tags
 rm -rf _install
 mkdir -p _install
 
-echo 'true: syntax(camlp4o)' >> _tags
+echo 'true: pp(/Users/rgrinberg/reps/ml/ocaml-conduit/ppx)' >> _tags
 
 if [ "$HAVE_ASYNC" != "" ]; then
   echo "Building with Async support."

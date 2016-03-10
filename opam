@@ -14,8 +14,10 @@ remove:  ["ocamlfind" "remove" "conduit"]
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
-  "pa_sexp_conv"
-  "type_conv"
+  "ppx_driver" {build}
+  "ppx_optcomp" {build}
+  "ppx_sexp_conv" {build}
+  "sexplib"
   "stringext"
   "uri"
   "cstruct" {>="1.0.1"}
@@ -42,4 +44,4 @@ conflicts: [
   "vchan" {<"2.0.0"}
   "nocrypto" {<"0.4.0"}
 ]
-available: [ocaml-version >= "4.02.0"]
+available: [ocaml-version >= "4.01.0"]

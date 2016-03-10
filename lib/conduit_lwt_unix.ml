@@ -16,7 +16,7 @@
  *
  *)
 
-#import "lib/conduit_config.mlh"
+#import "conduit_config.mlh"
 
 open Lwt
 open Sexplib.Conv

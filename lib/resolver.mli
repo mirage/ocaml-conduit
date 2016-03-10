@@ -25,7 +25,7 @@ type service = {
   name: string;
   port: int;
   tls: bool
-} with sexp
+} [@@deriving sexp]
 
 (** Module type for a {{!resolution}resolver} that can map URIs to
     concrete {{!endp}endpoints} that stream connections can be
@@ -37,11 +37,11 @@ module type S = sig
   type +'a io
 
   (** State handle for a running resolver *)
-  type t with sexp
+  type t [@@deriving sexp]
 
   (** Abstract type for a service entry, which maps a URI scheme into
       a protocol handler and TCP port *)
-  type svc with sexp
+  type svc [@@deriving sexp]
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)

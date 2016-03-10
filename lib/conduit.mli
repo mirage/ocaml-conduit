@@ -56,7 +56,7 @@ type endp = [
   | `Vchan_domain_socket of string * string (** Vchan Xen domain socket *)
   | `TLS of string * endp          (** Wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string             (** Failed resolution *)
-] with sexp
+] [@@deriving sexp]
 
 (** Module type for cooperative threading that can be satisfied by
     Lwt or Async *)

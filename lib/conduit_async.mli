@@ -17,20 +17,21 @@
 
 (** Connection establishment using the
     {{:https://github.com/janestreet/async}Async} library *)
+#import "conduit_config.mlh"
 
 open Core.Std
 open Async.Std
 
-exception Ssl_unsupported with sexp
+exception Ssl_unsupported [@@deriving sexp]
 
-IFDEF HAVE_ASYNC_SSL THEN
+#if HAVE_ASYNC_SSL
 open Async_ssl.Std
-END
+#endif
 
 module Ssl : sig
   type config
 
-IFDEF HAVE_ASYNC_SSL THEN
+#if HAVE_ASYNC_SSL
   val verify_certificate :
     Ssl.Connection.t ->
     bool Deferred.t
@@ -44,7 +45,7 @@ IFDEF HAVE_ASYNC_SSL THEN
     ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
     unit ->
     config
-ELSE
+#else
   val verify_certificate :
     'a ->
     bool Deferred.t
@@ -58,7 +59,7 @@ ELSE
     ?verify:'f ->
     unit ->
     config
-END
+#endif
 end
 
 type +'a io = 'a Deferred.t
@@ -70,7 +71,7 @@ type addr = [
   | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
-] with sexp
+] [@@deriving sexp]
 
 val connect : ?interrupt:unit io -> addr -> (ic * oc) io
 
@@ -80,20 +81,20 @@ type trust_chain =
   | `Search_file_first_then_path of
       [ `File of string ] *
       [ `Path of string ]
-  ] with sexp
+  ] [@@deriving sexp]
 
 type openssl =
   [ `OpenSSL of
       [ `Crt_file_path of string ] *
       [ `Key_file_path of string ]
-  ] with sexp
+  ] [@@deriving sexp]
 
 type server = [
   | openssl
   | `TCP
   | `OpenSSL_with_trust_chain of
       (openssl * trust_chain)
-] with sexp
+] [@@deriving sexp]
 
 val serve :
   ?max_connections:int ->

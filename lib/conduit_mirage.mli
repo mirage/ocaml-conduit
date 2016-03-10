@@ -19,6 +19,7 @@
 (** Functorial connection establishment interface that is compatible with
     the Mirage libraries.
   *)
+#import "conduit_config.mlh"
 
 module Flow: V1_LWT.FLOW
 (** Dynamic flows. *)
@@ -32,10 +33,10 @@ module type Handler = sig
   type t
   (** The type for runtime handlers. *)
 
-  type client with sexp
+  type client [@@deriving sexp]
   (** The type for client configuration values. *)
 
-  type server with sexp
+  type server [@@deriving sexp]
   (** The type for server configuration values. *)
 
   val connect: t -> client -> Flow.flow Lwt.t
@@ -58,7 +59,7 @@ val stackv4: (module V1_LWT.STACKV4 with type t = 'a) -> 'a stackv4
 
 (** {1 VCHAN} *)
 
-IFDEF HAVE_VCHAN THEN
+#if HAVE_VCHAN
 
 type vchan_client = [
   | `Vchan of [
@@ -75,14 +76,14 @@ type vchan_server = [
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
 
-ELSE
+#else
 
 type vchan_client = [`Vchan of [`None]]
 type vchan_server = [`Vchan of [`None]]
 module type VCHAN = sig type t end
 module type XS = sig end
 
-ENDIF
+#endif
 
 type vchan
 type xs
@@ -92,19 +93,19 @@ val xs: (module XS) -> xs
 
 (** {1 TLS} *)
 
-IFDEF HAVE_MIRAGE_TLS THEN
+#if HAVE_MIRAGE_TLS
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
-ELSE
+#else
 type 'a tls_client = [`TLS of [`None]]
 type 'a tls_server = [`TLS of [`None]]
-ENDIF
+#endif
 
 
-type client = [ tcp_client | vchan_client | client tls_client ] with sexp
+type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
 (** The type for client configuration values. *)
 
-type server = [ tcp_server | vchan_server | server tls_server ] with sexp
+type server = [ tcp_server | vchan_server | server tls_server ] [@@deriving sexp]
 (** The type for server configuration values. *)
 
 val client: Conduit.endp -> client Lwt.t

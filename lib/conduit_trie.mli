@@ -19,7 +19,7 @@
 (** Radix tree that can do longest-prefix searches on string keys *)
 
 (** Radix tree that maps [string] keys to ['a] values *)
-type 'a t with sexp
+type 'a t [@@deriving sexp]
 
 (** An empty tree *)
 val empty : 'a t

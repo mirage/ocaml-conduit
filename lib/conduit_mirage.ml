@@ -15,6 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  *)
+#import "conduit_config.mlh"
 
 open Sexplib.Std
 open Sexplib.Conv
@@ -55,19 +56,19 @@ type callback = Flow.flow -> unit Lwt.t
 module type Handler = sig
   (** Runtime handler *)
   type t
-  type client with sexp
-  type server with sexp
+  type client [@@deriving sexp]
+  type server [@@deriving sexp]
   val connect: t -> client -> Flow.flow Lwt.t
   val listen: t -> server -> callback -> unit Lwt.t
 end
 
-type tcp_client = [ `TCP of Ipaddr.t * int ] with sexp
-type tcp_server = [ `TCP of int ] with sexp
+type tcp_client = [ `TCP of Ipaddr.t * int ] [@@deriving sexp]
+type tcp_server = [ `TCP of int ] [@@deriving sexp]
 
 type 'a stackv4 = (module V1_LWT.STACKV4 with type t = 'a)
 let stackv4 x = x
 
-IFDEF HAVE_VCHAN THEN
+#if HAVE_VCHAN
 
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
@@ -77,24 +78,24 @@ type vchan_client = [
       | `Direct of int * Vchan.Port.t                   (** domain id, port *)
       | `Domain_socket of string * Vchan.Port.t (** Vchan Xen domain socket *)
     ]
-] with sexp
+] [@@deriving sexp]
 
 type vchan_server = [
   | `Vchan of [
       | `Direct of int * Vchan.Port.t                   (** domain id, port *)
       | `Domain_socket                          (** Vchan Xen domain socket *)
     ]
-] with sexp
+] [@@deriving sexp]
 
-ELSE
+#else
 
 module type VCHAN = sig type t end
 module type XS = sig end
 
-type vchan_client = [ `Vchan of [`None] ] with sexp
-type vchan_server = [ `Vchan of [`None] ] with sexp
+type vchan_client = [ `Vchan of [`None] ] [@@deriving sexp]
+type vchan_server = [ `Vchan of [`None] ] [@@deriving sexp]
 
-ENDIF
+#endif
 
 type vchan = (module VCHAN)
 type xs = (module XS)
@@ -102,23 +103,23 @@ type xs = (module XS)
 let vchan x = x
 let xs x = x
 
-IFDEF HAVE_MIRAGE_TLS THEN
+#if HAVE_MIRAGE_TLS
 
-type 'a tls_client = [ `TLS of Tls.Config.client * 'a ] with sexp
-type 'a tls_server = [ `TLS of Tls.Config.server * 'a ] with sexp
+type 'a tls_client = [ `TLS of Tls.Config.client * 'a ] [@@deriving sexp]
+type 'a tls_server = [ `TLS of Tls.Config.server * 'a ] [@@deriving sexp]
 
-ELSE
+#else
 
-type 'a tls_client = [`TLS of [`None] ] with sexp
-type 'a tls_server = [`TLS of [`None] ] with sexp
+type 'a tls_client = [`TLS of [`None] ] [@@deriving sexp]
+type 'a tls_server = [`TLS of [`None] ] [@@deriving sexp]
 
-ENDIF
+#endif
 
-type client = [ tcp_client | vchan_client | client tls_client ] with sexp
-type server = [ tcp_server | vchan_server | server tls_server ] with sexp
+type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
+type server = [ tcp_server | vchan_server | server tls_server ] [@@deriving sexp]
 
-type tls_client' = client tls_client with sexp
-type tls_server' = server tls_server with sexp
+type tls_client' = client tls_client [@@deriving sexp]
+type tls_server' = server tls_server [@@deriving sexp]
 
 type ('c, 's) handler =
   S: (module Handler with type t = 'a and type client = 'c and type server = 's)
@@ -178,8 +179,8 @@ let listen t (s:server) f = match s with
 module TCP (S: V1_LWT.STACKV4) = struct
 
   type t = S.t
-  type client = tcp_client with sexp
-  type server = tcp_server with sexp
+  type client = tcp_client [@@deriving sexp]
+  type server = tcp_server [@@deriving sexp]
   let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
 
   let connect t (`TCP (ip, port): client) =
@@ -215,7 +216,7 @@ let with_tcp (type t) t (module S: V1_LWT.STACKV4 with type t = t) stack =
 
 (* VCHAN *)
 
-IFDEF HAVE_VCHAN THEN
+#if HAVE_VCHAN
 
 let err_vchan_port = fail "%s: invalid Vchan port"
 
@@ -238,8 +239,8 @@ module Vchan (Xs: Xs_client_lwt.S) (V: VCHAN) = struct
   module XS = Conduit_xenstore.Make(Xs)
 
   type t = XS.t
-  type client = vchan_client with sexp
-  type server = vchan_server with sexp
+  type client = vchan_client [@@deriving sexp]
+  type server = vchan_server [@@deriving sexp]
 
   let register = XS.register
 
@@ -270,19 +271,19 @@ let mk_vchan (type t) (module X: XS) (module V: VCHAN) t =
   V.register t >|= fun t ->
   S ((module V), t)
 
-ELSE
+#else
 
 let mk_vchan _ _ _ = err_vchan_not_supported "register"
 let vchan_client _ = err_vchan_not_supported "client"
 let vchan_server _ = err_vchan_not_supported "server"
 
-ENDIF
+#endif
 
 let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
 
-IFDEF HAVE_MIRAGE_TLS THEN
+#if HAVE_MIRAGE_TLS
 
 let err_eof = fail "%s: End-of-file!"
 
@@ -303,8 +304,8 @@ module TLS = struct
   type x = t
   type t = x
 
-  type client = tls_client' with sexp
-  type server = tls_server' with sexp
+  type client = tls_client' [@@deriving sexp]
+  type server = tls_server' [@@deriving sexp]
 
   let connect (t:t) (`TLS (c, x): client) =
     connect t x >>= fun flow ->
@@ -325,13 +326,13 @@ end
 
 let tls t = Lwt.return (S ( (module TLS), t))
 
-ELSE
+#else
 
 let tls_client _ _ = err_tls_not_supported "client"
 let tls_server _ _ = err_tls_not_supported "server"
 let tls _ = err_tls_not_supported "register"
 
-ENDIF
+#endif
 
 let with_tls t = tls t >|= fun x -> { t with tls = Some x }
 

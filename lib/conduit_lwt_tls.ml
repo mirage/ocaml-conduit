@@ -49,6 +49,7 @@ module Server = struct
     Lwt_unix.(setsockopt fd SO_REUSEADDR true);
     Lwt_unix.bind fd sa;
     Lwt_unix.listen fd nconn;
+    Lwt_unix.set_close_on_exec fd;
     fd
 
   let accept config s =

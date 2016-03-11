@@ -196,6 +196,7 @@ module Sockaddr_server = struct
       Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
       Lwt_unix.bind sock sockaddr;
       Lwt_unix.listen sock 15;
+      Lwt_unix.set_close_on_exec sock;
       sock) ()
 
   let process_accept ?timeout callback (client,_) =

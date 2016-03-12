@@ -4,13 +4,13 @@ TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
 BASE_PKG="sexplib ipaddr cstruct uri stringext"
-SYNTAX_PKG="camlp4.macro sexplib.syntax"
+SYNTAX_PKG="camlp4.macro pa_sexp_conv"
 
 # The Async backend is only supported in OCaml 4.01.0+
 OCAML_VERSION=`ocamlc -version`
 case $OCAML_VERSION in
-4.00.*|3.*)
-  echo Async backend only supported in OCaml 4.01.0 or higher
+4.01.*|4.00.*|3.*)
+  echo Minimum OCaml version is 4.02
   ;;
 *)
 HAVE_ASYNC=`ocamlfind query async 2>/dev/null || true`

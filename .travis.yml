@@ -7,7 +7,7 @@ script: bash ./.travis-docker.sh
 env:
  global:
    - PACKAGE="conduit"
-   - DEPOPTS="async_ssl lwt mirage-dns ssl tls"
+   - DEPOPTS="async_ssl lwt mirage-dns ssl"
  matrix:
    - DISTRO=debian-stable OCAML_VERSION=4.02.3
    - DISTRO=debian-testing OCAML_VERSION=4.02.3

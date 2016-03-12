@@ -42,4 +42,4 @@ conflicts: [
   "vchan" {<"2.0.0"}
   "nocrypto" {<"0.4.0"}
 ]
-available: [ocaml-version >= "4.01.0"]
+available: [ocaml-version >= "4.02.0"]

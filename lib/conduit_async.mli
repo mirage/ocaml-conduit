@@ -97,7 +97,6 @@ type server = [
 
 val serve :
   ?max_connections:int ->
-  ?max_pending_connections:int ->
   ?buffer_age_limit:Writer.buffer_age_limit ->
   ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
     | `Ignore

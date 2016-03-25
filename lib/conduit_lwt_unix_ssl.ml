@@ -25,12 +25,15 @@ let safe_close t =
     (fun _ -> return_unit)
 
 let chans_of_fd sock =
-  let ic = Lwt_ssl.in_channel_of_descr sock in
-  let oc = Lwt_ssl.out_channel_of_descr sock in
+  let shutdown () = Lwt_ssl.ssl_shutdown sock in
+  let close () = Lwt_ssl.close sock in
+  let oc = Lwt_io.make ~mode:Lwt_io.output ~close:shutdown (Lwt_ssl.write_bytes sock) in
+  let ic = Lwt_io.make ~mode:Lwt_io.input ~close (Lwt_ssl.read_bytes sock) in
   ((Lwt_ssl.get_fd sock), ic, oc)
 
 let close (ic, oc) =
-  Lwt.join [ safe_close oc; safe_close ic ]
+  safe_close oc >>= fun () ->
+  safe_close ic
 
 let with_socket sockaddr f =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
@@ -41,7 +44,8 @@ let with_socket sockaddr f =
 
 module Client = struct
   (* SSL TCP connection *)
-  let t = Ssl.create_context Ssl.TLSv1 Ssl.Client_context
+  let t = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
+  let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let connect ?(ctx=t) ?src sa =
     with_socket sa (fun fd ->
@@ -58,7 +62,8 @@ end
 
 module Server = struct
 
-  let t = Ssl.create_context Ssl.TLSv1 Ssl.Server_context
+  let t = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
+  let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
@@ -82,7 +87,7 @@ module Server = struct
     let events = match timeout with
       | None -> [c]
       | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.ignore_result (Lwt.pick events >>= fun () -> close (ic,oc))
+    Lwt.finalize (fun () ->  Lwt.pick events) (fun () -> close (ic,oc)) |> Lwt.ignore_result
 
   let init ?ctx ?(nconn=20) ?password ~certfile ~keyfile
     ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
@@ -100,7 +105,7 @@ module Server = struct
           (fun () -> accept ?ctx s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return_unit
-            | _ -> return_unit)
+            | _ -> Lwt_unix.yield ())
         >>= loop
       )
     in

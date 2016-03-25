@@ -25,7 +25,8 @@ let safe_close t =
     (fun _ -> return_unit)
 
 let close (ic, oc) =
-  Lwt.join [ safe_close oc; safe_close ic ]
+  safe_close oc >>= fun () ->
+  safe_close ic
 
 let with_socket sockaddr f =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
@@ -94,7 +95,7 @@ module Server = struct
              accept config s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return ()
-            | _ -> return ())
+            | _ -> Lwt_unix.yield ())
         >>= loop
       )
     in

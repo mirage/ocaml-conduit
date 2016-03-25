@@ -1,5 +1,5 @@
-0.11.0 (trunk):
-* Minimum OCaml version is now 4.02.3
+0.11.0 (2016-03-25):
+* Minimum OCaml version is now 4.02.0
 * Add multi-distro Travis testing script.
 * Switch to using `pa_sexp_conv` for latest sexp.
 * Support Core/Async >=113.24
@@ -7,6 +7,10 @@
   for it (#108 via @jonludlam)
 * [async] Add an `Ssl_unsupported exception` for Async rather than
   just raising `Failure`
+* Workaround for infinite loop when failing to accept new connections
+  (Edwin Torok #115)
+* Support TLSv1.1 and TLSv1.2 with openssl backend (Edwin Torok #115)
+* Fix FD leak with the openssl backend (Edwin Torok #115)
 
 0.10.0 (2015-12-25):
 * Add support for CA certificates in [Conduit_async.serve] (#98).

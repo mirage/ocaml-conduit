@@ -1,5 +1,6 @@
 0.12.0 (trunk):
 * Convert build system to use PPX instead of Camlp4.
+* Call `set_close_on_exec` on `Lwt_unix` listen sockets (#123)
 
 0.11.0 (2016-03-25):
 * Minimum OCaml version is now 4.02.0

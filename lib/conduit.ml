@@ -26,7 +26,7 @@ type endp = [
   | `Vchan_domain_socket of string * string
   | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
   | `Unknown of string            (** failed resolution *)
-] with sexp
+] [@@deriving sexp]
 
 module type IO = sig
   type +'a t

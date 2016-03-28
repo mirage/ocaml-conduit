@@ -19,7 +19,7 @@
 open Sexplib.Std
 
 type 'a t =
-  | Node of string * 'a option * 'a t list with sexp
+  | Node of string * 'a option * 'a t list [@@deriving sexp]
 
 (* Invariant: the only node with an empty string is the root *)
 let empty = Node("", None, [])

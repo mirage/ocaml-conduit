@@ -4,20 +4,9 @@ TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
 BASE_PKG="sexplib ipaddr cstruct uri stringext"
-SYNTAX_PKG="camlp4.macro pa_sexp_conv"
 
-# The Async backend is only supported in OCaml 4.01.0+
-OCAML_VERSION=`ocamlc -version`
-case $OCAML_VERSION in
-4.01.*|4.00.*|3.*)
-  echo Minimum OCaml version is 4.02
-  ;;
-*)
 HAVE_ASYNC=`ocamlfind query async 2>/dev/null || true`
 HAVE_ASYNC_SSL=`ocamlfind query async_ssl 2>/dev/null || true`
-;;
-esac
-
 HAVE_LWT=`ocamlfind query lwt 2>/dev/null || true`
 HAVE_LWT_SSL=`ocamlfind query lwt.ssl 2>/dev/null || true`
 HAVE_LWT_TLS=`ocamlfind query tls.lwt 2>/dev/null || true`
@@ -35,7 +24,25 @@ add_pkg () {
   PKG="$PKG $1"
 }
 
-add_pkg "$SYNTAX_PKG"
+mlh_exp() {
+  if [ "$1" != "" ]; then
+    echo "#let $2 = true" >> lib/conduit_config.mlh
+  else
+    echo "#let $2 = false" >> lib/conduit_config.mlh
+  fi
+}
+
+mlh_exp "$HAVE_ASYNC" HAVE_ASYNC
+mlh_exp "$HAVE_ASYNC_SSL" HAVE_ASYNC_SSL
+mlh_exp "$HAVE_LWT" HAVE_LWT
+mlh_exp "$HAVE_LWT_SSL" HAVE_LWT_SSL
+mlh_exp "$HAVE_LWT_TLS" HAVE_LWT_TLS
+mlh_exp "$HAVE_MIRAGE" HAVE_MIRAGE
+mlh_exp "$HAVE_MIRAGE_TLS" HAVE_MIRAGE_TLS
+mlh_exp "$HAVE_VCHAN" HAVE_VCHAN
+mlh_exp "$HAVE_VCHAN_LWT" HAVE_VCHAN_LWT
+mlh_exp "$HAVE_LAUNCHD_LWT" HAVE_LAUNCHD_LWT
+
 add_pkg "$BASE_PKG"
 add_target "conduit"
 rm -f lib/*.odocl
@@ -48,7 +55,9 @@ rm -f _tags
 rm -rf _install
 mkdir -p _install
 
-echo 'true: syntax(camlp4o)' >> _tags
+echo "true: config" >> _tags
+
+echo "true: pp($(pwd)/ppx)" >> _tags
 
 if [ "$HAVE_ASYNC" != "" ]; then
   echo "Building with Async support."
@@ -59,7 +68,6 @@ if [ "$HAVE_ASYNC" != "" ]; then
 
   if [ "$HAVE_ASYNC_SSL" != "" ]; then
     echo "Building with Async/SSL support."
-    echo 'true: define(HAVE_ASYNC_SSL)' >> _tags
     ASYNC_REQUIRES="$ASYNC_REQUIRES async_ssl"
     echo Conduit_async_ssl >> lib/conduit-async.mllib
   fi
@@ -80,14 +88,12 @@ if [ "$HAVE_LWT" != "" ]; then
 
   if [ "$HAVE_LWT_SSL" != "" ]; then
     echo "Building with Lwt/SSL support."
-    echo 'true: define(HAVE_LWT_SSL)' >> _tags
     LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES lwt.ssl"
     echo Conduit_lwt_unix_ssl >> lib/conduit-lwt-unix.mllib
   fi
 
   if [ "$HAVE_LWT_TLS" != "" ]; then
     echo "Building with Lwt/TLS support."
-    echo 'true: define(HAVE_LWT_TLS)' >> _tags
     LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES tls tls.lwt"
     echo Conduit_lwt_tls >> lib/conduit-lwt-unix.mllib
   fi
@@ -97,20 +103,17 @@ if [ "$HAVE_LWT" != "" ]; then
 
   if [ "$HAVE_MIRAGE" != "" ]; then
     echo "Building with Mirage support."
-    echo 'true: define(HAVE_MIRAGE)' >> _tags
     echo Conduit_mirage > lib/conduit-lwt-mirage.mllib
     echo Resolver_mirage >> lib/conduit-lwt-mirage.mllib
     MIRAGE_REQUIRES="mirage-types dns.mirage uri.services"
     if [ "$HAVE_VCHAN" != "" ]; then
       echo "Building with Mirage Vchan support."
-      echo 'true: define(HAVE_VCHAN)' >> _tags
       MIRAGE_REQUIRES="$MIRAGE_REQUIRES vchan"
       echo Conduit_xenstore >> lib/conduit-lwt-mirage.mllib
       echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
     fi
     if [ "$HAVE_MIRAGE_TLS" != "" ]; then
       echo "Building with Mirage TLS support."
-      echo 'true: define(HAVE_MIRAGE_TLS)' >> _tags
       MIRAGE_REQUIRES="$MIRAGE_REQUIRES tls tls.mirage"
     fi
     add_target "conduit-lwt-mirage"
@@ -121,13 +124,11 @@ fi
 
 if [ "$HAVE_VCHAN_LWT" != "" ]; then
     echo "Building with Vchan Lwt_unix support."
-    echo 'true: define(HAVE_VCHAN_LWT)' >> _tags
     VCHAN_LWT_REQUIRES="vchan.lwt"
 fi
 
 if [ "$HAVE_LAUNCHD_LWT" != "" ]; then
     echo "Building with Launchd Lwt_unix support."
-    echo 'true: define(HAVE_LAUNCHD_LWT)' >> _tags
     LAUNCHD_LWT_REQUIRES="launchd.lwt"
 fi
 

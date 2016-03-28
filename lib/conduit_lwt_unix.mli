@@ -28,7 +28,7 @@ type client_tls_config =
   [ `Hostname of string ] *
   [ `IP of Ipaddr.t ] *
   [ `Port of int ]
-with sexp
+[@@deriving sexp]
 
 (** Set of supported client connections that are supported by this module:
 
@@ -61,7 +61,7 @@ type client = [
   (** Connect to the remote VM on the [domid], [port] tuple. *)
   | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ]
   (** Use the Vchan name resolution to connect *)
-] with sexp
+] [@@deriving sexp]
 
 (** Configuration fragment for a listening TLS server *)
 type server_tls_config =
@@ -69,7 +69,7 @@ type server_tls_config =
   [ `Key_file_path of string ] *
   [ `Password of bool -> string | `No_password ] *
   [ `Port of int ]
-with sexp
+[@@deriving sexp]
 
 (** Set of supported listening mechanisms that are supported by this module. 
    - [`TLS server_tls_config]: Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect
@@ -93,7 +93,7 @@ type server = [
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string
-] with sexp
+] [@@deriving sexp]
 
 type 'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
@@ -104,21 +104,21 @@ type tcp_flow = private {
   fd: Lwt_unix.file_descr sexp_opaque;
   ip: Ipaddr.t;
   port: int;
-} with sexp_of
+} [@@deriving sexp_of]
 
 (** [domain_flow] contains the state of a single Unix domain socket
     connection. *)
 type domain_flow = private {
   fd: Lwt_unix.file_descr sexp_opaque;
   path: string;
-} with sexp_of
+} [@@deriving sexp_of]
 
 (** [vchan_flow] contains the state of a single Vchan shared memory
     connection. *)
 type vchan_flow = private {
   domid: int;
   port: string;
-} with sexp_of
+} [@@deriving sexp_of]
 
 (** A [flow] contains the state of a single connection, over a specific
     transport method. *)
@@ -126,7 +126,7 @@ type flow = private
   | TCP of tcp_flow
   | Domain_socket of domain_flow
   | Vchan of vchan_flow
-with sexp_of
+[@@deriving sexp_of]
 
 (** Type describing where to locate a PEM key in the filesystem *)
 type tls_server_key = [
@@ -135,10 +135,10 @@ type tls_server_key = [
     [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
-] with sexp
+] [@@deriving sexp]
 
 (** State handler for an active conduit *)
-type ctx with sexp_of
+type ctx [@@deriving sexp_of]
 
 (** {2 Connection and listening} *)
 

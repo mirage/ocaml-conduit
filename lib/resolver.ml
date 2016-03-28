@@ -21,7 +21,7 @@ type service = {
   name: string;
   port: int;
   tls: bool
-} with sexp
+} [@@deriving sexp]
 
 (** Module type for a {{!resolution}resolver} that can map URIs to
     concrete {{!Conduit.endp}endpoints} that stream connections can be
@@ -33,11 +33,11 @@ module type S = sig
   type +'a io
 
   (** State handle for a running resolver *)
-  type t with sexp
+  type t [@@deriving sexp]
 
   (** Abstract type for a service entry, which maps a URI scheme into
       a protocol handler and TCP port *)
-  type svc with sexp
+  type svc [@@deriving sexp]
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)
@@ -83,19 +83,19 @@ end
 module Make(IO:Conduit.IO) = struct
   open IO
 
-  type svc = service with sexp
+  type svc = service [@@deriving sexp]
   type 'a io = 'a IO.t
 
   (** A rewrite modifies an input URI with more specialization
       towards a concrete [endp] *)
-  type rewrite_fn = service -> Uri.t -> Conduit.endp IO.t with sexp
-  type service_fn = string -> service option IO.t with sexp
+  type rewrite_fn = service -> Uri.t -> Conduit.endp IO.t [@@deriving sexp]
+  type service_fn = string -> service option IO.t [@@deriving sexp]
 
   type t = {
     default_lookup : rewrite_fn;
     mutable domains: rewrite_fn Conduit_trie.t;
     mutable service: service_fn;
-  } with sexp
+  } [@@deriving sexp]
 
   let default_lookup _ uri =
     (* TODO log *)

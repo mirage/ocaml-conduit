@@ -80,6 +80,7 @@ module Server = struct
      | None -> ()
      | Some fn -> Ssl.set_password_callback ctx fn);
     Ssl.use_certificate ctx certfile keyfile;
+    Lwt_unix.set_close_on_exec fd;
     fd
 
   let process_accept ~timeout callback (sa,ic,oc) =

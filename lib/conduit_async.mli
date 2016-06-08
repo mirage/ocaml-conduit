@@ -67,9 +67,9 @@ type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
-  | `OpenSSL of string * Ipaddr.t * int
-  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
-  | `TCP of Ipaddr.t * int
+  | `OpenSSL of string * int
+  | `OpenSSL_with_config of string * int * Ssl.config
+  | `TCP of string * int
   | `Unix_domain_socket of string
 ] [@@deriving sexp]
 

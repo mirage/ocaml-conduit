@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-TAGS=principal,annot,bin_annot,short_paths,thread,strict_sequence
+TAGS=principal,bin_annot,short_paths,thread,strict_sequence
 J_FLAG=2
 
 BASE_PKG="sexplib ipaddr cstruct uri stringext"

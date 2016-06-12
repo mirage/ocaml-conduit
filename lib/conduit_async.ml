@@ -124,7 +124,7 @@ type server = [
 ] [@@deriving sexp]
 
 let serve
-      ?max_connections
+      ?max_connections ?backlog
       ?buffer_age_limit ?on_handler_error mode where_to_listen handle_request =
   let handle_client handle_request sock rd wr =
     match mode with
@@ -152,6 +152,6 @@ let serve
         raise Ssl_unsupported
 #endif
     in
-    Tcp.Server.create ?max_connections
+    Tcp.Server.create ?max_connections ?backlog
       ?buffer_age_limit ?on_handler_error
       where_to_listen (handle_client handle_request)

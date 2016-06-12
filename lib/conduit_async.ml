@@ -61,30 +61,30 @@ type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
-  | `OpenSSL of string * Ipaddr.t * int
-  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
-  | `TCP of Ipaddr.t * int
+  | `OpenSSL of string * int
+  | `OpenSSL_with_config of string * int * Ssl.config
+  | `TCP of string * int
   | `Unix_domain_socket of string
 ] [@@deriving sexp]
 
 let connect ?interrupt dst =
   match dst with
-  | `TCP (ip, port) -> begin
-      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
+  | `TCP (host, port) -> begin
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
       >>= fun (_, rd, wr) -> return (rd,wr)
   end
-  | `OpenSSL (host, ip, port) -> begin
+  | `OpenSSL (host, port) -> begin
 #if HAVE_ASYNC_SSL
-      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
       >>= fun (_, rd, wr) ->
       Conduit_async_ssl.ssl_connect rd wr
 #else
       raise Ssl_unsupported
 #endif
   end
-  | `OpenSSL_with_config (host, ip, port, config) -> begin
+  | `OpenSSL_with_config (host, port, config) -> begin
 #if HAVE_ASYNC_SSL
-      Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
+      Tcp.connect ?interrupt (Tcp.to_host_and_port host port)
       >>= fun (_, rd, wr) ->
       let open Ssl in
       match config with | {version; name; ca_file; ca_path; session; verify} ->

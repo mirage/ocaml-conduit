@@ -16,13 +16,9 @@
  *)
 
 open Lwt
+open Conduit_lwt_server
 
 let _ = Ssl.init ()
-
-let safe_close t =
-  Lwt.catch
-    (fun () -> Lwt_io.close t)
-    (fun _ -> return_unit)
 
 let chans_of_fd sock =
   let shutdown () = Lwt_ssl.ssl_shutdown sock in
@@ -30,17 +26,6 @@ let chans_of_fd sock =
   let oc = Lwt_io.make ~mode:Lwt_io.output ~close:shutdown (Lwt_ssl.write_bytes sock) in
   let ic = Lwt_io.make ~mode:Lwt_io.input ~close (Lwt_ssl.read_bytes sock) in
   ((Lwt_ssl.get_fd sock), ic, oc)
-
-let close (ic, oc) =
-  safe_close oc >>= fun () ->
-  safe_close ic
-
-let with_socket sockaddr f =
-  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
-  Lwt.catch (fun () -> f fd) (fun e ->
-      Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> return_unit) >>= fun () ->
-      fail e
-    )
 
 module Client = struct
   (* SSL TCP connection *)
@@ -83,13 +68,6 @@ module Server = struct
     Lwt_unix.set_close_on_exec fd;
     fd
 
-  let process_accept ~timeout callback (sa,ic,oc) =
-    let c = callback sa ic oc in
-    let events = match timeout with
-      | None -> [c]
-      | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.finalize (fun () ->  Lwt.pick events) (fun () -> close (ic,oc)) |> Lwt.ignore_result
-
   let init ?ctx ?(nconn=20) ?password ~certfile ~keyfile
     ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     let s = listen ?ctx ~nconn ?password ~certfile ~keyfile sa in
@@ -113,3 +91,6 @@ module Server = struct
     loop ()
 
 end
+
+(* Should this be deprecated? Not really ssl related in any way *)
+let close = Conduit_lwt_server.close

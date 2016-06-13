@@ -53,6 +53,6 @@ module Server : sig
     unit Lwt.t
 end
 
-val close :
-  Lwt_io.input_channel * Lwt_io.output_channel ->
-  unit Lwt.t
+val close
+  : Lwt_io.input_channel * Lwt_io.output_channel
+  -> unit Lwt.t

@@ -16,24 +16,9 @@
  *)
 
 open Lwt
+open Conduit_lwt_server
 
 let _ = Nocrypto_entropy_lwt.initialize ()
-
-let safe_close t =
-  Lwt.catch
-    (fun () -> Lwt_io.close t)
-    (fun _ -> return_unit)
-
-let close (ic, oc) =
-  safe_close oc >>= fun () ->
-  safe_close ic
-
-let with_socket sockaddr f =
-  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
-  Lwt.catch (fun () -> f fd) (fun e ->
-      Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> return_unit) >>= fun () ->
-      fail e
-    )
 
 module Client = struct
   let connect ?src host sa =
@@ -62,20 +47,13 @@ module Server = struct
     fd
 
   let accept config s =
-    Lwt_unix.accept s >>= fun (fd, sa) ->
+    Lwt_unix.accept s >>= fun (fd, _) ->
     Lwt.try_bind (fun () ->
         Tls_lwt.Unix.server_of_fd config fd)
       (fun t ->
-        let ic, oc = Tls_lwt.of_t t in
-        return (fd, ic, oc))
+         let ic, oc = Tls_lwt.of_t t in
+         return (fd, ic, oc))
       (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
-
-  let process_accept ~timeout callback (cfd, ic, oc) =
-    let c = callback cfd ic oc in
-    let events = match timeout with
-      | None -> [c]
-      | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.ignore_result (Lwt.pick events >>= fun () -> close (ic, oc))
 
   let init ?(nconn=20) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =

@@ -163,22 +163,10 @@ let init ?src ?(tls_server_key=`None) () =
     | {ai_addr;_}::_ -> return { src=Some ai_addr; tls_server_key }
     | [] -> fail (Failure "Invalid conduit source address specified")
 
-let safe_close t =
-  Lwt.catch
-    (fun () -> Lwt_io.close t)
-    (fun _ -> return_unit)
-
-let with_socket sockaddr f =
-  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
-  Lwt.catch (fun () -> f fd) (fun e ->
-      Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> return_unit) >>= fun () ->
-      fail e
-    )
-
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
-    with_socket sa (fun fd ->
+    Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
           | None -> ()
@@ -192,10 +180,7 @@ module Sockaddr_client = struct
 end
 
 module Sockaddr_server = struct
-
-  let close (ic, oc) =
-    safe_close oc >>= fun () ->
-    safe_close ic
+  open Conduit_lwt_server
 
   let init_socket sockaddr =
     Unix.handle_unix_error (fun () ->
@@ -393,7 +378,7 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
 #else
     fail (Failure "No Vchan support compiled into Conduit")
 #endif
-  | `Vchan_domain_socket uuid ->
+  | `Vchan_domain_socket _uuid ->
     fail (Failure "Vchan_domain_socket not implemented")
   | `Launchd name ->
 #if HAVE_LAUNCHD_LWT

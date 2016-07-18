@@ -9,7 +9,7 @@ install: ppx
 	@./build.sh true
 
 clean:
-	rm -rf _build _install ppx lib/conduit_config.mlh
+	rm -rf _build _install ppx lib/conduit_config.mlh META
 
 doc: ppx
 	@BUILD_DOC=true ./build.sh

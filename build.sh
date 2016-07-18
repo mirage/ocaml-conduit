@@ -1,7 +1,6 @@
 #!/bin/sh -e
 
 TAGS=principal,bin_annot,short_paths,thread,strict_sequence
-J_FLAG=2
 
 BASE_PKG="sexplib ipaddr cstruct uri stringext"
 
@@ -141,26 +140,26 @@ fi
 
 REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES $LAUNCHD_LWT_REQUIRES | tr -s ' '`
 
-ocamlbuild -use-ocamlfind -classic-display -no-links -j ${J_FLAG} -tag ${TAGS} \
-  -cflags "-w A-4-33-40-41-42-43-34-44" \
-  -pkgs `echo $REQS | tr ' ' ','` \
-  ${TARGETS}
-
-sed \
-  -e "s/@BASE_REQUIRES@/${BASE_PKG}/g" \
-  -e "s/@VERSION@/`cat VERSION`/g" \
-  -e "s/@ASYNC_REQUIRES@/${ASYNC_REQUIRES}/g" \
-  -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
-  -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
-  -e "s/@MIRAGE_REQUIRES@/${MIRAGE_REQUIRES}/g" \
-  -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
-  -e "s/@LAUNCHD_LWT_REQUIRES@/${LAUNCHD_LWT_REQUIRES}/g" \
-  META.in > META
-
 if [ "$1" = "true" ]; then
-  B=_build/lib/
+  sed \
+    -e "s/@BASE_REQUIRES@/${BASE_PKG}/g" \
+    -e "s/@VERSION@/`cat VERSION`/g" \
+    -e "s/@ASYNC_REQUIRES@/${ASYNC_REQUIRES}/g" \
+    -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
+    -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
+    -e "s/@MIRAGE_REQUIRES@/${MIRAGE_REQUIRES}/g" \
+    -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
+    -e "s/@LAUNCHD_LWT_REQUIRES@/${LAUNCHD_LWT_REQUIRES}/g" \
+    META.in > META
+  B=_build/lib
   ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo > _install/lib
   ocamlfind remove conduit || true
   FILES=`ls -1 lib/intro.html $B/*.mli $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo 2>/dev/null || true`
   ocamlfind install conduit META $FILES
+else
+  ocamlbuild -use-ocamlfind -classic-display -no-links -j ${J_FLAG-1} -tag ${TAGS} \
+  -cflags "-w A-4-33-40-41-42-43-34-44" \
+  -pkgs `echo $REQS | tr ' ' ','` \
+  ${TARGETS}
 fi
+

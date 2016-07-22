@@ -80,11 +80,12 @@ if [ "$HAVE_LWT" != "" ]; then
   echo Resolver_lwt > lib/conduit-lwt.mllib
   add_target "conduit-lwt"
   LWT_REQUIRES="lwt"
-  LWT_UNIX_REQUIRES="lwt.unix ipaddr.unix uri.services"
+  LWT_UNIX_REQUIRES="lwt.unix ipaddr.unix uri.services cmdliner logs"
 
   echo Conduit_lwt_server > lib/conduit-lwt-unix.mllib
   echo Conduit_lwt_unix >> lib/conduit-lwt-unix.mllib
   echo Resolver_lwt_unix >> lib/conduit-lwt-unix.mllib
+  echo Conduit_lwt_cmdliner >> lib/conduit-lwt-unix.mllib
   add_target "conduit-lwt-unix"
 
   if [ "$HAVE_LWT_SSL" != "" ]; then

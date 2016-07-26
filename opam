@@ -22,6 +22,9 @@ depends: [
   "uri"
   "cstruct" {>="1.0.1"}
   "ipaddr" {>="2.5.0"}
+  "cmdliner"
+  "logs"
+  "fmt"
 ]
 depopts: [
   "async"

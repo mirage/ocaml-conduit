@@ -49,6 +49,7 @@ module Flow = struct
   let write (Flow ((module F), flow)) b = wrap_errors (module F) (F.write flow b)
   let writev (Flow ((module F), flow)) b = wrap_errors (module F) (F.writev flow b)
   let close (Flow ((module F), flow)) = F.close flow
+  let disconnect (Flow ((module F), flow)) = F.disconnect flow
 end
 
 type callback = Flow.flow -> unit Lwt.t

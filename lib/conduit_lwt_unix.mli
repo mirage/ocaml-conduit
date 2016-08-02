@@ -163,7 +163,8 @@ val connect : ctx:ctx -> client -> (flow * ic * oc) io
     lightweight thread that is invoked via the [fn] callback.
     The [fn] callback is passed the {!flow} representing the
     client connection and the associated input {!ic} and output
-    {!oc} channels. *)
+    {!oc} channels. If the callback raises an exception, it is
+    passed to [!Lwt.async_exception_hook]. *)
 val serve :
   ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io

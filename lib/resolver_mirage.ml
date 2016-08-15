@@ -110,8 +110,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
       : Conduit.endp Lwt.t =
     let host = get_host uri in
     let port = get_port service uri in
-    DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
-    >>= fun res ->
+    (match Ipaddr.of_string host with
+    | None -> DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
+    | Some addr -> return [addr]) >>= fun res ->
     List.filter (function Ipaddr.V4 _ -> true | _ -> false) res
     |> function
     | [] -> return (`Unknown ("name resolution failed"))

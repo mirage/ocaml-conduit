@@ -195,7 +195,6 @@ module TCP (S: V1_LWT.STACKV4) = struct
 
   let listen t (`TCP port: server) fn =
     let s, _u = Lwt.task () in
-    Lwt.on_cancel s (fun () -> print_endline "Stopping server thread");
     S.listen_tcpv4 t ~port (fun flow ->
         let f = Flow.create (module S.TCPV4) flow in
         fn f

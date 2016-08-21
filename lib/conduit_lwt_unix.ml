@@ -346,7 +346,10 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
 
 let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
-  Lwt.on_cancel t (fun () -> print_endline "Terminating server thread");
+  let callback flow ic oc = Lwt.catch
+    (fun () -> callback flow ic oc)
+    (fun exn -> !Lwt.async_exception_hook exn; Lwt.return_unit)
+  in
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in

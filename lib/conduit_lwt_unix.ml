@@ -197,8 +197,7 @@ module Sockaddr_server = struct
         Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
       with
         (* This is expected for Unix domain sockets *)
-        | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ()
-        | e -> raise e );
+        | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
     let c = callback (flow_of_fd client peeraddr) ic oc in

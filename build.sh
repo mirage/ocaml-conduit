@@ -98,6 +98,17 @@ if [ "$HAVE_LWT" != "" ]; then
     echo Conduit_lwt_tls >> lib/conduit-lwt-unix.mllib
   fi
 
+  if [ "$HAVE_VCHAN_LWT" != "" ]; then
+      echo "Building with Vchan Lwt_unix support."
+      LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES vchan.lwt"
+  fi
+
+  if [ "$HAVE_LAUNCHD_LWT" != "" ]; then
+      echo "Building with Launchd Lwt_unix support."
+      LWT_UNIX_REQUIRES="$LWT_UNIX_REQUIRES launchd.lwt"
+  fi
+
+
   cp lib/conduit-lwt.mllib lib/conduit-lwt.odocl
   cp lib/conduit-lwt-unix.mllib lib/conduit-lwt-unix.odocl
 
@@ -122,23 +133,13 @@ if [ "$HAVE_LWT" != "" ]; then
 
 fi
 
-if [ "$HAVE_VCHAN_LWT" != "" ]; then
-    echo "Building with Vchan Lwt_unix support."
-    VCHAN_LWT_REQUIRES="vchan.lwt"
-fi
-
-if [ "$HAVE_LAUNCHD_LWT" != "" ]; then
-    echo "Building with Launchd Lwt_unix support."
-    LAUNCHD_LWT_REQUIRES="launchd.lwt"
-fi
-
 # Build all the ocamldoc
 if [ "$BUILD_DOC" = "true" ]; then
   cat lib/*.odocl > lib/conduit-all.odocl
   TARGETS="${TARGETS} lib/conduit-all.docdir/index.html"
 fi
 
-REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES $VCHAN_LWT_REQUIRES $LAUNCHD_LWT_REQUIRES | tr -s ' '`
+REQS=`echo $PKG $ASYNC_REQUIRES $LWT_REQUIRES $LWT_UNIX_REQUIRES $MIRAGE_REQUIRES | tr -s ' '`
 
 if [ "$1" = "true" ]; then
   sed \
@@ -148,8 +149,6 @@ if [ "$1" = "true" ]; then
     -e "s/@LWT_REQUIRES@/${LWT_REQUIRES}/g" \
     -e "s/@LWT_UNIX_REQUIRES@/${LWT_UNIX_REQUIRES}/g" \
     -e "s/@MIRAGE_REQUIRES@/${MIRAGE_REQUIRES}/g" \
-    -e "s/@VCHAN_LWT_REQUIRES@/${VCHAN_LWT_REQUIRES}/g" \
-    -e "s/@LAUNCHD_LWT_REQUIRES@/${LAUNCHD_LWT_REQUIRES}/g" \
     META.in > META
   B=_build/lib
   ls $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo > _install/lib

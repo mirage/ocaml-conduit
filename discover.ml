@@ -1,5 +1,7 @@
 open Printf
 
+let () = Printexc.record_backtrace true
+
 let verbose =
   try
     ignore (Sys.getenv "CONDUIT_DISCOVER_VERBOSE");

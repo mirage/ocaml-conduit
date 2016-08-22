@@ -15,7 +15,9 @@ all: ppx
 install: ppx
 	rm -rf _install
 	mkdir -p _install
-	test -f _build/lib/conduit_xenstore.cmo && echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
+ifneq ("$(wildcard _build/lib/conduit_xenstore.cmo)","")
+	echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
+endif
 	$(foreach f,$(FILES), echo "$(f)" >> _install/lib;)
 	ocamlfind remove conduit || true
 	ocamlfind install conduit META $(FILES) $(MORE_FILES)

@@ -10,6 +10,7 @@ license:      "ISC"
 build:   [make]
 install: [make "install"]
 remove:  ["ocamlfind" "remove" "conduit"]
+build-doc: [make "doc"]
 
 depends: [
   "ocamlfind" {build}

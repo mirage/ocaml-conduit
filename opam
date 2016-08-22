@@ -7,7 +7,7 @@ bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
 tags:         "org:mirage"
 license:      "ISC"
 
-build:   [make]
+build:   [["ocaml" "discover.ml"] [make]]
 install: [make "install"]
 remove:  ["ocamlfind" "remove" "conduit"]
 build-doc: [make "doc"]

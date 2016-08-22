@@ -241,9 +241,11 @@ let make_meta () =
     with End_of_file -> String.concat "\n" !lines
   in
   let pkg p =
-    (List.find (fun n -> n.Target.name = p) pkgs)
-    .Target.findlib
-    |> findlib_pkgs
+    try
+      (List.find (fun n -> n.Target.name = p) pkgs)
+      .Target.findlib
+      |> findlib_pkgs
+    with Not_found -> ""
   in
   let vars =
     [ "@BASE_REQUIRES@", findlib_pkgs base_findlib

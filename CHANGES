@@ -1,3 +1,10 @@
+0.13.0 (2016-09-18):
+* Fix build system to stop compiling things twice (#137)
+* Lwt: pass uncaught exceptions in server callback to async_exception_hook (#143)
+* Lwt: stop printing stuff to stdout (#143)
+* Async: fix swallowing of exceptions
+* Async: add backlog argument to serve
+
 0.12.0 (2016-04-30):
 * Convert build system to use PPX instead of Camlp4.
 * Call `set_close_on_exec` on `Lwt_unix` listen sockets (#123)

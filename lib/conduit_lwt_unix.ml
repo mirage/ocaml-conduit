@@ -182,13 +182,13 @@ end
 module Sockaddr_server = struct
   open Conduit_lwt_server
 
-  let init_socket sockaddr =
+  let init_socket ?(backlog=128) sockaddr =
     Unix.handle_unix_error (fun () ->
       let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr)
                                  Unix.SOCK_STREAM 0 in
       Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
       Lwt_unix.bind sock sockaddr;
-      Lwt_unix.listen sock 15;
+      Lwt_unix.listen sock backlog;
       Lwt_unix.set_close_on_exec sock;
       sock) ()
 
@@ -207,11 +207,11 @@ module Sockaddr_server = struct
     let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
     return ()
 
-  let init ~on ?(stop = fst (Lwt.wait ())) ?timeout callback =
+  let init ~on ?(stop = fst (Lwt.wait ())) ?backlog ?timeout callback =
     let cont = ref true in
     let s = match on with
     | `Socket s -> s
-    | `Sockaddr sockaddr -> init_socket sockaddr in
+    | `Sockaddr sockaddr -> init_socket ?backlog sockaddr in
     async (fun () ->
       stop >>= fun () ->
       cont := false;
@@ -343,7 +343,7 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
                                    ~pass ~port callback t
   | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
 
-let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
+let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   let callback flow ic oc = Lwt.catch
     (fun () -> callback flow ic oc)
@@ -352,11 +352,11 @@ let serve ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   match mode with
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
-       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?timeout ?stop callback
+       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
        >>= fun () -> t
   | `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
-       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?timeout ?stop callback
+       Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
        >>= fun () -> t
   | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
      serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile

@@ -156,9 +156,9 @@ val init : ?src:string -> ?tls_server_key:tls_server_key -> unit -> ctx io
     via the [ctx] context to the endpoint described by [client] *)
 val connect : ctx:ctx -> client -> (flow * ic * oc) io
 
-(** [serve ?timeout ?stop ~ctx ~mode fn] establishes a listening
-    connection of type [mode], using the [ctx] context.  The
-    [stop] thread will terminate the server if it ever becomes
+(** [serve ?backlog ?timeout ?stop ~ctx ~mode fn] establishes a
+    listening connection of type [mode], using the [ctx] context.
+    The [stop] thread will terminate the server if it ever becomes
     determined.  Every connection will be served in a new
     lightweight thread that is invoked via the [fn] callback.
     The [fn] callback is passed the {!flow} representing the
@@ -166,7 +166,7 @@ val connect : ctx:ctx -> client -> (flow * ic * oc) io
     {!oc} channels. If the callback raises an exception, it is
     passed to [!Lwt.async_exception_hook]. *)
 val serve :
-  ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
+  ?backlog:int -> ?timeout:int -> ?stop:(unit io) -> ctx:ctx ->
    mode:server -> (flow -> ic -> oc -> unit io) -> unit io
 
 (** [endp_of_flow flow] retrieves the original {!Conduit.endp}

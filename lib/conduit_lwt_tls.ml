@@ -55,7 +55,7 @@ module Server = struct
          return (fd, ic, oc))
       (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
 
-  let init ?(nconn=20) ~certfile ~keyfile
+  let init ?(nconn=128) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in

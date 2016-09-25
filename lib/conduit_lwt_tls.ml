@@ -38,11 +38,11 @@ module Client = struct
 end
 
 module Server = struct
-  let listen nconn sa =
+  let listen backlog sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     Lwt_unix.(setsockopt fd SO_REUSEADDR true);
     Lwt_unix.bind fd sa;
-    Lwt_unix.listen fd nconn;
+    Lwt_unix.listen fd backlog;
     Lwt_unix.set_close_on_exec fd;
     fd
 
@@ -55,11 +55,11 @@ module Server = struct
          return (fd, ic, oc))
       (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
 
-  let init ?(nconn=128) ~certfile ~keyfile
+  let init ?(backlog=128) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
-    let s = listen nconn sa in
+    let s = listen backlog sa in
     let cont = ref true in
     async (fun () ->
       stop >>= fun () ->

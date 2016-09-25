@@ -56,11 +56,11 @@ module Server = struct
       (fun sock -> return (chans_of_fd sock))
       (fun exn -> Lwt_unix.close afd >>= fun () -> fail exn)
 
-  let listen ?(ctx=t) ?(nconn=128) ?password ~certfile ~keyfile sa =
+  let listen ?(ctx=t) ?(backlog=128) ?password ~certfile ~keyfile sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
     Lwt_unix.(setsockopt fd SO_REUSEADDR true);
     Lwt_unix.bind fd sa;
-    Lwt_unix.listen fd nconn;
+    Lwt_unix.listen fd backlog;
     (match password with
      | None -> ()
      | Some fn -> Ssl.set_password_callback ctx fn);
@@ -68,9 +68,9 @@ module Server = struct
     Lwt_unix.set_close_on_exec fd;
     fd
 
-  let init ?ctx ?nconn ?password ~certfile ~keyfile
+  let init ?ctx ?backlog ?password ~certfile ~keyfile
     ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    let s = listen ?ctx ?nconn ?password ~certfile ~keyfile sa in
+    let s = listen ?ctx ?backlog ?password ~certfile ~keyfile sa in
     let cont = ref true in
     async (fun () ->
       stop >>= fun () ->

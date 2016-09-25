@@ -37,7 +37,7 @@ module Server : sig
     int -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
   val init :
-    ?nconn:int ->
+    ?backlog:int ->
     certfile:string ->
     keyfile:string ->
     ?stop:(unit Lwt.t) ->

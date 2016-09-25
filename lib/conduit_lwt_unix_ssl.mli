@@ -35,14 +35,14 @@ module Server : sig
 
   val listen :
     ?ctx:Ssl.context ->
-    ?nconn:int ->
+    ?backlog:int ->
     ?password:(bool -> string) ->
     certfile:string ->
     keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
   val init :
     ?ctx:Ssl.context ->
-    ?nconn:int ->
+    ?backlog:int ->
     ?password:(bool -> string) ->
     certfile:string ->
     keyfile:string ->

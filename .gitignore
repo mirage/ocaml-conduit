@@ -20,3 +20,4 @@ _install/
 *.xl
 ppx
 *.mlh
+*.itarget

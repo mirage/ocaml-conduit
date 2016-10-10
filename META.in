@@ -21,7 +21,7 @@ package "lwt" (
 package "lwt-unix" (
  version = "@VERSION@"
  description = "Resolve URIs into Lwt channels under Unix"
- requires = "conduit.lwt @LWT_UNIX_REQUIRES@ @VCHAN_LWT_REQUIRES@ @LAUNCHD_LWT_REQUIRES@"
+ requires = "conduit.lwt @LWT_UNIX_REQUIRES@"
  archive(byte) = "conduit-lwt-unix.cma"
  archive(byte, plugin) = "conduit-lwt-unix.cma"
  archive(native) = "conduit-lwt-unix.cmxa"

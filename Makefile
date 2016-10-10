@@ -1,18 +1,33 @@
 .PHONY: all install clean doc github
 
+OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display -no-links \
+	-cflags "-w A-4-33-40-41-42-43-34-44"
+
 PREFIX ?= /usr/local/bin
 
+B=_build/lib
+FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo)
+MORE_FILES = $(wildcard lib/intro.html $B/*.mli)
+
 all: ppx
-	@./build.sh
+	$(OCAMLBUILD) conduit.otarget
 
 install: ppx
-	@./build.sh true
+	rm -rf _install
+	mkdir -p _install
+ifneq ("$(wildcard _build/lib/conduit_xenstore.cmo)","")
+	echo '"scripts/xenstore-conduit-init" {"xenstore-conduit-init"}' > _install/bin
+endif
+	$(foreach f,$(FILES), echo "$(f)" >> _install/lib;)
+	ocamlfind remove conduit || true
+	ocamlfind install conduit META $(FILES) $(MORE_FILES)
 
 clean:
-	rm -rf _build _install ppx lib/conduit_config.mlh META
+	$(OCAMLBUILD) -clean
+	rm -rf _install ppx lib/conduit_config.mlh META _tags
 
 doc: ppx
-	@BUILD_DOC=true ./build.sh
+	$(OCAMLBUILD) lib/conduit.docdir/index.html
 
 github: doc
 	git checkout gh-pages

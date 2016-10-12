@@ -27,6 +27,7 @@ open Async_ssl.Std
 val ssl_connect :
   ?version:Ssl.Version.t ->
   ?name:string ->
+  ?hostname:string ->
   ?ca_file:string ->
   ?ca_path:string ->
   ?session:Ssl.Session.t ->

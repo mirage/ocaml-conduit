@@ -1,12 +1,22 @@
 .PHONY: all install clean doc github
 
+EXT_OBJ=`ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $2}'`
+EXT_LIB=`ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $2}'`
+
 OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display -no-links \
 	-cflags "-w A-4-33-40-41-42-43-34-44"
 
 PREFIX ?= /usr/local/bin
+OS_TYPE:=$(shell ocamlfind ocamlc -config | awk '/^os_type:/ {print $$2}')
+ifeq ($(OS_TYPE),$(filter $(OS_TYPE),Win32 Cygwin))
+EXT_EXE=.exe
+else
+EXT_EXE=
+endif
+
 
 B=_build/lib
-FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*.a $B/*.o $B/*.cmo)
+FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/$B/*$(EXT_LIB) $B/*$(EXT_OBJ) $B/*.cmo)
 MORE_FILES = $(wildcard lib/intro.html $B/*.mli)
 
 all: ppx
@@ -56,5 +66,5 @@ pr:
 	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
 
 ppx:
-	ocamlfind ocamlopt -predicates ppx_driver -o ppx -linkpkg \
+	ocamlfind ocamlopt -predicates ppx_driver -o ppx$(EXT_EXE) -linkpkg \
 	  -package ppx_sexp_conv ppx_driver_runner.cmxa

@@ -199,7 +199,8 @@ module TCP (S: V1_LWT.STACKV4) = struct
         let f = Flow.create (module S.TCPV4) flow in
         fn f
       );
-    s
+    let stack_listener = S.listen t in
+    Lwt.pick [stack_listener; s]
 
 end
 

@@ -1,7 +1,7 @@
 .PHONY: all install clean doc github
 
-EXT_OBJ=`ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $2}'`
-EXT_LIB=`ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $2}'`
+EXT_OBJ=$(ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $2}')
+EXT_LIB=$(ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $2}')
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display -no-links \
 	-cflags "-w A-4-33-40-41-42-43-34-44"
@@ -16,7 +16,7 @@ endif
 
 
 B=_build/lib
-FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/$B/*$(EXT_LIB) $B/*$(EXT_OBJ) $B/*.cmo)
+FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*$(EXT_LIB) $B/*$(EXT_OBJ) $B/*.cmo)
 MORE_FILES = $(wildcard lib/intro.html $B/*.mli)
 
 all: ppx

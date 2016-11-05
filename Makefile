@@ -1,7 +1,7 @@
 .PHONY: all install clean doc github
 
-EXT_OBJ=$(ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $2}')
-EXT_LIB=$(ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $2}')
+EXT_OBJ:=$(shell ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $$2}')
+EXT_LIB:=$(shell ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $$2}')
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display -no-links \
 	-cflags "-w A-4-33-40-41-42-43-34-44"

@@ -39,7 +39,8 @@ module Flag = struct
 
   let check flag =
     let pkgs = String.concat " " flag.findlib_checks in
-    let cmd = sprintf "ocamlfind query %s 1>/dev/null 2>/dev/null" pkgs in
+    let null = if Sys.os_type = "Win32" then "NUL" else "/dev/null" in
+    let cmd = sprintf "ocamlfind query %s 1>%s 2>%s" pkgs null null in
     let res = Sys.command cmd = 0 in
     if verbose then
       printf "Checking %s(findlib: %s): %s\n%!"

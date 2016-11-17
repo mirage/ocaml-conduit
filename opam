@@ -33,6 +33,7 @@ depopts: [
   "vchan"
   "launchd"
   "tls"
+  "mirage-runtime"
   "mirage-types-lwt"
 ]
 conflicts: [

@@ -39,15 +39,10 @@ module Flow = struct
   type flow = Flow: (module V1_LWT.FLOW with type flow = 'a) * 'a -> flow
   let create m t = Flow (m, t)
 
-  let wrap_errors (type e) (module F : V1_LWT.FLOW with type error = e) v =
-    v >>= function
-    | `Error err -> Lwt.return (`Error (fun () -> F.error_message err))
-    | `Ok _ | `Eof as other -> Lwt.return other
-
   let error_message fn = fn ()
-  let read (Flow ((module F), flow)) = wrap_errors (module F) (F.read flow)
-  let write (Flow ((module F), flow)) b = wrap_errors (module F) (F.write flow b)
-  let writev (Flow ((module F), flow)) b = wrap_errors (module F) (F.writev flow b)
+  let read (Flow ((module F), flow)) = F.read flow
+  let write (Flow ((module F), flow)) b = F.write flow b
+  let writev (Flow ((module F), flow)) b = F.writev flow b
   let close (Flow ((module F), flow)) = F.close flow
 end
 
@@ -181,15 +176,16 @@ module TCP (S: V1_LWT.STACKV4) = struct
   type t = S.t
   type client = tcp_client [@@deriving sexp]
   type server = tcp_server [@@deriving sexp]
-  let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
+  let err_tcp e = Lwt.fail @@ Failure
+    (Format.asprintf "TCP connection failed: %a" Mirage_pp.pp_tcp_error e)
 
   let connect t (`TCP (ip, port): client) =
     match Ipaddr.to_v4 ip with
     | None    -> err_ipv6 "connect"
     | Some ip ->
       S.TCPV4.create_connection (S.tcpv4 t) (ip, port) >>= function
-      | `Error e -> err_tcp e
-      | `Ok flow ->
+      | Error e -> err_tcp e
+      | Ok flow ->
       let flow = Flow.create (module S.TCPV4) flow in
       Lwt.return flow
 

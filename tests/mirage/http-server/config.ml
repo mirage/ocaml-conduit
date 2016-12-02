@@ -9,7 +9,7 @@ let net =
 let dhcp =
   try match Sys.getenv "ADDR" with
     | "dhcp"   -> `Dhcp
-    | "static" -> `Static
+    | _ -> `Static
   with Not_found -> `Static
 
 let stack console =
@@ -19,8 +19,10 @@ let stack console =
   | `Socket, _       -> socket_stackv4 console [Ipaddr.V4.any]
 
 let client =
-  foreign "Unikernel.Client" @@ console @-> stackv4 @-> job
+  foreign ~deps:[abstract nocrypto] "Unikernel.Client" @@ console @-> stackv4 @-> job
 
 let () =
-  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage"; "vchan" ];
-  register "http-server" [ client $ default_console $ stack default_console ]
+  register
+    ~libraries:[ "conduit.lwt"; "conduit.mirage"; "vchan" ]
+    "http-server"
+    [ client $ default_console $ stack default_console ]

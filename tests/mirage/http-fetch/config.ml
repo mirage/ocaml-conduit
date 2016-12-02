@@ -9,7 +9,7 @@ let net =
 let dhcp =
   try match Sys.getenv "ADDR" with
     | "dhcp"   -> `Dhcp
-    | "static" -> `Static
+    | _ -> `Static
   with Not_found -> `Dhcp
 
 let stack console =
@@ -19,9 +19,10 @@ let stack console =
   | `Socket, _       -> socket_stackv4 console [Ipaddr.V4.any]
 
 let client =
-  foreign "Unikernel.Client" @@ console @-> stackv4 @-> job
+  foreign ~deps:[abstract nocrypto] "Unikernel.Client" @@ console @-> stackv4 @-> job
 
 let () =
-  add_to_ocamlfind_libraries [ "conduit.lwt"; "conduit.mirage"; "dns.mirage" ];
-  add_to_opam_packages [ "mirage-dns"; "conduit" ];
-  register "conduit-client" [ client $ default_console $ stack default_console ]
+  register
+    ~libraries:[ "conduit.lwt"; "conduit.mirage"; "dns.mirage" ]
+    ~packages:[ "mirage-dns"; "conduit" ]
+    "conduit-client" [ client $ default_console $ stack default_console ]

@@ -20,7 +20,7 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
     let stackv4 = Conduit_mirage.stackv4 (module S) in
     Conduit_mirage.with_tcp Conduit_mirage.empty stackv4 s
 
-  let start c stack =
+  let start c stack _ =
     C.log_s c (sprintf "Resolving in 3s using DNS server %s" ns) >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
     let res = Resolver_lwt.init () in

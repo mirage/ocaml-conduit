@@ -18,7 +18,7 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
   let callback c _flow =
     C.log_s c "Connection!"
 
-  let start c stack =
+  let start c stack _ =
     let r = Resolver_mirage.localhost in
     mk_conduit stack >>= fun conduit ->
     Resolver_lwt.resolve_uri ~uri r >>= fun endp ->

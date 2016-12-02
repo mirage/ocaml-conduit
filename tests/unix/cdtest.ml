@@ -14,13 +14,13 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 *)
 
-open Lwt
+open Lwt.Infix
 
 let port = 9192
 let config = `Crt_file_path "server.pem", `Key_file_path "server.key", `No_password, `Port port
 
 let rec repeat n f =
-  if n = 0 then return_unit
+  if n = 0 then Lwt.return_unit
   else f () >>= fun () -> repeat (n-1) f
 
 let perform () =
@@ -40,12 +40,12 @@ let perform () =
         Lwt.finalize (fun () ->
             Lwt_unix.connect s sa >>= fun () ->
             Lwt_ssl.ssl_connect s ctx >>= fun ss ->
-            return_unit)
+            Lwt.return_unit)
           (fun () -> Lwt_unix.close s))
   in
   repeat 1024 client_test >>= fun () ->
   Lwt.wakeup do_stop ();
-  return_unit
+  Lwt.return_unit
 
 let () =
   Lwt.async_exception_hook := ignore;

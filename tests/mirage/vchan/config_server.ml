@@ -1,8 +1,9 @@
 open Mirage
 
-let main = foreign "Unikernel.Server" (console @-> job)
+let main = foreign "Unikernel.Server" (time @-> job)
 
 let () =
-  add_to_ocamlfind_libraries ["conduit.mirage"; "vchan.xen"];
-  add_to_opam_packages ["conduit"; "vchan"];
-  register "vchan_server" [ main $ default_console ]
+  register
+    ~libraries:["conduit.mirage"; "vchan.xen"]
+    ~packages:["conduit"; "vchan"]
+    "vchan_server" [ main $ default_time ]

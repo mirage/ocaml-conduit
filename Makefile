@@ -3,7 +3,7 @@
 EXT_OBJ:=$(shell ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $$2}')
 EXT_LIB:=$(shell ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $$2}')
 
-OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display -no-links \
+OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display \
 	-cflags "-w A-4-33-40-41-42-43-34-44"
 
 PREFIX ?= /usr/local/bin
@@ -66,5 +66,12 @@ pr:
 	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
 
 ppx:
+	./configure
 	ocamlfind ocamlopt -predicates ppx_driver -o ppx$(EXT_EXE) -linkpkg \
 	  -package ppx_sexp_conv ppx_driver_runner.cmxa
+
+cdtest_tls: ppx
+	$(OCAMLBUILD) cdtest_tls.native
+
+exit_test: ppx
+	$(OCAMLBUILD) exit_test.native

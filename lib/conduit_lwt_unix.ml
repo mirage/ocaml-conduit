@@ -212,19 +212,19 @@ module Sockaddr_server = struct
     let s = match on with
     | `Socket s -> s
     | `Sockaddr sockaddr -> init_socket ?backlog sockaddr in
-    async (fun () ->
-      stop >>= fun () ->
-      cont := false;
-      return_unit
-    );
+    let stop' = Lwt.map (fun () -> `Stop) stop in
     let rec loop () =
-      if not !cont then return_unit
-      else
-        Lwt_unix.accept s >>=
-        process_accept ?timeout callback >>= fun () ->
+      let accept = Lwt_unix.accept s in
+      Lwt.choose [Lwt.map (fun v -> `Accept v) accept;
+                  stop'] >>= function
+      | `Stop ->
+        Lwt.cancel accept;
+        Lwt.return_unit
+      | `Accept v ->
+        process_accept ?timeout callback v >>= fun () ->
         loop ()
     in
-    loop ()
+    Lwt.finalize loop (fun () -> Lwt_unix.close s)
 end
 
 (** TLS client connection functions *)
@@ -302,7 +302,7 @@ let sockaddr_on_tcp_port ctx port =
   | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
 let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
-                       ~pass ~port callback t =
+                       ~pass ~port callback =
 #if HAVE_LWT_SSL
   let sockaddr, ip = sockaddr_on_tcp_port ctx port in
   let password =
@@ -312,14 +312,13 @@ let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
   in
   Conduit_lwt_unix_ssl.Server.init
     ?password ~certfile ~keyfile ?timeout ?stop sockaddr
-    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc) >>= fun () ->
-  t
+    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
 #else
   fail (Failure "No SSL support compiled into Conduit")
 #endif
 
 let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
-                          ~pass ~port callback t =
+                          ~pass ~port callback =
 #if HAVE_LWT_TLS
   let sockaddr, ip = sockaddr_on_tcp_port ctx port in
   (match pass with
@@ -329,18 +328,17 @@ let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
   Conduit_lwt_tls.Server.init
     ~certfile ~keyfile ?timeout ?stop sockaddr
     (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
-  >>= fun () -> t
 #else
   fail (Failure "No TLS support compiled into Conduit")
 #endif
 
 let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
-                           ~pass ~port callback t =
+                           ~pass ~port callback =
   match !tls_library with
   | OpenSSL -> serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
-                                 ~pass ~port callback t
+                                 ~pass ~port callback
   | Native -> serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
-                                   ~pass ~port callback t
+                                   ~pass ~port callback
   | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
 
 let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
@@ -353,22 +351,20 @@ let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   | `TCP (`Port port) ->
        let sockaddr, ip = sockaddr_on_tcp_port ctx port in
        Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
-       >>= fun () -> t
   | `Unix_domain_socket (`File path) ->
        let sockaddr = Unix.ADDR_UNIX path in
        Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
-       >>= fun () -> t
   | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
      serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
-                            ~pass ~port callback t
+                            ~pass ~port callback
   | `OpenSSL (`Crt_file_path certfile, `Key_file_path keyfile,
               pass, `Port port) ->
      serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
-                        ~pass ~port callback t
+                        ~pass ~port callback
   | `TLS_native (`Crt_file_path certfile, `Key_file_path keyfile,
                  pass, `Port port) ->
      serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
-                           ~pass ~port callback t
+                           ~pass ~port callback
   |`Vchan_direct (domid, sport) ->
 #if HAVE_VCHAN_LWT
     begin match Vchan.Port.of_string sport with
@@ -394,7 +390,7 @@ let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
         ) sockets
     | Result.Error (`Msg m) ->
       fail (Failure m)
-    end >>= fun () -> t
+    end
 #else
     fail (Failure "No Launchd support compiled into Conduit")
 #endif

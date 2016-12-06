@@ -225,8 +225,11 @@ let tags =
     |> List.map Target.tags
     |> List.flatten in
   [ sprintf "true: %s" (Ocb.tags_of_packages base_findlib)
-  ; sprintf "true: pp(%s/ppx), config" (Sys.getcwd ())
+  ; sprintf "<lib/**>: pp(%s/ppx), config" (Sys.getcwd ())
   ; "true: debug,principal,bin_annot,short_paths,thread,strict_sequence"
+  ; "<lib>: include"
+  ; "<tests/*>: include"
+  ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix), package(vchan.lwt)"
   ] @ extra_tags
 
 let make_meta () =

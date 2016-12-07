@@ -18,7 +18,10 @@
 open Lwt
 open Conduit_lwt_server
 
-let _ = Ssl.init ()
+let src = Logs.Src.create "conduit_lwt_unix_ssl" ~doc:"Conduit Lwt/Unix/SSL transport"
+module Log = (val Logs.src_log src : Logs.LOG)
+
+let () = Ssl.init ()
 
 let chans_of_fd sock =
   let shutdown () = Lwt_ssl.ssl_shutdown sock in
@@ -84,7 +87,11 @@ module Server = struct
           (fun () -> accept ?ctx s >|= process_accept ~timeout callback)
           (function
             | Lwt.Canceled -> cont := false; return_unit
-            | _ -> Lwt_unix.yield ())
+            | ex ->
+              Log.warn (fun f ->
+                  f "Uncaught exception accepting connection: %s" (Printexc.to_string ex)
+                );
+              Lwt_unix.yield ())
         >>= loop
       )
     in

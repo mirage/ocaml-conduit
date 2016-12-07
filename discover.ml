@@ -138,7 +138,7 @@ let vchan       = Flag.mk "vchan" ["vchan"]
 let vchan_lwt   = Flag.mk "vchan_lwt" ["vchan.lwt"]
 let launchd_lwt = Flag.mk "launchd_lwt" ["launchd.lwt"]
 
-let base_findlib = ["sexplib" ; "ipaddr" ; "cstruct" ; "uri" ; "stringext"]
+let base_findlib = ["sexplib" ; "ipaddr" ; "cstruct" ; "uri" ; "stringext"; "logs"]
 
 module Libs = struct
   open Pkg

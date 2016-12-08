@@ -9,6 +9,14 @@ let close (ic, oc) =
   safe_close oc >>= fun () ->
   safe_close ic
 
+let listen ?(backlog=128) sa =
+  let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
+  Lwt_unix.(setsockopt fd SO_REUSEADDR true);
+  Lwt_unix.bind fd sa;
+  Lwt_unix.listen fd backlog;
+  Lwt_unix.set_close_on_exec fd;
+  fd
+
 let with_socket sockaddr f =
   let fd =
     Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in

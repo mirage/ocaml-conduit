@@ -33,8 +33,7 @@ module Server : sig
     Lwt_unix.file_descr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 
-  val listen :
-    int -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
+  val listen : int -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
 
   val init :
     ?backlog:int ->

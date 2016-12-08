@@ -1,6 +1,8 @@
 
 val close : 'a Lwt_io.channel * 'b Lwt_io.channel -> unit Lwt.t
 
+val listen : ?backlog:int -> Unix.sockaddr -> Lwt_unix.file_descr
+
 val with_socket
   : Unix.sockaddr
   -> (Lwt_unix.file_descr -> 'a Lwt.t)

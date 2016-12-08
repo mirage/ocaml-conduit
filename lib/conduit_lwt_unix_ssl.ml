@@ -58,16 +58,12 @@ module Server = struct
       (fun sock -> Lwt.return (chans_of_fd sock))
       (fun exn -> Lwt_unix.close afd >>= fun () -> Lwt.fail exn)
 
-  let listen ?(ctx=t) ?(backlog=128) ?password ~certfile ~keyfile sa =
-    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    Lwt_unix.(setsockopt fd SO_REUSEADDR true);
-    Lwt_unix.bind fd sa;
-    Lwt_unix.listen fd backlog;
+  let listen ?(ctx=t) ?backlog ?password ~certfile ~keyfile sa =
+    let fd = Conduit_lwt_server.listen ?backlog sa in
     (match password with
      | None -> ()
      | Some fn -> Ssl.set_password_callback ctx fn);
     Ssl.use_certificate ctx certfile keyfile;
-    Lwt_unix.set_close_on_exec fd;
     fd
 
   let init ?ctx ?backlog ?password ~certfile ~keyfile

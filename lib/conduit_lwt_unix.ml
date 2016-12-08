@@ -153,11 +153,11 @@ let default_ctx =
   { src=None; tls_server_key=`None }
 
 let init ?src ?(tls_server_key=`None) () =
-  let open Unix in
   match src with
   | None ->
     Lwt.return { src=None; tls_server_key }
   | Some host ->
+    let open Unix in
     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
     >>= function
     | {ai_addr;_}::_ -> Lwt.return { src=Some ai_addr; tls_server_key }
@@ -181,22 +181,12 @@ end
 
 module Sockaddr_server = struct
 
-  let init_socket ?(backlog=128) sockaddr =
-    Unix.handle_unix_error (fun () ->
-      let sock = Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr)
-                                 Unix.SOCK_STREAM 0 in
-      Lwt_unix.setsockopt sock Unix.SO_REUSEADDR true;
-      Lwt_unix.bind sock sockaddr;
-      Lwt_unix.listen sock backlog;
-      Lwt_unix.set_close_on_exec sock;
-      sock) ()
-
   let process_accept ?timeout callback (client,peeraddr) =
-    ( try
-        Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
-      with
-        (* This is expected for Unix domain sockets *)
-        | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
+    (try
+       Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
+     with
+     (* This is expected for Unix domain sockets *)
+     | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
     let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
     let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
     let c = callback (flow_of_fd client peeraddr) ic oc in
@@ -210,7 +200,7 @@ module Sockaddr_server = struct
     let cont = ref true in
     let s = match on with
       | `Socket s -> s
-      | `Sockaddr sockaddr -> init_socket ?backlog sockaddr in
+      | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr in
     let stop' = Lwt.map (fun () -> `Stop) stop in
     let rec loop () =
       let accept = Lwt_unix.accept s in

@@ -17,9 +17,6 @@
 
 open Lwt.Infix
 
-let src = Logs.Src.create "conduit_lwt_unix_ssl" ~doc:"Conduit Lwt/Unix/SSL transport"
-module Log = (val Logs.src_log src : Logs.LOG)
-
 let () = Ssl.init ()
 
 let chans_of_fd sock =
@@ -52,6 +49,7 @@ module Server = struct
   let t = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
   let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
+
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
     Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept afd ctx)
@@ -66,32 +64,15 @@ module Server = struct
     Ssl.use_certificate ctx certfile keyfile;
     fd
 
-  let init ?ctx ?backlog ?password ~certfile ~keyfile
-      ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    let s = listen ?ctx ?backlog ?password ~certfile ~keyfile sa in
-    let stop' = Lwt.map (fun () -> `Stop) stop in
-    let rec loop () =
-      Lwt.catch
-        (fun () ->
-           let accept = accept ?ctx s in
-           Lwt.choose [ Lwt.map (fun v -> `Accept v) accept
-                      ; stop'] >>= function
-           | `Stop ->
-             Lwt.cancel accept;
-             Lwt.return_unit
-           | `Accept v ->
-             Conduit_lwt_server.process_accept ~timeout callback v;
-             loop ())
-        (function
-          | Lwt.Canceled -> Lwt.return_unit
-          | ex ->
-            Log.warn (fun f ->
-                f "Uncaught exception accepting connection: %s"
-                  (Printexc.to_string ex)
-              );
-            Lwt_unix.yield ())
-    in
-    Lwt.finalize loop (fun () -> Lwt_unix.close s)
+  let init ?(ctx=t) ?backlog ?password ~certfile ~keyfile ?stop ?timeout sa cb =
+    sa
+    |> listen ~ctx ?backlog ?password ~certfile ~keyfile
+    |> Conduit_lwt_server.init ?stop (fun (fd, _) ->
+        Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept fd ctx)
+          (fun sock -> Lwt.return (chans_of_fd sock))
+          (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
+        >|= Conduit_lwt_server.process_accept ?timeout cb
+        |> Lwt.ignore_result)
 
 end
 

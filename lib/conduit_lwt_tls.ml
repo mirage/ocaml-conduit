@@ -48,22 +48,18 @@ module Server = struct
          Lwt.return (fd, ic, oc))
       (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
 
-  let init ?backlog ~certfile ~keyfile
-      ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
+  let init ?backlog ~certfile ~keyfile ?stop ?timeout sa callback =
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile
     >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
-    let s = Conduit_lwt_server.listen ?backlog sa in
-    let stop' = Lwt.map (fun () -> `Stop) stop in
-    let rec loop () =
-      let accept = accept config s in
-      Lwt.choose [ Lwt.map (fun v -> `Accept v) accept ; stop' ] >>= function
-      | `Stop ->
-        Lwt.cancel accept;
-        Lwt.return_unit
-      | `Accept v ->
-        Conduit_lwt_server.process_accept ~timeout callback v;
-        loop ()
-    in
-    Lwt.finalize loop (fun () -> Lwt_unix.close s)
+    sa
+    |> Conduit_lwt_server.listen ?backlog
+    |> Conduit_lwt_server.init ?stop (fun (fd, _) ->
+        Lwt.try_bind
+          (fun () -> Tls_lwt.Unix.server_of_fd config fd)
+          (fun t ->
+             let (ic, oc) = Tls_lwt.of_t t in
+             Lwt.return (fd, ic, oc))
+          (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
+        |> Lwt.ignore_result)
 end

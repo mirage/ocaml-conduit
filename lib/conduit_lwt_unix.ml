@@ -193,27 +193,15 @@ module Sockaddr_server = struct
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    let _ = Lwt.pick events >>= fun () -> Conduit_lwt_server.close (ic,oc) in
-    Lwt.return ()
+    Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
+    |> Lwt.ignore_result
 
-  let init ~on ?(stop = fst (Lwt.wait ())) ?backlog ?timeout callback =
-    let cont = ref true in
-    let s = match on with
+  let init ~on ?stop ?backlog ?timeout callback =
+    let s =
+      match on with
       | `Socket s -> s
       | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr in
-    let stop' = Lwt.map (fun () -> `Stop) stop in
-    let rec loop () =
-      let accept = Lwt_unix.accept s in
-      Lwt.choose [Lwt.map (fun v -> `Accept v) accept;
-                  stop'] >>= function
-      | `Stop ->
-        Lwt.cancel accept;
-        Lwt.return_unit
-      | `Accept v ->
-        process_accept ?timeout callback v >>= fun () ->
-        loop ()
-    in
-    Lwt.finalize loop (fun () -> Lwt_unix.close s)
+    Conduit_lwt_server.init ?stop (process_accept ?timeout callback) s
 end
 
 (** TLS client connection functions *)

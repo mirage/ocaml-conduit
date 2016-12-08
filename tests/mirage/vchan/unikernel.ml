@@ -24,7 +24,7 @@ module Server(Time : V1_LWT.TIME) = struct
         | `Eof ->
           Log.info (fun f -> f "End of transmission!"); Lwt.return_unit
         | `Error e ->
-          Log.wlarn (fun f -> f "Error reading the vchan flow!");
+          Log.warn (fun f -> f "Error reading the vchan flow!");
           Lwt.return_unit
       in loop ()
     in

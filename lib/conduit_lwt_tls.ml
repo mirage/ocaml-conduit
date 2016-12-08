@@ -56,27 +56,21 @@ module Server = struct
       (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
 
   let init ?(backlog=128) ~certfile ~keyfile
-        ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
+      ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
+    X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile
+    >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
     let s = listen backlog sa in
-    let cont = ref true in
-    Lwt.async (fun () ->
-      stop >>= fun () ->
-      cont := false;
-      Lwt.return_unit
-    );
+    let stop' = Lwt.map (fun () -> `Stop) stop in
     let rec loop () =
-      if not !cont then Lwt.return_unit
-      else (
-        Lwt.catch
-          (fun () ->
-             accept config s >|= process_accept ~timeout callback)
-          (function
-            | Lwt.Canceled -> cont := false; Lwt.return ()
-            | _ -> Lwt_unix.yield ())
-        >>= loop
-      )
+      let accept = accept config s in
+      Lwt.choose [ Lwt.map (fun v -> `Accept v) accept ; stop' ] >>= function
+      | `Stop ->
+        Lwt.cancel accept;
+        Lwt.return_unit
+      | `Accept v ->
+        process_accept ~timeout callback v;
+        loop ()
     in
-    loop ()
+    Lwt.finalize loop (fun () -> Lwt_unix.close s)
 end

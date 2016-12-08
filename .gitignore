@@ -21,3 +21,5 @@ _install/
 ppx
 *.mlh
 *.itarget
+*.cmx*
+*.cma

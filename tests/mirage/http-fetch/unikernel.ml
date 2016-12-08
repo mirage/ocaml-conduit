@@ -1,4 +1,4 @@
-open Lwt
+open Lwt.Infix
 open V1_LWT
 open Printf
 

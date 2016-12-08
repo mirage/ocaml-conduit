@@ -15,7 +15,7 @@
  *
  *)
 
-open Lwt
+open Lwt.Infix
 open Conduit_lwt_server
 
 let src = Logs.Src.create "conduit_lwt_unix_ssl" ~doc:"Conduit Lwt/Unix/SSL transport"
@@ -44,7 +44,7 @@ module Client = struct
         in
         Lwt_unix.connect fd sa >>= fun () ->
         Lwt_ssl.ssl_connect fd ctx >>= fun sock ->
-        return (chans_of_fd sock)
+        Lwt.return (chans_of_fd sock)
       )
 end
 
@@ -56,8 +56,8 @@ module Server = struct
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
     Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept afd ctx)
-      (fun sock -> return (chans_of_fd sock))
-      (fun exn -> Lwt_unix.close afd >>= fun () -> fail exn)
+      (fun sock -> Lwt.return (chans_of_fd sock))
+      (fun exn -> Lwt_unix.close afd >>= fun () -> Lwt.fail exn)
 
   let listen ?(ctx=t) ?(backlog=128) ?password ~certfile ~keyfile sa =
     let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in

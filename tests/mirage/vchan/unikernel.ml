@@ -1,9 +1,9 @@
-open Lwt
+open Lwt.Infix
 open Printf
 
 let conduit = Conduit_mirage.empty
-let vchan = Conduit_mirage.vchan (module Vchan_xen) 
-let xs = Conduit_mirage.xs (module OS.Xs) 
+let vchan = Conduit_mirage.vchan (module Vchan_xen)
+let xs = Conduit_mirage.xs (module OS.Xs)
 
 module Server(Time : V1_LWT.TIME) = struct
 
@@ -24,7 +24,7 @@ module Server(Time : V1_LWT.TIME) = struct
         | `Eof ->
           Log.info (fun f -> f "End of transmission!"); Lwt.return_unit
         | `Error e ->
-          Log.warn (fun f -> f "Error reading the vchan flow!");
+          Log.wlarn (fun f -> f "Error reading the vchan flow!");
           Lwt.return_unit
       in loop ()
     in

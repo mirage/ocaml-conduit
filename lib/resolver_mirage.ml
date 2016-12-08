@@ -15,7 +15,7 @@
  *
  *)
 
-open Lwt
+open Lwt.Infix
 
 let is_tls_service =
   (* TODO fill in the blanks. nowhere else to get this information *)
@@ -40,17 +40,17 @@ let static_resolver hosts service uri =
   let port = get_port service uri in
   try
     let fn = Hashtbl.find hosts (get_host uri) in
-    return (fn ~port)
+    Lwt.return (fn ~port)
   with Not_found ->
-    return (`Unknown ("name resolution failed"))
+    Lwt.return (`Unknown ("name resolution failed"))
 
 let static_service name =
   match Uri_services.tcp_port_of_service name with
-  | [] -> return None
+  | [] -> Lwt.return_none
   | port::_ ->
      let tls = is_tls_service name in
      let svc = { Resolver.name; port; tls } in
-     return (Some svc)
+     Lwt.return (Some svc)
 
 let static hosts =
   let service = static_service in
@@ -102,7 +102,7 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
       Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
         (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service service))
         (Uri.to_string uri) remote_name;
-      return (`Vchan_domain_socket (remote_name, service.Resolver.name))
+      Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 
@@ -112,11 +112,11 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     let port = get_port service uri in
     (match Ipaddr.of_string host with
     | None -> DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
-    | Some addr -> return [addr]) >>= fun res ->
+    | Some addr -> Lwt.return [addr]) >>= fun res ->
     List.filter (function Ipaddr.V4 _ -> true | _ -> false) res
     |> function
-    | [] -> return (`Unknown ("name resolution failed"))
-    | addr::_ -> return (`TCP (addr,port))
+    | [] -> Lwt.return (`Unknown ("name resolution failed"))
+    | addr::_ -> Lwt.return (`TCP (addr,port))
 
   let register ?(ns=default_ns) ?(ns_port=53) ?stack res =
       begin match stack with

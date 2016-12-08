@@ -15,7 +15,7 @@
  *
  *)
 
-open Lwt
+open Lwt.Infix
 
 let debug = ref false
 let debug_print = ref Printf.eprintf
@@ -31,7 +31,7 @@ let return_endp name svc uri endp =
      name (Uri.to_string uri)
      (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service svc))
      (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
-  return endp
+  Lwt.return endp
 
 let is_tls_service =
   (* TODO fill in the blanks. nowhere else to get this information *)
@@ -46,16 +46,16 @@ let system_service name =
       Lwt_unix.getservbyname name "tcp" >>= fun s ->
       let tls = is_tls_service name in
       let svc = { Resolver.name; port=s.Lwt_unix.s_port; tls } in
-      return (Some svc))
-    (function Not_found -> return_none | e -> fail e)
+      Lwt.return (Some svc))
+    (function Not_found -> Lwt.return_none | e -> Lwt.fail e)
 
 let static_service name =
   match Uri_services.tcp_port_of_service name with
-  | [] -> return None
+  | [] -> Lwt.return_none
   | port::_ ->
      let tls = is_tls_service name in
      let svc = { Resolver.name; port; tls } in
-     return (Some svc)
+     Lwt.return (Some svc)
 
 let get_host uri =
   match Uri.host uri with

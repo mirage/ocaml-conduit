@@ -15,7 +15,7 @@
  *
  *)
 
-open Lwt
+open Lwt.Infix
 open Conduit_lwt_server
 
 let _ = Nocrypto_entropy_lwt.initialize ()
@@ -52,8 +52,8 @@ module Server = struct
         Tls_lwt.Unix.server_of_fd config fd)
       (fun t ->
          let ic, oc = Tls_lwt.of_t t in
-         return (fd, ic, oc))
-      (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
+         Lwt.return (fd, ic, oc))
+      (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
 
   let init ?(backlog=128) ~certfile ~keyfile
         ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
@@ -61,19 +61,19 @@ module Server = struct
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
     let s = listen backlog sa in
     let cont = ref true in
-    async (fun () ->
+    Lwt.async (fun () ->
       stop >>= fun () ->
       cont := false;
-      return_unit
+      Lwt.return_unit
     );
     let rec loop () =
-      if not !cont then return_unit
+      if not !cont then Lwt.return_unit
       else (
         Lwt.catch
           (fun () ->
              accept config s >|= process_accept ~timeout callback)
           (function
-            | Lwt.Canceled -> cont := false; return ()
+            | Lwt.Canceled -> cont := false; Lwt.return ()
             | _ -> Lwt_unix.yield ())
         >>= loop
       )

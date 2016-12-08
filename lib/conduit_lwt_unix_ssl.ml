@@ -16,7 +16,6 @@
  *)
 
 open Lwt.Infix
-open Conduit_lwt_server
 
 let src = Logs.Src.create "conduit_lwt_unix_ssl" ~doc:"Conduit Lwt/Unix/SSL transport"
 module Log = (val Logs.src_log src : Logs.LOG)
@@ -36,7 +35,7 @@ module Client = struct
   let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let connect ?(ctx=t) ?src sa =
-    with_socket sa (fun fd ->
+    Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
           | None -> ()
@@ -85,7 +84,7 @@ module Server = struct
              Lwt.cancel accept;
              Lwt.return_unit
            | `Accept v ->
-             process_accept ~timeout callback v;
+             Conduit_lwt_server.process_accept ~timeout callback v;
              loop ())
         (function
           | Lwt.Canceled -> Lwt.return_unit

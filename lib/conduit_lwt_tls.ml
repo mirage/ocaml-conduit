@@ -16,13 +16,12 @@
  *)
 
 open Lwt.Infix
-open Conduit_lwt_server
 
 let _ = Nocrypto_entropy_lwt.initialize ()
 
 module Client = struct
   let connect ?src host sa =
-    with_socket sa (fun fd ->
+    Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
           | None -> ()
@@ -69,7 +68,7 @@ module Server = struct
         Lwt.cancel accept;
         Lwt.return_unit
       | `Accept v ->
-        process_accept ~timeout callback v;
+        Conduit_lwt_server.process_accept ~timeout callback v;
         loop ()
     in
     Lwt.finalize loop (fun () -> Lwt_unix.close s)

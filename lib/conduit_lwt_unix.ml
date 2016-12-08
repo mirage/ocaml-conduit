@@ -180,7 +180,6 @@ module Sockaddr_client = struct
 end
 
 module Sockaddr_server = struct
-  open Conduit_lwt_server
 
   let init_socket ?(backlog=128) sockaddr =
     Unix.handle_unix_error (fun () ->
@@ -204,7 +203,7 @@ module Sockaddr_server = struct
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    let _ = Lwt.pick events >>= fun () -> close (ic,oc) in
+    let _ = Lwt.pick events >>= fun () -> Conduit_lwt_server.close (ic,oc) in
     Lwt.return ()
 
   let init ~on ?(stop = fst (Lwt.wait ())) ?backlog ?timeout callback =

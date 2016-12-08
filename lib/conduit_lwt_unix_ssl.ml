@@ -72,30 +72,31 @@ module Server = struct
     fd
 
   let init ?ctx ?backlog ?password ~certfile ~keyfile
-    ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
+      ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
     let s = listen ?ctx ?backlog ?password ~certfile ~keyfile sa in
-    let cont = ref true in
-    async (fun () ->
-      stop >>= fun () ->
-      cont := false;
-      return_unit
-    );
+    let stop' = Lwt.map (fun () -> `Stop) stop in
     let rec loop () =
-      if not !cont then return_unit
-      else (
-        Lwt.catch
-          (fun () -> accept ?ctx s >|= process_accept ~timeout callback)
-          (function
-            | Lwt.Canceled -> cont := false; return_unit
-            | ex ->
-              Log.warn (fun f ->
-                  f "Uncaught exception accepting connection: %s" (Printexc.to_string ex)
-                );
-              Lwt_unix.yield ())
-        >>= loop
-      )
+      Lwt.catch
+        (fun () ->
+           let accept = accept ?ctx s in
+           Lwt.choose [ Lwt.map (fun v -> `Accept v) accept
+                      ; stop'] >>= function
+           | `Stop ->
+             Lwt.cancel accept;
+             Lwt.return_unit
+           | `Accept v ->
+             process_accept ~timeout callback v;
+             loop ())
+        (function
+          | Lwt.Canceled -> Lwt.return_unit
+          | ex ->
+            Log.warn (fun f ->
+                f "Uncaught exception accepting connection: %s"
+                  (Printexc.to_string ex)
+              );
+            Lwt_unix.yield ())
     in
-    loop ()
+    Lwt.finalize loop (fun () -> Lwt_unix.close s)
 
 end
 

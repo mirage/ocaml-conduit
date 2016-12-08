@@ -24,5 +24,5 @@ let process_accept ~timeout callback (sa,ic,oc) =
   let events = match timeout with
     | None -> [c]
     | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-  Lwt.finalize (fun () ->  Lwt.pick events) (fun () -> close (ic,oc))
+  Lwt.finalize (fun () -> Lwt.pick events) (fun () -> close (ic,oc))
   |> Lwt.ignore_result

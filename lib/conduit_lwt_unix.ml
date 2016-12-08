@@ -297,7 +297,7 @@ let connect ~ctx (mode:client) =
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
   match ctx.src with
-  | Some (ADDR_UNIX _) -> raise (Failure "Cant listen to TCP on a domain socket")
+  | Some (ADDR_UNIX _) -> failwith "Cant listen to TCP on a domain socket"
   | Some (ADDR_INET (a,_)) -> ADDR_INET (a,port), Ipaddr_unix.of_inet_addr a
   | None -> ADDR_INET (inet_addr_any,port), Ipaddr.(V4 V4.any)
 
@@ -339,7 +339,7 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
                                  ~pass ~port callback
   | Native -> serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
                                    ~pass ~port callback
-  | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
+  | No_tls -> failwith "No SSL or TLS support compiled into Conduit"
 
 let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
   let callback flow ic oc = Lwt.catch

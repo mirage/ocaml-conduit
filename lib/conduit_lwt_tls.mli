@@ -46,4 +46,16 @@ module Server : sig
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
     unit Lwt.t
+
+  val init'
+    : ?backlog:int
+    -> ?stop:(unit Lwt.t)
+    -> ?timeout:int
+    -> Tls.Config.server
+    -> Lwt_unix.sockaddr
+    -> (Lwt_unix.file_descr
+        -> Lwt_io.input_channel
+        -> Lwt_io.output_channel
+        -> unit Lwt.t)
+    -> unit Lwt.t
 end

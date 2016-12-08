@@ -342,7 +342,6 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
   | No_tls -> fail (Failure "No SSL or TLS support compiled into Conduit")
 
 let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
-  let t, _u = Lwt.task () in (* End this via Lwt.cancel *)
   let callback flow ic oc = Lwt.catch
     (fun () -> callback flow ic oc)
     (fun exn -> !Lwt.async_exception_hook exn; Lwt.return_unit)

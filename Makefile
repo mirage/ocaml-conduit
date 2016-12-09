@@ -70,6 +70,9 @@ ppx:
 	ocamlfind ocamlopt -predicates ppx_driver -o ppx$(EXT_EXE) -linkpkg \
 	  -package ppx_sexp_conv ppx_driver_runner.cmxa
 
+cdtest: ppx
+	$(OCAMLBUILD) cdtest.native
+
 cdtest_tls: ppx
 	$(OCAMLBUILD) cdtest_tls.native
 

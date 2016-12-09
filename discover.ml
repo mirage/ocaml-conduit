@@ -229,7 +229,9 @@ let tags =
   ; "true: debug,principal,bin_annot,short_paths,thread,strict_sequence"
   ; "<lib>: include"
   ; "<tests/*>: include"
-  ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix), package(vchan.lwt)"
+  ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix)"
+  ; "<tests/unix/**>: package(lwt.ssl)"
+  ; "<tests/mirage/**>: package(vchan.lwt)"
   ] @ extra_tags
 
 let make_meta () =

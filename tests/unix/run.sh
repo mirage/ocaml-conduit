@@ -27,6 +27,5 @@ keyUsage=keyCertSign,cRLSign,digitalSignature,keyEncipherment,nonRepudiation
 EOF
 
 openssl req -days 1 -x509 -config server.conf -new -keyout server.key -out server.pem
-make clean
-make cdtest.native
-./cdtest.native
+make -C ../../ cdtest
+../../cdtest.native

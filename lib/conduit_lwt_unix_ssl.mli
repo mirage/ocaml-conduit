@@ -32,6 +32,7 @@ module Server : sig
     ?ctx:Ssl.context ->
     Lwt_unix.file_descr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+  [@@@deprecated "Low level function. Will be removed."]
 
   val listen :
     ?ctx:Ssl.context ->
@@ -39,6 +40,7 @@ module Server : sig
     ?password:(bool -> string) ->
     certfile:string ->
     keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
+  [@@@deprecated "Low level function. Will be removed."]
 
   val init :
     ?ctx:Ssl.context ->
@@ -56,3 +58,4 @@ end
 val close
   : Lwt_io.input_channel * Lwt_io.output_channel
   -> unit Lwt.t
+[@@@deprecated "Low level function. Will be removed."]

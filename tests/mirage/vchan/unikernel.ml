@@ -1,9 +1,9 @@
-open Lwt
+open Lwt.Infix
 open Printf
 
 let conduit = Conduit_mirage.empty
-let vchan = Conduit_mirage.vchan (module Vchan_xen) 
-let xs = Conduit_mirage.xs (module OS.Xs) 
+let vchan = Conduit_mirage.vchan (module Vchan_xen)
+let xs = Conduit_mirage.xs (module OS.Xs)
 
 module Server(Time : V1_LWT.TIME) = struct
 

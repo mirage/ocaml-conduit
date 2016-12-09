@@ -15,11 +15,7 @@
  *
  *)
 
-open Lwt
-open Conduit_lwt_server
-
-let src = Logs.Src.create "conduit_lwt_unix_ssl" ~doc:"Conduit Lwt/Unix/SSL transport"
-module Log = (val Logs.src_log src : Logs.LOG)
+open Lwt.Infix
 
 let () = Ssl.init ()
 
@@ -36,7 +32,7 @@ module Client = struct
   let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
   let connect ?(ctx=t) ?src sa =
-    with_socket sa (fun fd ->
+    Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
           | None -> ()
@@ -44,7 +40,7 @@ module Client = struct
         in
         Lwt_unix.connect fd sa >>= fun () ->
         Lwt_ssl.ssl_connect fd ctx >>= fun sock ->
-        return (chans_of_fd sock)
+        Lwt.return (chans_of_fd sock)
       )
 end
 
@@ -53,49 +49,30 @@ module Server = struct
   let t = Ssl.create_context Ssl.SSLv23 Ssl.Server_context
   let () = Ssl.disable_protocols t [Ssl.SSLv23]
 
+
   let accept ?(ctx=t) fd =
     Lwt_unix.accept fd >>= fun (afd, _) ->
     Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept afd ctx)
-      (fun sock -> return (chans_of_fd sock))
-      (fun exn -> Lwt_unix.close afd >>= fun () -> fail exn)
+      (fun sock -> Lwt.return (chans_of_fd sock))
+      (fun exn -> Lwt_unix.close afd >>= fun () -> Lwt.fail exn)
 
-  let listen ?(ctx=t) ?(backlog=128) ?password ~certfile ~keyfile sa =
-    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    Lwt_unix.(setsockopt fd SO_REUSEADDR true);
-    Lwt_unix.bind fd sa;
-    Lwt_unix.listen fd backlog;
+  let listen ?(ctx=t) ?backlog ?password ~certfile ~keyfile sa =
+    let fd = Conduit_lwt_server.listen ?backlog sa in
     (match password with
      | None -> ()
      | Some fn -> Ssl.set_password_callback ctx fn);
     Ssl.use_certificate ctx certfile keyfile;
-    Lwt_unix.set_close_on_exec fd;
     fd
 
-  let init ?ctx ?backlog ?password ~certfile ~keyfile
-    ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    let s = listen ?ctx ?backlog ?password ~certfile ~keyfile sa in
-    let cont = ref true in
-    async (fun () ->
-      stop >>= fun () ->
-      cont := false;
-      return_unit
-    );
-    let rec loop () =
-      if not !cont then return_unit
-      else (
-        Lwt.catch
-          (fun () -> accept ?ctx s >|= process_accept ~timeout callback)
-          (function
-            | Lwt.Canceled -> cont := false; return_unit
-            | ex ->
-              Log.warn (fun f ->
-                  f "Uncaught exception accepting connection: %s" (Printexc.to_string ex)
-                );
-              Lwt_unix.yield ())
-        >>= loop
-      )
-    in
-    loop ()
+  let init ?(ctx=t) ?backlog ?password ~certfile ~keyfile ?stop ?timeout sa cb =
+    sa
+    |> listen ~ctx ?backlog ?password ~certfile ~keyfile
+    |> Conduit_lwt_server.init ?stop (fun (fd, _) ->
+        Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept fd ctx)
+          (fun sock -> Lwt.return (chans_of_fd sock))
+          (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
+        >|= Conduit_lwt_server.process_accept ?timeout cb
+        |> Lwt.ignore_result)
 
 end
 

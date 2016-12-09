@@ -15,14 +15,13 @@
  *
  *)
 
-open Lwt
-open Conduit_lwt_server
+open Lwt.Infix
 
 let _ = Nocrypto_entropy_lwt.initialize ()
 
 module Client = struct
   let connect ?src host sa =
-    with_socket sa (fun fd ->
+    Conduit_lwt_server.with_socket sa (fun fd ->
         let () =
           match src with
           | None -> ()
@@ -38,13 +37,7 @@ module Client = struct
 end
 
 module Server = struct
-  let listen backlog sa =
-    let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
-    Lwt_unix.(setsockopt fd SO_REUSEADDR true);
-    Lwt_unix.bind fd sa;
-    Lwt_unix.listen fd backlog;
-    Lwt_unix.set_close_on_exec fd;
-    fd
+  let listen backlog sa = Conduit_lwt_server.listen ~backlog sa
 
   let accept config s =
     Lwt_unix.accept s >>= fun (fd, _) ->
@@ -52,31 +45,24 @@ module Server = struct
         Tls_lwt.Unix.server_of_fd config fd)
       (fun t ->
          let ic, oc = Tls_lwt.of_t t in
-         return (fd, ic, oc))
-      (fun exn -> Lwt_unix.close fd >>= fun () -> fail exn)
+         Lwt.return (fd, ic, oc))
+      (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
 
-  let init ?(backlog=128) ~certfile ~keyfile
-        ?(stop = fst (Lwt.wait ())) ?timeout sa callback =
-    X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile >>= fun certificate ->
+  let init' ?backlog ?stop ?timeout tls sa callback =
+    sa
+    |> Conduit_lwt_server.listen ?backlog
+    |> Conduit_lwt_server.init ?stop (fun (fd, _) ->
+        Lwt.try_bind
+          (fun () -> Tls_lwt.Unix.server_of_fd tls fd)
+          (fun t ->
+             let (ic, oc) = Tls_lwt.of_t t in
+             Lwt.return (fd, ic, oc))
+          (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
+        |> Lwt.ignore_result)
+
+  let init ?backlog ~certfile ~keyfile ?stop ?timeout sa callback =
+    X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile
+    >>= fun certificate ->
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
-    let s = listen backlog sa in
-    let cont = ref true in
-    async (fun () ->
-      stop >>= fun () ->
-      cont := false;
-      return_unit
-    );
-    let rec loop () =
-      if not !cont then return_unit
-      else (
-        Lwt.catch
-          (fun () ->
-             accept config s >|= process_accept ~timeout callback)
-          (function
-            | Lwt.Canceled -> cont := false; return ()
-            | _ -> Lwt_unix.yield ())
-        >>= loop
-      )
-    in
-    loop ()
+    init' ?backlog ?stop ?timeout config sa callback
 end

@@ -112,7 +112,12 @@ module Make(IO:Conduit.IO) = struct
 
   let host_to_domain_list host =
     (* TODO: slow, specialise the Trie to be a rev string list instead *)
-    String.concat "." (List.rev (Stringext.split ~on:'.' host))
+    let rec cut_host acc pos =
+      match String.index_from host pos '.' with
+      | exception Not_found -> String.(sub host pos (length host - pos)) :: acc
+      | idx -> cut_host (String.sub host pos (idx - pos) :: acc) (succ idx)
+    in
+    String.concat "." @@ cut_host [] 0
 
   let add_rewrite ~host ~f t =
     t.domains <- Conduit_trie.insert (host_to_domain_list host) f t.domains

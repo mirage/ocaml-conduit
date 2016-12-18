@@ -318,10 +318,13 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
                 ~pass ~port callback
   | No_tls -> failwith "No SSL or TLS support compiled into Conduit"
 
-let serve ?backlog ?timeout ?stop ~(ctx:ctx) ~(mode:server) callback =
-  let callback flow ic oc = Lwt.catch
+let serve ?backlog ?timeout ?stop
+    ?(on_exn=(fun exn -> !Lwt.async_exception_hook exn))
+    ~(ctx:ctx) ~(mode:server) callback =
+  let callback flow ic oc =
+    Lwt.catch
       (fun () -> callback flow ic oc)
-      (fun exn -> !Lwt.async_exception_hook exn; Lwt.return_unit)
+      (fun exn -> on_exn exn; Lwt.return_unit)
   in
   match mode with
   | `TCP (`Port port) ->

@@ -23,7 +23,7 @@ open Sexplib.Conv
 let (>>=) = Lwt.(>>=)
 let (>|=) = Lwt.(>|=)
 
-let fail fmt = Printf.ksprintf (fun s -> Lwt.fail (Failure s)) fmt
+let fail fmt = Fmt.kstrf (fun s -> Lwt.fail (Failure s)) fmt
 let err_tcp_not_supported = fail "%s: TCP is not supported"
 let err_tls_not_supported = fail "%s: TLS is not supported"
 let err_domain_sockets_not_supported =
@@ -34,20 +34,27 @@ let err_ipv6 = fail "%s: IPv6 is not supported"
 
 module Flow = struct
   type 'a io = 'a Lwt.t
-  type error = unit -> string
   type buffer = Cstruct.t
-  type flow = Flow: (module V1_LWT.FLOW with type flow = 'a) * 'a -> flow
-  let create m t = Flow (m, t)
+  type error = [`Msg of string]
+  type write_error = [ Mirage_flow.write_error | error ]
 
-  let wrap_errors (type e) (module F : V1_LWT.FLOW with type error = e) v =
-    v >>= function
-    | `Error err -> Lwt.return (`Error (fun () -> F.error_message err))
-    | `Ok _ | `Eof as other -> Lwt.return other
+  let pp_error ppf (`Msg s) = Fmt.string ppf s
 
-  let error_message fn = fn ()
-  let read (Flow ((module F), flow)) = wrap_errors (module F) (F.read flow)
-  let write (Flow ((module F), flow)) b = wrap_errors (module F) (F.write flow b)
-  let writev (Flow ((module F), flow)) b = wrap_errors (module F) (F.writev flow b)
+  let pp_write_error ppf = function
+    | #Mirage_flow.write_error as e -> Mirage_flow.pp_write_error ppf e
+    | #error as e                   -> pp_error ppf e
+
+  open Mirage_flow_lwt
+
+  type flow = Flow: (module CONCRETE with type flow = 'a) * 'a -> flow
+
+  let create (type a) (module M: S with type flow = a) t =
+    let m = (module Concrete(M): CONCRETE with type flow = a) in
+    Flow (m , t)
+
+  let read (Flow ((module F), flow)) = F.read flow
+  let write (Flow ((module F), flow)) b = F.write flow b
+  let writev (Flow ((module F), flow)) b = F.writev flow b
   let close (Flow ((module F), flow)) = F.close flow
 end
 
@@ -181,15 +188,16 @@ module TCP (S: V1_LWT.STACKV4) = struct
   type t = S.t
   type client = tcp_client [@@deriving sexp]
   type server = tcp_server [@@deriving sexp]
-  let err_tcp e = fail "TCP connection failed: %s" (S.TCPV4.error_message e)
+  let err_tcp e = Lwt.fail @@ Failure
+    (Format.asprintf "TCP connection failed: %a" S.TCPV4.pp_error e)
 
   let connect t (`TCP (ip, port): client) =
     match Ipaddr.to_v4 ip with
     | None    -> err_ipv6 "connect"
     | Some ip ->
       S.TCPV4.create_connection (S.tcpv4 t) (ip, port) >>= function
-      | `Error e -> err_tcp e
-      | `Ok flow ->
+      | Error e -> err_tcp e
+      | Ok flow ->
       let flow = Flow.create (module S.TCPV4) flow in
       Lwt.return flow
 
@@ -298,7 +306,8 @@ let tls_server s x = Lwt.return (`TLS (server_of_bytes s, x))
 module TLS = struct
 
   module TLS = Tls_mirage.Make(Flow)
-  let err_tls m e = fail "%s: %s" m (TLS.error_message e)
+  let err_tls m e = fail "%s: %a" m TLS.pp_error e
+  let err_flow_write m e = fail "%s: %a" m TLS.pp_write_error e
 
   type x = t
   type t = x
@@ -308,17 +317,15 @@ module TLS = struct
 
   let connect (t:t) (`TLS (c, x): client) =
     connect t x >>= fun flow ->
-    TLS.client_of_flow c "??" flow >>= function
-    | `Error e -> err_tls "connect" e
-    | `Eof     -> err_eof "connect_tls"
-    | `Ok flow -> Lwt.return (Flow.create (module TLS) flow)
+    TLS.client_of_flow c flow >>= function
+    | Error e -> err_flow_write "connect" e
+    | Ok flow -> Lwt.return (Flow.create (module TLS) flow)
 
   let listen (t:t) (`TLS (c, x): server) fn =
     listen t x (fun flow ->
         TLS.server_of_flow c flow >>= function
-        | `Error e -> err_tls "listen" e
-        | `Eof     -> err_eof "TLS.server_of_flow"
-        | `Ok flow -> fn (Flow.create (module TLS) flow)
+        | Error e -> err_flow_write "listen" e
+        | Ok flow -> fn (Flow.create (module TLS) flow)
       )
 
 end

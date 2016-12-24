@@ -37,8 +37,6 @@ module Client = struct
 end
 
 module Server = struct
-  let listen backlog sa = Conduit_lwt_server.listen ~backlog sa
-
   let accept config s =
     Lwt_unix.accept s >>= fun (fd, _) ->
     Lwt.try_bind (fun () ->

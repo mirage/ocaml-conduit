@@ -28,24 +28,18 @@ module Client : sig
 end
 
 module Server : sig
-  val accept :
-    Tls.Config.server ->
-    Lwt_unix.file_descr ->
-    (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
-  [@@@deprecated "Low level function. Will be removed."]
-
-  val listen : int -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
-  [@@@deprecated "Low level function. Will be removed."]
-
-  val init :
-    ?backlog:int ->
-    certfile:string ->
-    keyfile:string ->
-    ?stop:(unit Lwt.t) ->
-    ?timeout:int ->
-    Lwt_unix.sockaddr ->
-    (Lwt_unix.file_descr -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
-    unit Lwt.t
+  val init
+    : ?backlog:int
+    -> certfile:string
+    -> keyfile:string
+    -> ?stop:(unit Lwt.t)
+    -> ?timeout:int
+    -> Lwt_unix.sockaddr
+    -> (Lwt_unix.file_descr
+        -> Lwt_io.input_channel
+        -> Lwt_io.output_channel
+        -> unit Lwt.t)
+    -> unit Lwt.t
 
   val init'
     : ?backlog:int

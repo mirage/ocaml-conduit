@@ -31,34 +31,18 @@ end
 module Server : sig
   val default_ctx : Ssl.context
 
-  val accept :
-    ?ctx:Ssl.context ->
-    Lwt_unix.file_descr ->
-    (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
-  [@@@deprecated "Low level function. Will be removed."]
-
-  val listen :
-    ?ctx:Ssl.context ->
-    ?backlog:int ->
-    ?password:(bool -> string) ->
-    certfile:string ->
-    keyfile:string -> Lwt_unix.sockaddr -> Lwt_unix.file_descr
-  [@@@deprecated "Low level function. Will be removed."]
-
-  val init :
-    ?ctx:Ssl.context ->
-    ?backlog:int ->
-    ?password:(bool -> string) ->
-    certfile:string ->
-    keyfile:string ->
-    ?stop:(unit Lwt.t) ->
-    ?timeout:int ->
-    Lwt_unix.sockaddr ->
-    (Lwt_unix.file_descr -> Lwt_io.input_channel -> Lwt_io.output_channel -> unit Lwt.t) ->
-    unit Lwt.t
+  val init
+    : ?ctx:Ssl.context
+    -> ?backlog:int
+    -> ?password:(bool -> string)
+    -> certfile:string
+    -> keyfile:string
+    -> ?stop:(unit Lwt.t)
+    -> ?timeout:int
+    -> Lwt_unix.sockaddr
+    -> (Lwt_unix.file_descr
+        -> Lwt_io.input_channel
+        -> Lwt_io.output_channel
+        -> unit Lwt.t)
+    -> unit Lwt.t
 end
-
-val close
-  : Lwt_io.input_channel * Lwt_io.output_channel
-  -> unit Lwt.t
-[@@@deprecated "Low level function. Will be removed."]

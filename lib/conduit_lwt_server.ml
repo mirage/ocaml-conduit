@@ -36,20 +36,39 @@ let process_accept ?timeout callback (sa,ic,oc) =
     | None -> [c]
     | Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
   Lwt.finalize (fun () -> Lwt.pick events) (fun () -> close (ic, oc))
-  |> Lwt.ignore_result
+
+(* File descriptors are a global resource so this has to be a global limit too *)
+let maxactive = ref None
+let active = ref 0
+
+let cond = Lwt_condition.create ()
+let connected () = incr active
+let disconnected () = decr active; Lwt_condition.broadcast cond ()
+
+let rec throttle () =
+  match !maxactive with
+  | Some limit when !active > limit ->
+    Lwt_condition.wait cond >>= throttle
+  | _ -> Lwt.return_unit
+
+let set_max_active max_active =
+  maxactive := Some max_active;
+  Lwt_condition.broadcast cond ()
 
 let init ?(stop = fst (Lwt.wait ())) handler fd =
   let stop = Lwt.map (fun () -> `Stop) stop in
   let rec loop () =
     Lwt.catch
       (fun () ->
+         connected ();
+         throttle () >>= fun () ->
          let accept = Lwt.map (fun v -> `Accept v) (Lwt_unix.accept fd) in
          Lwt.choose [ accept ; stop ] >>= function
          | `Stop ->
            Lwt.cancel accept;
            Lwt.return_unit
          | `Accept v ->
-           handler v;
+           Lwt.on_termination (handler v) disconnected;
            loop ())
       (function
         | Lwt.Canceled -> Lwt.return_unit

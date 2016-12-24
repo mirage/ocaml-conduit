@@ -170,6 +170,11 @@ val serve :
   ?on_exn:(exn -> unit) -> ctx:ctx -> mode:server ->
   (flow -> ic -> oc -> unit io) -> unit io
 
+(** [set_max_active nconn] sets the maximum number of active connections
+    accepted. When the limit is hit accept blocks until another server connection is closed.
+*)
+val set_max_active : int -> unit
+
 (** [endp_of_flow flow] retrieves the original {!Conduit.endp}
     from the established [flow] *)
 val endp_of_flow : flow -> Conduit.endp

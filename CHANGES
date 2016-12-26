@@ -1,3 +1,11 @@
+0.14.0 (2016-12-25)
+* Add listening backlog option and increase it to 128 by deafult (#151)
+* Add IP based URI support
+* Fix server stop issues for all Lwt servers
+* Add Logs based logging to Lwt server errors (#172)
+* Add on_exn hook to Lwt servers (#181)
+* Limit maximum number of active connections (#116)
+
 0.13.0 (2016-09-18):
 * Fix build system to stop compiling things twice (#137)
 * Lwt: pass uncaught exceptions in server callback to async_exception_hook (#143)

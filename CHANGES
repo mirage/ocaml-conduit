@@ -1,3 +1,6 @@
+0.14.1 (2016-12-29)
+* Tests: do not link with lwt.ssl if it is not installed (#186)
+
 0.14.0 (2016-12-25)
 * Add listening backlog option and increase it to 128 by deafult (#151)
 * Add IP based URI support

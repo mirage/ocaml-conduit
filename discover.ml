@@ -230,9 +230,9 @@ let tags =
   ; "<lib>: include"
   ; "<tests/*>: include"
   ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix)"
-  ; if Flag.has_flag lwt_ssl then "<tests/unix/**>: package(lwt.ssl)" else ""
-  ; "<tests/mirage/**>: package(vchan.lwt)"
-  ] @ extra_tags
+  ; "<tests/mirage/**>: package(vchan.lwt)" ]
+  @ if Flag.has_flag lwt_ssl then ["<tests/unix/**>: package(lwt.ssl)"] else []
+  @ extra_tags
 
 let make_meta () =
   let findlib_pkgs = String.concat " " in

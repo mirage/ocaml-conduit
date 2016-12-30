@@ -189,7 +189,7 @@ module TCP (S: V1_LWT.STACKV4) = struct
   type client = tcp_client [@@deriving sexp]
   type server = tcp_server [@@deriving sexp]
   let err_tcp e = Lwt.fail @@ Failure
-    (Format.asprintf "TCP connection failed: %a" S.TCPV4.pp_error e)
+    (Format.asprintf "TCP connection failed: %a" Mirage_runtime.pp_tcp_error e)
 
   let connect t (`TCP (ip, port): client) =
     match Ipaddr.to_v4 ip with

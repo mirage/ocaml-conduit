@@ -231,7 +231,7 @@ let tags =
   ; "<tests/*>: include"
   ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix)"
   ; "<tests/mirage/**>: package(vchan.lwt)" ]
-  @ if Flag.has_flag lwt_ssl then ["<tests/unix/**>: package(lwt.ssl)"] else []
+  @ (if Flag.has_flag lwt_ssl then ["<tests/unix/**>: package(lwt.ssl)"] else [])
   @ extra_tags
 
 let make_meta () =

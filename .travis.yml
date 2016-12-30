@@ -8,7 +8,6 @@ env:
  global:
    - PACKAGE="conduit"
    - DEPOPTS="async_ssl lwt mirage-dns ssl tls"
-   - FORK_BRANCH=HEAD
  matrix:
    - DISTRO=debian-stable OCAML_VERSION=4.02.3
    - DISTRO=debian-testing OCAML_VERSION=4.02.3

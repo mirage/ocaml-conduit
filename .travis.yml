@@ -10,6 +10,7 @@ env:
    - DEPOPTS="async_ssl lwt mirage-dns ssl tls"
    - EXTRA_REMOTES="https://github.com/mirage/mirage-dev.git"
    - FORK_BRANCH=HEAD
+   - CONDUIT_DISCOVER_VERBOSE=1
  matrix:
    - DISTRO=debian-stable OCAML_VERSION=4.02.3
    - DISTRO=debian-testing OCAML_VERSION=4.02.3

@@ -97,9 +97,10 @@ module Target = struct
     match t.findlib with
     | [] -> []
     | _ ->
-      let tag mod_ pkgs = sprintf "<lib/%s*>: %s"
-          (String.lowercase mod_) (Ocb.tags_of_packages pkgs) in
-      List.map (fun m -> tag m t.findlib) t.modules
+      let findlib_packages = Ocb.tags_of_packages t.findlib in
+      let tag mod_ = sprintf "<lib/%s*>: %s"
+          (String.lowercase mod_) findlib_packages in
+      List.map tag t.modules
 
   let write_targets pkg =
     write_lines

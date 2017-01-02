@@ -226,7 +226,8 @@ let tags =
     |> List.map Target.tags
     |> List.flatten in
   [ sprintf "true: %s" (Ocb.tags_of_packages base_findlib)
-  ; sprintf "<lib/**>: pp(%s/ppx), config" (Sys.getcwd ())
+  ; "<**/*>: predicate(custom_ppx), config"
+  ; "<lib/*.{ml,mli}>: ppx-driver(ppx_sexp_conv)"
   ; "true: debug,principal,bin_annot,short_paths,thread,strict_sequence"
   ; "<lib>: include"
   ; "<tests/*>: include"

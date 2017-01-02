@@ -4,7 +4,8 @@ EXT_OBJ:=$(shell ocamlfind ocamlc -config | awk '/^ext_obj:/ {print $$2}')
 EXT_LIB:=$(shell ocamlfind ocamlc -config | awk '/^ext_lib:/ {print $$2}')
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind -classic-display \
-	-cflags "-w A-4-33-40-41-42-43-34-44"
+	-cflags "-w A-4-33-40-41-42-43-34-44" \
+	-plugin-tag "package(ppx_driver.ocamlbuild)"
 
 PREFIX ?= /usr/local/bin
 OS_TYPE:=$(shell ocamlfind ocamlc -config | awk '/^os_type:/ {print $$2}')
@@ -19,10 +20,10 @@ B=_build/lib
 FILES = $(wildcard $B/*.cmi $B/*.cmt $B/*.cmti $B/*.cmx $B/*.cmxa $B/*.cma $B/*.cmxs $B/*$(EXT_LIB) $B/*$(EXT_OBJ) $B/*.cmo)
 MORE_FILES = $(wildcard lib/intro.html $B/*.mli)
 
-all: ppx
+all:
 	$(OCAMLBUILD) conduit.otarget
 
-install: ppx
+install:
 	rm -rf _install
 	mkdir -p _install
 ifneq ("$(wildcard _build/lib/conduit_xenstore.cmo)","")
@@ -34,9 +35,9 @@ endif
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm -rf _install ppx lib/conduit_config.mlh META _tags
+	rm -rf _install lib/conduit_config.mlh META _tags
 
-doc: ppx
+doc:
 	$(OCAMLBUILD) lib/conduit.docdir/index.html
 
 github: doc
@@ -65,18 +66,13 @@ pr:
 	opam publish prepare $(NAME).$(VERSION) $(ARCHIVE)
 	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
 
-ppx:
-	./configure
-	ocamlfind ocamlopt -predicates ppx_driver -o ppx$(EXT_EXE) -linkpkg \
-	  -package ppx_sexp_conv ppx_driver_runner.cmxa
-
-cdtest: ppx
+cdtest:
 	$(OCAMLBUILD) cdtest.native
 
-cdtest_tls: ppx
+cdtest_tls:
 	$(OCAMLBUILD) cdtest_tls.native
 
-exit_test: ppx
+exit_test:
 	$(OCAMLBUILD) exit_test.native
 
 # have(openssl) -> generate test certificates

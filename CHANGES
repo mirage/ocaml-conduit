@@ -1,3 +1,7 @@
+0.14.3 (2017-01-03)
+* Fix mirage-conduit (@samoht, #188)
+* Use ppx_driver's ocamlbuild plugin (@rgrinberg, #193)
+
 0.14.2 (2017-01-01)
 * Fix discover.ml (#191)
 
@@ -47,7 +51,7 @@
   mismatch (#104).
 
 0.9.0 (2015-10-14):
-* Add a `Launchd` argument for the Conduit_lwt_unix server listener 
+* Add a `Launchd` argument for the Conduit_lwt_unix server listener
   to support the MacOSX service launcher (#96).
 
 0.8.8 (2015-09-15):

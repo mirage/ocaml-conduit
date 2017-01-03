@@ -16,7 +16,10 @@
 
 open Lwt.Infix
 
-let port = 9192
+let port =
+  Random.self_init ();
+  16_384 + Random.int 10_000
+
 let config = `Crt_file_path "server.pem", `Key_file_path "server.key", `No_password, `Port port
 
 let rec repeat n f =

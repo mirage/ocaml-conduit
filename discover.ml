@@ -133,7 +133,7 @@ let async_ssl   = Flag.mk "async_ssl" ["async_ssl"]
 let lwt         = Flag.mk "lwt" ["lwt"]
 let lwt_ssl     = Flag.mk "lwt_ssl" ["lwt.ssl"]
 let lwt_tls     = Flag.mk "lwt_tls" ["tls.lwt"]
-let mirage      = Flag.mk "mirage" ["mirage-flow-lwt"; "dns.mirage"]
+let mirage      = Flag.mk "mirage" ["mirage-types"; "dns.mirage"]
 let mirage_tls  = Flag.mk "mirage_tls" ["tls"; "tls.mirage"]
 let vchan       = Flag.mk "vchan" ["vchan"]
 let vchan_lwt   = Flag.mk "vchan_lwt" ["vchan.lwt"]
@@ -176,7 +176,7 @@ module Libs = struct
 
   let mirage =
     { name = "conduit-lwt-mirage"
-    ; findlib = ["uri.services"; "mirage-flow-lwt"]
+    ; findlib = ["uri.services"]
     ; always_modules = ["Conduit_mirage" ; "Resolver_mirage"]
     ; need_flags = [mirage]
     ; flag_modules = ["Conduit_xenstore", vchan]

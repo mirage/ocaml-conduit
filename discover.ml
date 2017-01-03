@@ -8,14 +8,6 @@ let verbose =
     true
   with Not_found -> false
 
-let rec filter_map f = function
-  | [] -> []
-  | x::xs ->
-    begin match f x with
-      | None -> filter_map f xs
-      | Some s -> s :: (filter_map f xs)
-    end
-
 let write_lines ~file ~lines =
   let out = open_out file in
   lines |> List.iter (fun m -> output_string out (m ^ "\n"));
@@ -27,9 +19,12 @@ module Ocb = struct
     |> List.map (sprintf "package(%s)")
     |> String.concat ","
 
-  let targets name =
+  let lib_targets name =
     [ "cma" ; "cmxa" ; "cmxs" ]
     |> List.map (fun ext -> sprintf "lib/%s.%s" name ext)
+
+  let bin_targets name =
+    [sprintf "tests/%s.native" (String.lowercase name)]
 end
 
 module Flag = struct
@@ -67,6 +62,7 @@ module Flag = struct
       |> List.map (fun f -> sprintf "#let %s = %b" f.name (has_flag f))
     )
 
+  let uniques xs = List.sort_uniq compare xs
 end
 
 module Pkg = struct
@@ -87,47 +83,6 @@ module Pkg = struct
     ; flag_modules = [] }
 end
 
-module Target = struct
-  type t =
-    { name: string
-    ; findlib: string list
-    ; modules: string list }
-
-  let tags t =
-    match t.findlib with
-    | [] -> []
-    | _ ->
-      let findlib_packages = Ocb.tags_of_packages t.findlib in
-      let tag mod_ = sprintf "<lib/%s*>: %s"
-          (String.lowercase mod_) findlib_packages in
-      List.map tag t.modules
-
-  let write_targets pkg =
-    write_lines
-      ~file:(sprintf "lib/%s.mllib" pkg.name)
-      ~lines:pkg.modules
-
-  let of_pkg p =
-    let (extra_modules, extra_flags) =
-      p.Pkg.flag_modules
-      |> filter_map (fun (m, f) ->
-          if Flag.has_flag f
-          then Some (m, f)
-          else None)
-      |> List.split in
-    let all_flags =
-      p.Pkg.need_flags @ (Flag.subset_flags (p.Pkg.opt_flags @ extra_flags)) in
-    let findlib_from_flags =
-      all_flags
-      |> List.map (fun x -> x.Flag.findlib_checks)
-      |> List.flatten in
-    { name = p.Pkg.name
-    ; findlib = List.sort_uniq compare (p.Pkg.findlib @ findlib_from_flags)
-    ; modules = p.Pkg.always_modules @ extra_modules }
-
-  let targets p = Ocb.targets p.name
-end
-
 let async       = Flag.mk "async" ["async"]
 let async_ssl   = Flag.mk "async_ssl" ["async_ssl"]
 let lwt         = Flag.mk "lwt" ["lwt"]
@@ -139,7 +94,8 @@ let vchan       = Flag.mk "vchan" ["vchan"]
 let vchan_lwt   = Flag.mk "vchan_lwt" ["vchan.lwt"]
 let launchd_lwt = Flag.mk "launchd_lwt" ["launchd.lwt"]
 
-let base_findlib = ["sexplib" ; "ipaddr" ; "cstruct" ; "uri" ; "stringext"; "logs"]
+let base_findlib =
+  ["sexplib" ; "ipaddr" ; "cstruct" ; "uri" ; "stringext" ; "logs"]
 
 module Libs = struct
   open Pkg
@@ -190,50 +146,138 @@ module Libs = struct
     ; mirage ]
 end
 
-let pkgs = filter_map (fun p ->
-    if Flag.has_flags p.Pkg.need_flags then
-      let (extra_modules, extra_flags) =
-        p.Pkg.flag_modules
-        |> filter_map (fun (m, f) ->
-            if Flag.has_flag f
-            then Some (m, f)
-            else None)
-        |> List.split in
-      let all_flags =
-        p.Pkg.need_flags @ (Flag.subset_flags (p.Pkg.opt_flags @ extra_flags))
-      in
-      let findlib_from_flags =
-        all_flags
-        |> List.map (fun x -> x.Flag.findlib_checks)
-        |> List.flatten in
-      Some
-        { Target.name = p.Pkg.name
-        ; findlib = List.sort_uniq compare (p.Pkg.findlib @ findlib_from_flags)
-        ; modules = p.Pkg.always_modules @ extra_modules }
-    else None
-  ) Libs.all
+module Test = struct
+  type t =
+    { pkgs: Pkg.t list (* local libs required *)
+    ; flags: Flag.t list (* required flags *)
+    ; source_path: string } (* unix/cdtest for example *)
 
-let build_targets = pkgs |> List.map Target.targets |> List.flatten
+  let should_build t =
+    t.pkgs
+    |> List.map (fun p -> p.Pkg.need_flags)
+    |> List.flatten
+    |> List.append t.flags
+    |> Flag.uniques
+    |> Flag.has_flags
 
-let build_modules =
-  pkgs
+  let cdtest =
+    { pkgs = [ Libs.conduit_lwt_unix ]
+    ; flags = [ lwt_ssl ]
+    ; source_path = "unix/cdtest" }
+
+  let exit_test =
+    { cdtest with source_path = "unix/exit_test" }
+
+  let cdtest_tls =
+    { cdtest with
+      source_path = "unix/cdtest_tls"
+    ; flags = [] }
+
+  let all =
+    [ cdtest
+    ; cdtest_tls
+    ; exit_test ]
+end
+
+module Target = struct
+  type typ = Lib | Bin
+  type t =
+    { name: string
+    ; typ: typ
+    ; findlib: string list
+    ; modules: string list }
+
+  let tags t =
+    match t.findlib with
+    | [] -> []
+    | _ ->
+      let findlib_packages = Ocb.tags_of_packages t.findlib in
+      let base =
+        match t.typ with
+        | Lib -> "lib"
+        | Bin -> "tests" in
+      let tag mod_ = sprintf "<%s/%s*>: %s"
+          base (String.lowercase mod_) findlib_packages in
+      List.map tag t.modules
+
+  let write_targets pkg =
+    write_lines
+      ~file:(sprintf "lib/%s.mllib" pkg.name)
+      ~lines:pkg.modules
+
+  let of_pkg p =
+    let (extra_modules, extra_flags) =
+      p.Pkg.flag_modules
+      |> List.filter (fun (_, f) -> Flag.has_flag f)
+      |> List.split in
+    let all_flags =
+      p.Pkg.need_flags @ (Flag.subset_flags (p.Pkg.opt_flags @ extra_flags)) in
+    let findlib_from_flags =
+      all_flags
+      |> List.map (fun x -> x.Flag.findlib_checks)
+      |> List.flatten in
+    { name = p.Pkg.name
+    ; typ = Lib
+    ; findlib = List.sort_uniq compare (p.Pkg.findlib @ findlib_from_flags)
+    ; modules = p.Pkg.always_modules @ extra_modules }
+
+  let of_test t =
+    let findlib =
+      t.Test.pkgs
+      |> List.map (fun p -> (of_pkg p).findlib)
+      |> List.flatten in
+    { name = t.Test.source_path
+    ; typ = Bin
+    ; findlib = findlib
+    ; modules = [ t.Test.source_path ] }
+
+  let targets p =
+    (match p.typ with
+    | Lib -> Ocb.lib_targets
+    | Bin -> Ocb.bin_targets) p.name
+end
+
+let targets =
+  Libs.all
+  |> List.filter (fun p -> Flag.has_flags p.Pkg.need_flags)
+  |> List.map Target.of_pkg
+
+let test_targets =
+  Test.all
+  |> List.filter Test.should_build
+  |> List.map Target.of_test
+
+let build_targets =
+  targets
+  |> List.map Target.targets
+  |> List.flatten
+
+let build_test_targets =
+  test_targets
+  |> List.map Target.targets
+  |> List.flatten
+
+(* flat list of all modules. necessary to build the docs *)
+let doc_modules =
+  targets
   |> List.map (fun p -> p.Target.modules)
   |> List.flatten
 
 let tags =
   let extra_tags =
-    pkgs
+    targets
+    |> List.map Target.tags
+    |> List.flatten in
+  let test_tags =
+    test_targets
     |> List.map Target.tags
     |> List.flatten in
   [ sprintf "true: %s" (Ocb.tags_of_packages base_findlib)
-  ; "<**/*>: predicate(custom_ppx), config"
+  ; "<lib/*>: predicate(custom_ppx), config"
   ; "<lib/*.{ml,mli}>: ppx-driver(ppx_sexp_conv)"
   ; "true: debug,principal,bin_annot,short_paths,thread,strict_sequence"
-  ; "<lib>: include"
-  ; "<tests/*>: include"
-  ; "<tests/**>: package(lwt.unix), package(tls.lwt), package(ipaddr.unix)"
-  ; "<tests/mirage/**>: package(vchan.lwt)" ]
-  @ (if Flag.has_flag lwt_ssl then ["<tests/unix/**>: package(lwt.ssl)"] else [])
+  ; "<lib>: include" ]
+  @ test_tags
   @ extra_tags
 
 let make_meta () =
@@ -248,9 +292,9 @@ let make_meta () =
       assert false
     with End_of_file -> String.concat "\n" !lines
   in
-  let pkg p =
+  let target p =
     try
-      (List.find (fun n -> n.Target.name = p) pkgs)
+      (List.find (fun n -> n.Target.name = p) targets)
       .Target.findlib
       |> findlib_pkgs
     with Not_found -> ""
@@ -258,10 +302,10 @@ let make_meta () =
   let vars =
     [ "@BASE_REQUIRES@", findlib_pkgs base_findlib
     ; "@VERSION@", String.trim (file "VERSION")
-    ; "@ASYNC_REQUIRES@", pkg "conduit-async"
-    ; "@LWT_REQUIRES@", pkg "conduit-lwt"
-    ; "@LWT_UNIX_REQUIRES@", pkg "conduit-lwt-unix"
-    ; "@MIRAGE_REQUIRES@", pkg "conduit-lwt-mirage" ] in
+    ; "@ASYNC_REQUIRES@", target "conduit-async"
+    ; "@LWT_REQUIRES@", target "conduit-lwt"
+    ; "@LWT_UNIX_REQUIRES@", target "conduit-lwt-unix"
+    ; "@MIRAGE_REQUIRES@", target "conduit-lwt-mirage" ] in
   vars
   |> List.map (fun (v, r) -> sprintf "-e 's/%s/%s/g'" v r)
   |> String.concat " "
@@ -273,7 +317,8 @@ let () =
   write_lines ~file:"_tags" ~lines:tags;
   write_lines ~file:"lib/conduit_config.mlh"
     ~lines:(Lazy.force Flag.mlh_config);
-  write_lines ~file:"lib/conduit.odocl" ~lines:build_modules;
+  write_lines ~file:"lib/conduit.odocl" ~lines:doc_modules;
   write_lines ~file:"conduit.itarget" ~lines:build_targets;
-  pkgs |> List.iter Target.write_targets;
+  write_lines ~file:"tests.itarget" ~lines:build_test_targets;
+  targets |> List.iter Target.write_targets;
   make_meta ()

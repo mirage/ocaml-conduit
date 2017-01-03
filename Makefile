@@ -66,19 +66,11 @@ pr:
 	opam publish prepare $(NAME).$(VERSION) $(ARCHIVE)
 	OPAMYES=1 opam publish submit $(NAME).$(VERSION) && rm -rf $(NAME).$(VERSION)
 
-cdtest:
-	$(OCAMLBUILD) cdtest.native
-
-cdtest_tls:
-	$(OCAMLBUILD) cdtest_tls.native
-
-exit_test:
-	$(OCAMLBUILD) exit_test.native
-
 # have(openssl) -> generate test certificates
 # have(lwt.unix tls.lwt ipaddr.unix lwt.ssl openssl) -> build(cdtest) and run(cdtest)
 # have(lwt.unix tls.lwt ipaddr.unix openssl) -> build(cdtest_tls) and run(cdtest_tlsOB)
 test:
+	$(OCAMLBUILD) tests.otarget
 	! openssl version || tests/unix/gen.sh
 	! ocamlfind query lwt.unix tls.lwt ipaddr.unix lwt.ssl || ! openssl version || ($(MAKE) cdtest && ./cdtest.native)
 	! ocamlfind query lwt.unix tls.lwt ipaddr.unix || ! openssl version || ($(MAKE) cdtest_tls && ./cdtest_tls.native)

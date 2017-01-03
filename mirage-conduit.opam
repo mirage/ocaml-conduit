@@ -12,7 +12,6 @@ depends: [
   "mirage-types-lwt" {>= "2.3.0"}
   "mirage-dns" {>= "2.0.0"}
   "conduit"    {>= "0.8.4"}
-  "mirage-runtime"
 ]
 depopts: [
   "vchan"

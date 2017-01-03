@@ -175,7 +175,7 @@ module Libs = struct
 
   let mirage =
     { name = "conduit-lwt-mirage"
-    ; findlib = ["uri.services"; "mirage-runtime"]
+    ; findlib = ["uri.services"]
     ; always_modules = ["Conduit_mirage" ; "Resolver_mirage"]
     ; need_flags = [mirage]
     ; flag_modules = ["Conduit_xenstore", vchan]

@@ -39,6 +39,7 @@ module Flow = struct
   type flow = Flow: (module V1_LWT.FLOW with type flow = 'a) * 'a -> flow
   let create m t = Flow (m, t)
 
+  let error_message fn = fn ()
   let read (Flow ((module F), flow)) = F.read flow
   let write (Flow ((module F), flow)) b = F.write flow b
   let writev (Flow ((module F), flow)) b = F.writev flow b
@@ -294,8 +295,6 @@ module TLS = struct
 
   module TLS = Tls_mirage.Make(Flow)
   let err_tls m e = fail "%s: %s" m (TLS.error_message e)
-  let err_flow_write m e = Lwt.fail @@ Failure
-    (Format.asprintf "%s: %a" m Mirage_pp.pp_flow_write_error e)
 
   type x = t
   type t = x
@@ -306,14 +305,16 @@ module TLS = struct
   let connect (t:t) (`TLS (c, x): client) =
     connect t x >>= fun flow ->
     TLS.client_of_flow c flow >>= function
-    | Error e -> err_flow_write "connect" e
-    | Ok flow -> Lwt.return (Flow.create (module TLS) flow)
+    | `Error e -> err_tls "connect" e
+    | `Eof     -> err_eof "connect_tls"
+    | `Ok flow -> Lwt.return (Flow.create (module TLS) flow)
 
   let listen (t:t) (`TLS (c, x): server) fn =
     listen t x (fun flow ->
         TLS.server_of_flow c flow >>= function
-        | Error e -> err_flow_write "listen" e
-        | Ok flow -> fn (Flow.create (module TLS) flow)
+        | `Error e -> err_tls "listen" e
+        | `Eof     -> err_eof "TLS.server_of_flow"
+        | `Ok flow -> fn (Flow.create (module TLS) flow)
       )
 
 end

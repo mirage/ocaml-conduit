@@ -308,7 +308,7 @@ module TLS = struct
 
   let connect (t:t) (`TLS (c, x): client) =
     connect t x >>= fun flow ->
-    TLS.client_of_flow c flow >>= function
+    TLS.client_of_flow c "??" flow >>= function
     | `Error e -> err_tls "connect" e
     | `Eof     -> err_eof "connect_tls"
     | `Ok flow -> Lwt.return (Flow.create (module TLS) flow)

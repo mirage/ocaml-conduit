@@ -5,7 +5,7 @@ environment:
   CYG_ROOT: "C:\\cygwin"
   CYG_BASH: "%CYG_ROOT%\\bin\\bash -lc"
   TESTS: "false"
-  PINS: "conduit.0.15.0:. mirage-conduit.0.15.0:."
+  PINS: "conduit.0.15.0:. mirage-conduit:."
   EXTRA_REMOTES: "https://github.com/mirage/mirage-dev.git"
   PACKAGE: "mirage-conduit"
 

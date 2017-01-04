@@ -7,7 +7,7 @@ script: bash ./.travis-docker.sh
 env:
  global:
    - EXTRA_REMOTES="https://github.com/mirage/mirage-dev.git"
-   - PINS="conduit.0.15.0:. mirage-conduit.0.15.0:."
+   - PINS="conduit.0.15.0:. mirage-conduit:."
    - PACKAGE="mirage-conduit"
    - DEPOPTS="async_ssl lwt ssl tls"
  matrix:

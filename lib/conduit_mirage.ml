@@ -19,6 +19,7 @@
 
 open Sexplib.Std
 open Sexplib.Conv
+open Result
 
 let (>>=) = Lwt.(>>=)
 let (>|=) = Lwt.(>|=)

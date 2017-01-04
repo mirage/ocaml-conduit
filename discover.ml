@@ -165,7 +165,7 @@ module Libs = struct
 
   let conduit_lwt_unix =
     { name = "conduit-lwt-unix"
-    ; findlib = [ "lwt.unix" ; "ipaddr.unix" ; "uri.services"]
+    ; findlib = [ "lwt.unix" ; "ipaddr.unix" ; "uri.services"; "result"]
     ; need_flags = [ lwt ]
     ; always_modules = [ "Conduit_lwt_server"
                        ; "Conduit_lwt_unix"
@@ -176,7 +176,7 @@ module Libs = struct
 
   let mirage =
     { name = "conduit-lwt-mirage"
-    ; findlib = ["uri.services"; "mirage-flow-lwt"]
+    ; findlib = ["uri.services"; "mirage-flow-lwt"; "result"]
     ; always_modules = ["Conduit_mirage" ; "Resolver_mirage"]
     ; need_flags = [mirage]
     ; flag_modules = ["Conduit_xenstore", vchan]

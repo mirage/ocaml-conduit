@@ -20,6 +20,7 @@
 
 open Lwt.Infix
 open Sexplib.Conv
+open Result
 
 let debug = ref false
 let debug_print = ref Printf.eprintf
@@ -363,12 +364,12 @@ let serve ?backlog ?timeout ?stop
     Lwt_launchd.activate_socket name
     >>= fun sockets ->
     begin match (Launchd.error_to_msg sockets) with
-    | Result.Ok sockets ->
+    | Ok sockets ->
       Lwt_list.iter_p
         (fun s ->
           Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
         ) sockets
-    | Result.Error (`Msg m) ->
+    | Error (`Msg m) ->
       Lwt.fail_with m
     end
 #else

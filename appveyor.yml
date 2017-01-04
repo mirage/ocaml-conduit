@@ -5,10 +5,13 @@ environment:
   CYG_ROOT: "C:\\cygwin"
   CYG_BASH: "%CYG_ROOT%\\bin\\bash -lc"
   TESTS: "false"
+  PINS: "conduit.0.15.0:. mirage-conduit.0.15.0:."
+  EXTRA_REMOTES: "https://github.com/mirage/mirage-dev.git"
+  PACKAGE: "mirage-conduit"
 
 install:
   - appveyor DownloadFile https://raw.githubusercontent.com/ocaml/ocaml-ci-scripts/master/appveyor-opam.sh
-  - "%CYG_ROOT%\\setup-x86.exe -qnNdO -R %CYG_ROOT% -s http://cygwin.mirror.constant.com -l C:/cygwin/var/cache/setup -P rsync -P patch -P make -P unzip -P git -P m4 -P perl -P mingw64-x86_64-gcc-core"
+  - "%CYG_ROOT%\\setup-x86.exe -qnNdO -R %CYG_ROOT% -s http://cygwin.mirror.constant.com -l C:/cygwin/var/cache/setup -P rsync -P patch -P make -P unzip -P git -P perl -P mingw64-x86_64-gcc-core"
 
 build_script:
   - "%CYG_BASH% '${APPVEYOR_BUILD_FOLDER}/appveyor-opam.sh'"

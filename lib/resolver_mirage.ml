@@ -139,7 +139,7 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     res
 end
 
-module Make_with_stack (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) = struct
+module Make_with_stack (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) = struct
   module R = Make(Dns_resolver_mirage.Make(T)(S))
   include Resolver_lwt
 end

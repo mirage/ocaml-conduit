@@ -73,7 +73,7 @@ end
 type tcp_client = [ `TCP of Ipaddr.t * int ] [@@deriving sexp]
 type tcp_server = [ `TCP of int ] [@@deriving sexp]
 
-type 'a stackv4 = (module V1_LWT.STACKV4 with type t = 'a)
+type 'a stackv4 = (module Mirage_types_lwt.STACKV4 with type t = 'a)
 let stackv4 x = x
 
 #if HAVE_VCHAN
@@ -184,7 +184,7 @@ let listen t (s:server) f = match s with
 
 (* TCP *)
 
-module TCP (S: V1_LWT.STACKV4) = struct
+module TCP (S: Mirage_types_lwt.STACKV4) = struct
 
   type t = S.t
   type client = tcp_client [@@deriving sexp]
@@ -212,13 +212,13 @@ module TCP (S: V1_LWT.STACKV4) = struct
 
 end
 
-module With_tcp(S : V1_LWT.STACKV4) = struct
+module With_tcp(S : Mirage_types_lwt.STACKV4) = struct
   module M = TCP(S)
   let handler stack = Lwt.return (S ((module M),stack))
   let connect stack t = handler stack >|= fun x -> { t with tcp = Some x }
 end
 
-let with_tcp (type t) t (module S: V1_LWT.STACKV4 with type t = t) stack =
+let with_tcp (type t) t (module S: Mirage_types_lwt.STACKV4 with type t = t) stack =
   let module M = With_tcp(S) in
   M.connect stack t
 
@@ -348,7 +348,7 @@ type conduit = t
 module type S = sig
   type t = conduit
   val empty: t
-  module With_tcp (S:V1_LWT.STACKV4) : sig
+  module With_tcp (S:Mirage_types_lwt.STACKV4) : sig
     val connect : S.t -> t -> t Lwt.t
   end
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
@@ -374,7 +374,7 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s
   | `Unknown s -> err_unknown s
 
-module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) = struct
+module Context (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) = struct
 
   type t = Resolver_lwt.t * conduit
 
@@ -382,7 +382,7 @@ module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) = struct
   module RES = Resolver_mirage.Make(DNS)
 
   let conduit = empty
-  let stackv4 = stackv4 (module S: V1_LWT.STACKV4 with type t = S.t)
+  let stackv4 = stackv4 (module S: Mirage_types_lwt.STACKV4 with type t = S.t)
 
   let create ?(tls=false) stack =
     let res = Resolver_lwt.init () in

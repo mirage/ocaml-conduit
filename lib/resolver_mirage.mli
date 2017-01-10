@@ -59,7 +59,7 @@ module Make(DNS:Dns_resolver_mirage.S) : S with module DNS = DNS
 (** Provides a DNS-enabled {!Resolver_lwt} given a network stack.
     See {!Make}.
 *)
-module Make_with_stack (T: V1_LWT.TIME) (S: V1_LWT.STACKV4) : sig
+module Make_with_stack (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) : sig
   include Resolver_lwt.S with type t = Resolver_lwt.t
   module R : S with type DNS.stack = S.t
 end

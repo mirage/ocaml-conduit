@@ -5,7 +5,7 @@ let conduit = Conduit_mirage.empty
 let vchan = Conduit_mirage.vchan (module Vchan_xen)
 let xs = Conduit_mirage.xs (module OS.Xs)
 
-module Server(Time : V1_LWT.TIME) = struct
+module Server(Time : Mirage_types_lwt.TIME) = struct
 
   let server_src = Logs.Src.create "server" ~doc:"vchan server"
   module Log = (val Logs.src_log server_src : Logs.LOG)
@@ -32,7 +32,7 @@ module Server(Time : V1_LWT.TIME) = struct
 
 end
 
-module Client (Time : V1_LWT.TIME) = struct
+module Client (Time : Mirage_types_lwt.TIME) = struct
 
   let client_src = Logs.Src.create "client" ~doc:"vchan client"
   module Log = (val Logs.src_log client_src : Logs.LOG)

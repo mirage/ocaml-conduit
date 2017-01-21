@@ -56,26 +56,34 @@ let set_max_active max_active =
   Lwt_condition.broadcast cond ()
 
 let init ?(stop = fst (Lwt.wait ())) handler fd =
-  let stop = Lwt.map (fun () -> `Stop) stop in
-  let rec loop () =
+  let shutdown = Lwt.map (fun () -> `Shutdown) stop in
+  let rec accept () =
     Lwt.catch
       (fun () ->
          connected ();
          throttle () >>= fun () ->
          let accept = Lwt.map (fun v -> `Accept v) (Lwt_unix.accept fd) in
-         Lwt.choose [ accept ; stop ] >>= function
-         | `Stop ->
+         Lwt.choose [accept ; shutdown] >>= function
+         | `Shutdown ->
            Lwt.cancel accept;
            Lwt.return_unit
-         | `Accept v ->
-           Lwt.on_termination (handler v) disconnected;
-           loop ())
+         | `Accept v -> loop v)
       (function
         | Lwt.Canceled -> Lwt.return_unit
         | ex ->
           Log.warn (fun f ->
               f "Uncaught exception accepting connection: %s"
-                (Printexc.to_string ex)
-            );
-          Lwt_unix.yield ()) in
-  Lwt.finalize loop (fun () -> Lwt_unix.close fd)
+                (Printexc.to_string ex));
+          Lwt_unix.yield () >>= accept)
+  and loop v =
+    Lwt.catch
+      (fun () ->
+         Lwt.on_termination (handler v) disconnected;
+         accept ())
+      (function
+        | Lwt.Canceled -> Lwt.return_unit
+        | ex ->
+          Log.warn (fun f ->
+              f "Uncaught exception in handler: %s" (Printexc.to_string ex));
+          Lwt_unix.yield () >>= accept) in
+  Lwt.finalize accept (fun () -> Lwt_unix.close fd)

@@ -71,14 +71,15 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
       (function
         | `Stop -> disconnected (); Lwt.return_unit
         | `Accept v -> loop v)
-      (function
-        | Lwt.Canceled -> disconnected (); Lwt.return_unit
-        | ex ->
-          disconnected ();
-          Log.warn (fun f ->
-              f "Uncaught exception accepting connection: %s"
-                (Printexc.to_string ex));
-          Lwt_unix.yield () >>= accept)
+      (fun exn ->
+         disconnected ();
+         match exn with
+         | Lwt.Canceled -> Lwt.return_unit
+         | ex ->
+           Log.warn (fun f ->
+               f "Uncaught exception accepting connection: %s"
+                 (Printexc.to_string ex));
+           Lwt_unix.yield () >>= accept)
   and loop v =
     Lwt.try_bind
       (fun () -> handler v)

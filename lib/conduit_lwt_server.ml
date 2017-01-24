@@ -55,9 +55,25 @@ let set_max_active max_active =
   maxactive := Some max_active;
   Lwt_condition.broadcast cond ()
 
+let run_handler handler v =
+  Lwt.async begin fun () ->
+      Lwt.try_bind
+        (fun () -> handler v)
+        (fun () -> disconnected (); Lwt.return_unit)
+        (fun x ->
+           disconnected ();
+           begin match x with
+             | Lwt.Canceled -> ()
+             | ex ->
+               Log.warn (fun f -> f "Uncaught exception in handler: %s"
+                            (Printexc.to_string ex))
+           end;
+           Lwt.return_unit)
+  end
+
 let init ?(stop = fst (Lwt.wait ())) handler fd =
   let stop = Lwt.map (fun () -> `Stop) stop in
-  let rec accept () =
+  let rec loop () =
     Lwt.try_bind
       (fun () ->
          connected ();
@@ -70,7 +86,7 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
          | (`Accept _) as x -> x)
       (function
         | `Stop -> disconnected (); Lwt.return_unit
-        | `Accept v -> loop v)
+        | `Accept v -> run_handler handler v; loop ())
       (fun exn ->
          disconnected ();
          match exn with
@@ -79,17 +95,5 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
            Log.warn (fun f ->
                f "Uncaught exception accepting connection: %s"
                  (Printexc.to_string ex));
-           Lwt_unix.yield () >>= accept)
-  and loop v =
-    Lwt.try_bind
-      (fun () -> handler v)
-      (fun () -> disconnected (); accept ())
-      (fun x ->
-         disconnected ();
-         match x with
-         | Lwt.Canceled -> Lwt.return_unit
-         | ex ->
-           Log.warn (fun f ->
-               f "Uncaught exception in handler: %s" (Printexc.to_string ex));
-           Lwt_unix.yield () >>= accept) in
-  Lwt.finalize accept (fun () -> Lwt_unix.close fd)
+           Lwt_unix.yield () >>= loop) in
+  Lwt.finalize loop (fun () -> Lwt_unix.close fd)

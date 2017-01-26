@@ -30,6 +30,7 @@ module Ssl = struct
 #if HAVE_ASYNC_SSL
   type config = {
     version : Ssl.Version.t option;
+    hostname : string option;
     name : string option;
     ca_file : string option;
     ca_path : string option;
@@ -43,8 +44,8 @@ module Ssl = struct
     | Some (Error _) -> return false
     | Some (Ok _) -> return true
 
-  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    { version; name; ca_file; ca_path; session; verify}
+  let configure ?version ?hostname ?name ?ca_file ?ca_path ?session ?verify () =
+    { version; hostname; name; ca_file; ca_path; session; verify}
 #else
   type config = unit [@@deriving sexp]
 
@@ -87,8 +88,8 @@ let connect ?interrupt dst =
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       let open Ssl in
-      match config with | {version; name; ca_file; ca_path; session; verify} ->
-      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify rd wr
+      match config with | {version; hostname; name; ca_file; ca_path; session; verify} ->
+      Conduit_async_ssl.ssl_connect ?version ?hostname ?name ?ca_file ?ca_path ?session ?verify rd wr
 #else
       raise Ssl_unsupported
 #endif

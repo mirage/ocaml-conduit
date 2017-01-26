@@ -38,6 +38,7 @@ module Ssl : sig
 
   val configure :
     ?version:Ssl.Version.t ->
+    ?hostname:string ->
     ?name:string ->
     ?ca_file:string ->
     ?ca_path:string ->

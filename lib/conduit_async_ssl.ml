@@ -20,7 +20,7 @@ open Core.Std
 open Async.Std
 open Async_ssl.Std
 
-let ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify
+let ssl_connect ?version ?name ?hostname ?ca_file ?ca_path ?session ?verify
     net_to_ssl ssl_to_net =
   let net_to_ssl = Reader.pipe net_to_ssl in
   let ssl_to_net = Writer.pipe ssl_to_net in
@@ -33,6 +33,7 @@ let ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify
   Ssl.client
     ?version
     ?name
+    ?hostname
     ?ca_file
     ?ca_path
     ?session

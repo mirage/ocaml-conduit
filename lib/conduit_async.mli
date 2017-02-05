@@ -74,6 +74,7 @@ type addr = [
 ] [@@deriving sexp]
 
 val connect : ?interrupt:unit io -> addr -> (ic * oc) io
+val with_connection : ?interrupt:unit io -> addr -> (ic -> oc -> unit io) -> unit io
 
 type trust_chain =
   [ `Ca_file of string

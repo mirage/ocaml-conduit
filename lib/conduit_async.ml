@@ -99,6 +99,48 @@ let connect ?interrupt dst =
       return (rd,wr)
   end
 
+let with_connection ?interrupt dst f =
+  match dst with
+  | `TCP (ip, port) -> begin
+      Tcp.with_connection ?interrupt
+        (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
+        (fun _ rd wr -> f rd wr)
+  end
+  | `OpenSSL (host, ip, port) -> begin
+#if HAVE_ASYNC_SSL
+    Tcp.with_connection ?interrupt
+    (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
+    Conduit_async_ssl.ssl_connect rd wr >>= fun (rd, wr) ->
+    Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
+      Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
+    end
+  end
+
+#else
+      raise Ssl_unsupported
+#endif
+  end
+  | `OpenSSL_with_config (host, ip, port, config) -> begin
+#if HAVE_ASYNC_SSL
+    Tcp.with_connection ?interrupt
+    (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
+    let open Ssl in
+    match config with | {version; name; ca_file; ca_path; session; verify} ->
+      Conduit_async_ssl.ssl_connect
+        ?version ?name ?ca_file ?ca_path ?session ?verify rd wr >>= fun (rd, wr) ->
+      Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
+          Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
+      end
+  end
+#else
+      raise Ssl_unsupported
+#endif
+  end
+  | `Unix_domain_socket file -> begin
+    Tcp.with_connection ?interrupt (Tcp.to_file file)
+      (fun _ rd wr -> f rd wr)
+  end
+
 type trust_chain = [
   | `Ca_file of string
   | `Ca_path of string

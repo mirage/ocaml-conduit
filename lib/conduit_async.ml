@@ -146,8 +146,12 @@ let serve
             in
             (crt, key, ca_file, ca_path)
         in
-        Conduit_async_ssl.ssl_listen ?ca_file ?ca_path ~crt_file ~key_file rd wr
-        >>= fun (rd,wr) -> handle_request sock rd wr
+        Conduit_async_ssl.ssl_listen
+          ?ca_file ?ca_path ~crt_file ~key_file rd wr >>= fun (rd,wr) ->
+        Monitor.protect
+          (fun () -> handle_request sock rd wr)
+          ~finally:(fun () ->
+              Deferred.all_unit [ Reader.close rd ; Writer.close wr ])
 #else
         raise Ssl_unsupported
 #endif

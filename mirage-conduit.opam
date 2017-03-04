@@ -15,10 +15,10 @@ depends: [
   "conduit"          {>= "0.15.0"}
 ]
 depopts: [
-  "vchan"
   "tls"
+  "vchan"
 ]
 conflicts: [
-  "tls" {< "0.5.0"}
+  "tls" {< "0.8.0"}
 ]
 available: [ocaml-version >="4.01.0"]

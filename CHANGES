@@ -1,3 +1,6 @@
+0.15.0 (2017-02-23)
+* support MirageOS 3, and drop support for earlier versions (#203, #202)
+
 0.14.5 (2017-01-24)
 * Fix exception swallowing (#206)
 

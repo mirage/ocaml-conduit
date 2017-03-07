@@ -21,7 +21,7 @@
   *)
 #import "conduit_config.mlh"
 
-module Flow: V1_LWT.FLOW
+module Flow: Mirage_types_lwt.FLOW
 (** Dynamic flows. *)
 
 type callback = Flow.flow -> unit Lwt.t
@@ -55,7 +55,7 @@ type tcp_client = [ `TCP of Ipaddr.t * int ] (** address and destination port *)
 and tcp_server  = [ `TCP of int ]                          (** listening port *)
 
 type 'a stackv4
-val stackv4: (module V1_LWT.STACKV4 with type t = 'a) -> 'a stackv4
+val stackv4: (module Mirage_types_lwt.STACKV4 with type t = 'a) -> 'a stackv4
 
 (** {1 VCHAN} *)
 
@@ -125,7 +125,7 @@ module type S = sig
   val empty: t
   (** The empty conduit. *)
 
-  module With_tcp (S:V1_LWT.STACKV4) : sig
+  module With_tcp (S:Mirage_types_lwt.STACKV4) : sig
     val connect : S.t -> t -> t Lwt.t
   end
 
@@ -148,7 +148,7 @@ end
 
 include S
 
-module Context (T: V1_LWT.TIME) (S: V1_LWT.STACKV4): sig
+module Context (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4): sig
 
   (** {1 Context for MirageOS conduit resolvers} *)
 

@@ -71,7 +71,7 @@ type server_tls_config =
   [ `Port of int ]
 [@@deriving sexp]
 
-(** Set of supported listening mechanisms that are supported by this module. 
+(** Set of supported listening mechanisms that are supported by this module.
    - [`TLS server_tls_config]: Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect
      to the given [host], [ip], [port] tuple via TCP.
    - [`TLS_native _]: Force use of native OCaml TLS stack to connect.
@@ -85,6 +85,7 @@ type server_tls_config =
      {{:http://mirage.github.io/ocaml-launchd/launchd/}ocaml-launchd} documentation for more.
 *)
 type server = [
+  | `Fd of Lwt_unix.file_descr
   | `TLS of server_tls_config
   | `OpenSSL of server_tls_config
   | `TLS_native of server_tls_config

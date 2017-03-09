@@ -84,6 +84,7 @@ type server_tls_config =
 
 (** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
+  | `Fd of Lwt_unix.file_descr sexp_opaque
   | `TLS of server_tls_config
   | `OpenSSL of server_tls_config
   | `TLS_native of server_tls_config
@@ -194,11 +195,11 @@ module Sockaddr_server = struct
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
     Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
 
-  let init ~on ?stop ?backlog ?timeout callback =
-    let s =
-      match on with
-      | `Socket s -> s
-      | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr in
+  let init ~on ?stop ?(backlog=128) ?timeout callback =
+    let s = match on with
+      | `Socket s -> Lwt_unix.listen s backlog; s
+      | `Sockaddr sockaddr -> Conduit_lwt_server.listen ~backlog sockaddr
+    in
     Conduit_lwt_server.init ?stop (process_accept ?timeout callback) s
 end
 
@@ -328,6 +329,7 @@ let serve ?backlog ?timeout ?stop
       (fun exn -> on_exn exn; Lwt.return_unit)
   in
   match mode with
+  | `Fd fd -> Sockaddr_server.init ~on:(`Socket fd) ?backlog ?timeout ?stop callback
   | `TCP (`Port port) ->
     let sockaddr, ip = sockaddr_on_tcp_port ctx port in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback

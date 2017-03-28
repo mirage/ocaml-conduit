@@ -197,7 +197,7 @@ module Sockaddr_server = struct
 
   let init ~on ?stop ?(backlog=128) ?timeout callback =
     let s = match on with
-      | `Socket s -> Lwt_unix.listen s backlog; s
+      | `Socket s -> s
       | `Sockaddr sockaddr -> Conduit_lwt_server.listen ~backlog sockaddr
     in
     Conduit_lwt_server.init ?stop (process_accept ?timeout callback) s

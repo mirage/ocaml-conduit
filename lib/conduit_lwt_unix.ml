@@ -170,7 +170,7 @@ module Sockaddr_client = struct
         let () =
           match src with
           | None -> ()
-          | Some src_sa -> Lwt_unix.bind fd src_sa
+          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
         in
         Lwt_unix.connect fd sa >>= fun () ->
         let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in

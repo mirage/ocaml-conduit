@@ -95,7 +95,7 @@ let vchan_lwt   = Flag.mk "vchan_lwt" ["vchan.lwt"]
 let launchd_lwt = Flag.mk "launchd_lwt" ["launchd.lwt"]
 
 let base_findlib =
-  ["sexplib" ; "ipaddr" ; "cstruct" ; "uri" ; "stringext" ; "logs"]
+  ["sexplib" ; "ipaddr" ; "uri" ; "stringext" ; "logs"]
 
 module Libs = struct
   open Pkg
@@ -132,7 +132,7 @@ module Libs = struct
 
   let mirage =
     { name = "conduit-lwt-mirage"
-    ; findlib = ["uri.services"]
+    ; findlib = ["uri.services" ; "cstruct"]
     ; always_modules = ["Conduit_mirage" ; "Resolver_mirage"]
     ; need_flags = [mirage]
     ; flag_modules = ["Conduit_xenstore", vchan]

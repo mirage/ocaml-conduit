@@ -23,7 +23,6 @@ depends: [
   "uri"
   "result"
   "logs" {>="0.5.0"}
-  "cstruct" {>="1.0.1"}
   "ipaddr" {>="2.5.0"}
 ]
 depopts: [

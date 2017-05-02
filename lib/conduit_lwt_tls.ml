@@ -25,7 +25,7 @@ module Client = struct
         let () =
           match src with
           | None -> ()
-          | Some src_sa -> Lwt_unix.bind fd src_sa
+          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
         in
         X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
         let config = Tls.Config.client ~authenticator () in

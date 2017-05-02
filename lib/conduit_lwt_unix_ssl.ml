@@ -36,7 +36,7 @@ module Client = struct
         let () =
           match src with
           | None -> ()
-          | Some src_sa -> Lwt_unix.bind fd src_sa
+          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
         in
         Lwt_unix.connect fd sa >>= fun () ->
         Lwt_ssl.ssl_connect fd ctx >>= fun sock ->

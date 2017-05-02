@@ -1,3 +1,6 @@
+0.15.2 (2017-05-02)
+* Move cstruct dependency from conduit to mirage-conduit
+
 0.15.1 (2017-04-25)
 * Lwt: Lwt 3.0 support (#214)
 * Async: with_connection (#211)

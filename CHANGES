@@ -1,3 +1,6 @@
+0.15.3 (2017-05-04)
+* Lwt: lwt 3.0 support for the tls backend too (#219, @@rgrinberg)
+
 0.15.2 (2017-05-02)
 * Move cstruct dependency from conduit to mirage-conduit
 

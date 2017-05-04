@@ -86,7 +86,7 @@ end
 let async       = Flag.mk "async" ["async"]
 let async_ssl   = Flag.mk "async_ssl" ["async_ssl"]
 let lwt         = Flag.mk "lwt" ["lwt"]
-let lwt_ssl     = Flag.mk "lwt_ssl" ["lwt.ssl"]
+let lwt_ssl     = Flag.mk "lwt_ssl" ["lwt_ssl"]
 let lwt_tls     = Flag.mk "lwt_tls" ["tls.lwt"]
 let mirage      = Flag.mk "mirage" ["mirage-types-lwt"; "mirage-flow-lwt"; "dns.mirage"]
 let mirage_tls  = Flag.mk "mirage_tls" ["tls"; "tls.mirage"]

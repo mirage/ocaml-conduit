@@ -30,6 +30,7 @@ depopts: [
   "lwt"
   "ssl"
   "async_ssl"
+  "lwt_ssl"
   "mirage-dns"
   "vchan"
   "launchd"

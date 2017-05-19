@@ -20,6 +20,12 @@
 module Client : sig
   val default_ctx : [`Ssl_not_available]
 
+  val create_ctx :
+    ?certfile:string ->
+    ?keyfile:string ->
+    ?password:(bool -> string) ->
+    unit -> [`Ssl_not_available]
+
   val connect :
     ?ctx:[`Ssl_not_available] ->
     ?src:Lwt_unix.sockaddr ->

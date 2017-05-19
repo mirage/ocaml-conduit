@@ -20,6 +20,12 @@
 module Client : sig
   val default_ctx : Ssl.context
 
+  val create_ctx :
+    ?certfile:string ->
+    ?keyfile:string ->
+    ?password:(bool -> string) ->
+    unit -> Ssl.context
+
   val connect :
     ?ctx:Ssl.context ->
     ?src:Lwt_unix.sockaddr ->

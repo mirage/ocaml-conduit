@@ -20,6 +20,8 @@ open Lwt.Infix
 module Client = struct
   let default_ctx = `Ssl_not_available
 
+  let create_ctx ?certfile ?keyfile ?password () = default_ctx
+
   let connect ?(ctx=default_ctx) ?src sa = Lwt.fail_with "Ssl not available"
 end
 

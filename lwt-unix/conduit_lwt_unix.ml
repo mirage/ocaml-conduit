@@ -81,7 +81,7 @@ type server = [
   | `Launchd of string
 ] [@@deriving sexp]
 
-type tls_server_key = [
+type tls_own_key = [
   | `None
   | `TLS of
       [ `Crt_file_path of string ] *
@@ -89,9 +89,11 @@ type tls_server_key = [
       [ `Password of bool -> string | `No_password ]
 ] [@@deriving sexp]
 
+type tls_server_key = tls_own_key [@@deriving sexp]
+
 type ctx = {
   src: Unix.sockaddr option;
-  tls_server_key: tls_server_key;
+  tls_own_key: tls_own_key;
 }
 
 let string_of_unix_sockaddr sa =
@@ -103,11 +105,11 @@ let string_of_unix_sockaddr sa =
       Printf.sprintf "ADDR_INET(%s,%d)" (string_of_inet_addr ia) port
 
 let sexp_of_ctx ctx =
-  [%sexp_of: string option * tls_server_key ]
+  [%sexp_of: string option * tls_own_key ]
     ((match ctx.src with
       | None -> None
       | Some sa -> Some (string_of_unix_sockaddr sa)),
-     ctx.tls_server_key)
+     ctx.tls_own_key)
 
 type tcp_flow = {
   fd: Lwt_unix.file_descr sexp_opaque;
@@ -137,17 +139,19 @@ let flow_of_fd fd sa =
   | Unix.ADDR_INET (ip,port) -> TCP { fd; ip=Ipaddr_unix.of_inet_addr ip; port }
 
 let default_ctx =
-  { src=None; tls_server_key=`None }
+  { src=None; tls_own_key=`None }
 
-let init ?src ?(tls_server_key=`None) () =
+let init ?src ?(tls_own_key=`None) ?(tls_server_key=`None) () =
+  let tls_own_key =
+    match tls_own_key with `None -> tls_server_key | _ -> tls_own_key in
   match src with
   | None ->
-    Lwt.return { src=None; tls_server_key }
+    Lwt.return { src=None; tls_own_key }
   | Some host ->
     let open Unix in
     Lwt_unix.getaddrinfo host "0" [AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM]
     >>= function
-    | {ai_addr;_}::_ -> Lwt.return { src=Some ai_addr; tls_server_key }
+    | {ai_addr;_}::_ -> Lwt.return { src=Some ai_addr; tls_own_key }
     | [] -> Lwt.fail_with "Invalid conduit source address specified"
 
 (* Vanilla sockaddr connection *)
@@ -156,7 +160,7 @@ module Sockaddr_client = struct
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
          | None -> Lwt.return_unit
-         | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
+         | Some src_sa -> Lwt_unix.Versioned.bind_2 fd src_sa) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
         let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
         let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
@@ -194,14 +198,35 @@ let set_max_active maxactive =
 
 let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-  Conduit_lwt_tls.Client.connect ?src:ctx.src hostname sa
+  (match ctx.tls_own_key with
+   | `None -> Lwt.return_none
+   | `TLS (_, _, `Password _) ->
+      Lwt.fail_with "OCaml-TLS cannot handle encrypted pem files"
+   | `TLS (`Crt_file_path cert, `Key_file_path priv_key, `No_password) ->
+      X509_lwt.private_of_pems ~cert ~priv_key >|= fun certificate ->
+      Some (`Single certificate)
+  ) >>= fun certificates ->
+  Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates hostname sa
   >|= fun (fd, ic, oc) ->
   let flow = TCP { fd ; ip ; port } in
   (flow, ic, oc)
 
 let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-  Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
+  let ctx_ssl =
+    match ctx.tls_own_key with
+    | `None -> None
+    | `TLS (`Crt_file_path certfile, `Key_file_path keyfile, password) ->
+        let password =
+          (match password with
+           | `No_password -> None
+           | `Password fn -> Some fn) in
+        let ctx_ssl =
+          Conduit_lwt_unix_ssl.Client.create_ctx ~certfile ~keyfile ?password ()
+        in
+        Some ctx_ssl
+  in
+  Conduit_lwt_unix_ssl.Client.connect ?ctx:ctx_ssl ?src:ctx.src sa
   >>= fun (fd, ic, oc) ->
   let flow = TCP {fd;ip;port} in
   Lwt.return (flow, ic, oc)
@@ -336,7 +361,7 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
   match endp with
   | `Unix_domain_socket path -> Lwt.return (`Unix_domain_socket (`File path))
   | `TLS (_host, `TCP (_ip, port)) ->
-    begin match ctx.tls_server_key with
+    begin match ctx.tls_own_key with
       | `None -> Lwt.fail_with "No TLS server key configured"
       | `TLS (`Crt_file_path crt, `Key_file_path key, pass) ->
         Lwt.return (`TLS (`Crt_file_path crt, `Key_file_path key,

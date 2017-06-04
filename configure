@@ -1,3 +1,0 @@
-#!/bin/sh -ex
-
-ocaml discover.ml

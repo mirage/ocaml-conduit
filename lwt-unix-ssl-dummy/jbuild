@@ -1,0 +1,5 @@
+(library
+ ((name conduit_lwt_unix_ssl)
+  (public_name conduit.lwt-unix-ssl-dummy)
+  (libraries (lwt.unix))))
+(jbuild_version 1)

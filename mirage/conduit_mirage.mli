@@ -19,7 +19,6 @@
 (** Functorial connection establishment interface that is compatible with
     the Mirage libraries.
   *)
-#import "conduit_config.mlh"
 
 module Flow: Mirage_types_lwt.FLOW
 (** Dynamic flows. *)
@@ -59,8 +58,6 @@ val stackv4: (module Mirage_types_lwt.STACKV4 with type t = 'a) -> 'a stackv4
 
 (** {1 VCHAN} *)
 
-#if HAVE_VCHAN
-
 type vchan_client = [
   | `Vchan of [
       | `Direct of int * Vchan.Port.t                   (** domain id, port *)
@@ -76,15 +73,6 @@ type vchan_server = [
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
 
-#else
-
-type vchan_client = [`Vchan of [`None]]
-type vchan_server = [`Vchan of [`None]]
-module type VCHAN = sig type t end
-module type XS = sig end
-
-#endif
-
 type vchan
 type xs
 
@@ -93,14 +81,8 @@ val xs: (module XS) -> xs
 
 (** {1 TLS} *)
 
-#if HAVE_MIRAGE_TLS
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
-#else
-type 'a tls_client = [`TLS of [`None]]
-type 'a tls_server = [`TLS of [`None]]
-#endif
-
 
 type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
 (** The type for client configuration values. *)

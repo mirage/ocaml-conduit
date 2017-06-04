@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2012-2017 Anil Madhavapeddy <anil@recoil.org>
  * Copyright (c) 2014 Clark Gaebel
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -16,9 +16,9 @@
  *
 *)
 
-open Core.Std
-open Async.Std
-open Async_ssl.Std
+open Core
+open Async
+open Async_ssl
 
 let ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify r w =
   let net_to_ssl = Reader.pipe r in

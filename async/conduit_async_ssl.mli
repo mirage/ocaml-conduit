@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2012-2017 Anil Madhavapeddy <anil@recoil.org>
  * Copyright (c) 2014 Clark Gaebel
  *
  * Permission to use, copy, modify, and distribute this software for any
@@ -17,9 +17,9 @@
 *)
 
 (** TLS/SSL connection establishment using OpenSSL and Async *)
-open Core.Std
-open Async.Std
-open Async_ssl.Std
+open Core
+open Async
+open Async_ssl
 
 (** [ssl_connect rd wr] will establish a client TLS/SSL session
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}

@@ -1,0 +1,9 @@
+(library
+ ((name        conduit_lwt_unix)
+  (public_name conduit.lwt-unix)
+  (preprocess (pps (ppx_sexp_conv)))
+  (wrapped false)
+  (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls))
+  (libraries (conduit.lwt tls uri.services ipaddr.unix logs conduit.lwt-unix-ssl-dummy vchan launchd))))
+(jbuild_version 1)
+

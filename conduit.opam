@@ -7,16 +7,12 @@ bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
 tags:         "org:mirage"
 license:      "ISC"
 
-build:   [["./configure"] [make]]
-install: [make "install"]
-remove:  ["ocamlfind" "remove" "conduit"]
-build-doc: [make "doc"]
-
+build: [
+  ["jbuilder" "subst" "-p" name "--name" name] {pinned}
+  ["jbuilder" "build" "-p" name "-j" jobs]
+]
 depends: [
-  "ocamlfind" {build}
-  "ocamlbuild" {build}
-  "ppx_driver" {build}
-  "ppx_optcomp" {build & >="113.24.00"}
+  "jbuilder" {build & >="1.0+beta9"}
   "ppx_sexp_conv" {build}
   "sexplib"
   "stringext"

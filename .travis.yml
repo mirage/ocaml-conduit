@@ -11,6 +11,7 @@ env:
    - DEPOPTS="mirage-conduit conduit-async conduit-lwt conduit-lwt-unix"
  matrix:
    - DISTRO=debian-stable OCAML_VERSION=4.04.1
+   - PRE_INSTALL_HOOK="opam depext -uiy ssl" DISTRO=debian-stable OCAML_VERSION=4.04.1
    - DISTRO=debian-testing OCAML_VERSION=4.03.0
    - DISTRO=debian-unstable OCAML_VERSION=4.04.1
    - DISTRO=ubuntu-16.04 OCAML_VERSION=4.03.0

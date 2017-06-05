@@ -18,7 +18,6 @@ depends: [
   "tls"
   "uri"
   "ipaddr"
-  "vchan"
 ]
 depopts: [
   "ssl"

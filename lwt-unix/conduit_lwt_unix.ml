@@ -154,11 +154,9 @@ let init ?src ?(tls_server_key=`None) () =
 module Sockaddr_client = struct
   let connect ?src sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
-        let () =
-          match src with
-          | None -> ()
-          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
-        in
+        (match src with
+         | None -> Lwt.return_unit
+         | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
         let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
         let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in

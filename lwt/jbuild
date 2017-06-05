@@ -6,4 +6,3 @@
   (modules (resolver_lwt))
   (libraries (conduit lwt))))
 (jbuild_version 1)
-

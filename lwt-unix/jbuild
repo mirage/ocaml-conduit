@@ -1,9 +1,17 @@
 (library
  ((name        conduit_lwt_unix)
-  (public_name conduit.lwt-unix)
+  (public_name conduit-lwt-unix)
   (preprocess (pps (ppx_sexp_conv)))
   (wrapped false)
-  (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls))
-  (libraries (conduit.lwt tls uri.services ipaddr.unix logs conduit.lwt-unix-ssl-dummy vchan launchd))))
+  (optional)
+  (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls conduit_lwt_unix_ssl))
+  (libraries (conduit-lwt tls uri.services ipaddr.unix logs vchan launchd
+    (select conduit_lwt_unix_ssl.ml from
+     (ssl  -> conduit_lwt_unix_ssl_real.ml)
+     (!ssl -> conduit_lwt_unix_ssl_dummy.ml))
+    (select conduit_lwt_unix_ssl.mli from
+     (ssl  -> conduit_lwt_unix_ssl_real.mli)
+     (!ssl -> conduit_lwt_unix_ssl_dummy.mli))
+    ))))
 (jbuild_version 1)
 

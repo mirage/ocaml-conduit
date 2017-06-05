@@ -1,6 +1,6 @@
 (library
  ((name        conduit_async)
-  (public_name conduit.async)
+  (public_name conduit-async)
   (wrapped false)
   (modules (conduit_async conduit_async_ssl))
   (libraries (conduit async async_ssl))))

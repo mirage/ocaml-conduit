@@ -6,9 +6,9 @@ install: wget https://raw.githubusercontent.com/ocaml/ocaml-travisci-skeleton/ma
 script: bash ./.travis-docker.sh
 env:
  global:
-   - PINS="conduit:. mirage-conduit:."
-   - PACKAGE="mirage-conduit"
-   - DEPOPTS="async_ssl lwt ssl tls"
+   - PINS="conduit:. mirage-conduit:. conduit-async:. conduit-lwt:. conduit-lwt-unix:."
+   - PACKAGE="conduit"
+   - DEPOPTS="mirage-conduit conduit-async conduit-lwt conduit-lwt-unix"
  matrix:
    - DISTRO=debian-testing OCAML_VERSION=4.03.0
    - DISTRO=debian-unstable OCAML_VERSION=4.04.1

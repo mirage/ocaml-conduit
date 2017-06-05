@@ -19,9 +19,9 @@ depends: [
   "uri"
   "ipaddr"
   "vchan"
-  "launchd"
 ]
 depopts: [
   "ssl"
+  "launchd"
 ]
 available: [ocaml-version >= "4.03.0"]

@@ -328,17 +328,8 @@ let serve ?backlog ?timeout ?stop
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
   | `Launchd name ->
-    Lwt_launchd.activate_socket name
-    >>= fun sockets ->
-    begin match (Launchd.error_to_msg sockets) with
-    | Result.Ok sockets ->
-      Lwt_list.iter_p
-        (fun s ->
-          Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
-        ) sockets
-    | Result.Error (`Msg m) ->
-      Lwt.fail_with m
-    end
+    let fn s = Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback in
+    Conduit_lwt_launchd.activate fn name
 
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)

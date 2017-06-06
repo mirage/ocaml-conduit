@@ -212,20 +212,6 @@ let connect_with_default_tls ~ctx tls_client_config =
   | Native -> connect_with_tls_native ~ctx tls_client_config
   | No_tls -> Lwt.fail_with "No SSL or TLS support compiled into Conduit"
 
-(** VChan connection functions *)
-let connect_with_vchan_lwt ~ctx (`Domid domid, `Port sport) =
-(* TODO fake out *)
-(*
-  (match Vchan.Port.of_string sport with
-   | `Error s -> Lwt.fail_with ("Invalid vchan port: " ^ s)
-   | `Ok p -> Lwt.return p)
-  >>= fun port ->
-  let flow = Vchan { domid; port=sport } in
-  Vchan_lwt_unix.open_client ~domid ~port () >>= fun (ic, oc) ->
-  Lwt.return (flow, ic, oc)
-*)
-  Lwt.fail_with "Vchan_unix not available"
-
 (** Main connection function *)
 
 let connect ~ctx (mode:client) =
@@ -244,7 +230,7 @@ let connect ~ctx (mode:client) =
   | `TLS c -> connect_with_default_tls ~ctx c
   | `OpenSSL c -> connect_with_openssl ~ctx c
   | `TLS_native c -> connect_with_tls_native ~ctx c
-  | `Vchan_direct c -> connect_with_vchan_lwt ~ctx c
+  | `Vchan_direct c -> Lwt.fail_with "Vchan_direct not available on unix"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
 
@@ -314,14 +300,6 @@ let serve ?backlog ?timeout ?stop
     serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
       ~pass ~port callback
   |`Vchan_direct (domid, sport) ->
-(*
-    begin match Vchan.Port.of_string sport with
-      | `Error s -> Lwt.fail_with ("Invalid vchan port: " ^ s)
-      | `Ok p -> Lwt.return p
-    end >>= fun port ->
-    Vchan_lwt_unix.open_server ~domid ~port () >>= fun (ic, oc) ->
-    callback (Vchan {domid; port=sport}) ic oc
-*)
     Lwt.fail_with "Vchan_direct not implemented"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"

@@ -3,7 +3,6 @@
   (public_name conduit-lwt-unix)
   (preprocess (pps (ppx_sexp_conv)))
   (wrapped false)
-  (optional)
   (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd))
   (libraries (conduit-lwt tls uri.services ipaddr.unix logs 
     (select conduit_lwt_launchd.ml from

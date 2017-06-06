@@ -26,7 +26,7 @@ module Ssl_config = struct
     failwith "Ssl not available, recompile with Async_ssl"
 end
 
-let ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify r w =
+let ssl_connect _cfg _r _w =
   failwith "Ssl not available, recompile with Async_ssl"
 
 let ssl_listen ?version ?ca_file ?ca_path ~crt_file ~key_file r w =

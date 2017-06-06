@@ -17,7 +17,7 @@ depends: [
   "mirage-types-lwt" {>= "3.0.0"}
   "mirage-flow-lwt"  {>= "1.2.0"}
   "mirage-dns"       {>= "2.6.0"}
-  "conduit"
+  "conduit-lwt"
   "vchan"
   "tls" {>="0.8.0"}
 ]

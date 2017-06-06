@@ -17,27 +17,8 @@
 
 open Core
 open Async
-open Async_ssl
 
-module Ssl = struct
-  type config = {
-    version : Ssl.Version.t option;
-    name : string option;
-    ca_file : string option;
-    ca_path : string option;
-    session : Ssl.Session.t option sexp_opaque;
-    verify : (Ssl.Connection.t -> bool Deferred.t) option;
-  } [@@deriving sexp]
-
-  let verify_certificate connection =
-    match Ssl.Connection.peer_certificate connection with
-    | None -> return false
-    | Some (Error _) -> return false
-    | Some (Ok _) -> return true
-
-  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    { version; name; ca_file; ca_path; session; verify}
-end
+module Ssl = Conduit_async_ssl.Ssl_config
 
 type +'a io = 'a Deferred.t
 type ic = Reader.t
@@ -59,14 +40,13 @@ let connect ?interrupt dst =
   | `OpenSSL (host, ip, port) -> begin
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
-      Conduit_async_ssl.ssl_connect rd wr
+      let config = Conduit_async_ssl.Ssl_config.configure () in
+      Conduit_async_ssl.ssl_connect config rd wr
   end
   | `OpenSSL_with_config (host, ip, port, config) -> begin
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
-      let open Ssl in
-      match config with | {version; name; ca_file; ca_path; session; verify} ->
-      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify rd wr
+      Conduit_async_ssl.ssl_connect config rd wr
   end
   | `Unix_domain_socket file -> begin
       Tcp.connect ?interrupt (Tcp.to_file file)
@@ -82,9 +62,10 @@ let with_connection ?interrupt dst f =
         (fun _ rd wr -> f rd wr)
     end
   | `OpenSSL (host, ip, port) -> begin
+    let config = Conduit_async_ssl.Ssl_config.configure () in
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
-    Conduit_async_ssl.ssl_connect rd wr >>= fun (rd, wr) ->
+    Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
     Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
       Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
       end
@@ -93,13 +74,10 @@ let with_connection ?interrupt dst f =
   | `OpenSSL_with_config (host, ip, port, config) -> begin
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
-    let open Ssl in
-    match config with | {version; name; ca_file; ca_path; session; verify} ->
-      Conduit_async_ssl.ssl_connect
-        ?version ?name ?ca_file ?ca_path ?session ?verify rd wr >>= fun (rd, wr) ->
-      Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
-          Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
-        end
+     Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
+     Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
+       Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
+     end
     end
   end
   | `Unix_domain_socket file -> begin

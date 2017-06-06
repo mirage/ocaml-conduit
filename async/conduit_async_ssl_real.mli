@@ -21,18 +21,28 @@ open Core
 open Async
 open Async_ssl
 
+module Ssl_config : sig
+  type config
+
+  val verify_certificate :
+    Ssl.Connection.t ->
+    bool Deferred.t
+
+  val configure :
+    ?version:Ssl.Version.t ->
+    ?name:string ->
+    ?ca_file:string ->
+    ?ca_path:string ->
+    ?session:Ssl.Session.t ->
+    ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
+    unit ->
+    config
+end
+
 (** [ssl_connect rd wr] will establish a client TLS/SSL session
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
     Async connections. *)
-val ssl_connect :
-  ?version:Ssl.Version.t ->
-  ?name:string ->
-  ?ca_file:string ->
-  ?ca_path:string ->
-  ?session:Ssl.Session.t ->
-  ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
-  Reader.t ->
-  Writer.t ->
+val ssl_connect : Ssl_config.config -> Reader.t -> Writer.t ->
   (Reader.t * Writer.t) Deferred.t
 
 (** [ssl_listen ~crt_file ~key_file rd wr] will establish a server

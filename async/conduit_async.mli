@@ -20,25 +20,8 @@
 
 open Core
 open Async
-open Async_ssl
 
-module Ssl : sig
-  type config
-
-  val verify_certificate :
-    Ssl.Connection.t ->
-    bool Deferred.t
-
-  val configure :
-    ?version:Ssl.Version.t ->
-    ?name:string ->
-    ?ca_file:string ->
-    ?ca_path:string ->
-    ?session:Ssl.Session.t ->
-    ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
-    unit ->
-    config
-end
+module Ssl = Conduit_async_ssl.Ssl_config
 
 type +'a io = 'a Deferred.t
 type ic = Reader.t

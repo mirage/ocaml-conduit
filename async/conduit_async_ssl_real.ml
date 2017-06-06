@@ -20,7 +20,28 @@ open Core
 open Async
 open Async_ssl
 
-let ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify r w =
+module Ssl_config = struct
+  type config = {
+    version : Ssl.Version.t option;
+    name : string option;
+    ca_file : string option;
+    ca_path : string option;
+    session : Ssl.Session.t option sexp_opaque;
+    verify : (Ssl.Connection.t -> bool Deferred.t) option;
+  } [@@deriving sexp]
+
+  let verify_certificate connection =
+    match Ssl.Connection.peer_certificate connection with
+    | None -> return false
+    | Some (Error _) -> return false
+    | Some (Ok _) -> return true
+
+  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
+    { version; name; ca_file; ca_path; session; verify}
+end
+
+let ssl_connect cfg r w =
+  let {Ssl_config.version; name; ca_file; ca_path; session; verify} = cfg in
   let net_to_ssl = Reader.pipe r in
   let ssl_to_net = Writer.pipe w in
   let app_to_ssl, app_wr = Pipe.create () in

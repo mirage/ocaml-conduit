@@ -1,3 +1,4 @@
+(jbuild_version 1)
 (library
  ((name        conduit_lwt_unix)
   (public_name conduit-lwt-unix)
@@ -15,5 +16,3 @@
      (lwt.ssl  -> conduit_lwt_unix_ssl_real.mli)
      (!lwt.ssl -> conduit_lwt_unix_ssl_dummy.mli))
     ))))
-(jbuild_version 1)
-

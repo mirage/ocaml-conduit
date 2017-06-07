@@ -1,3 +1,4 @@
+(jbuild_version 1)
 (library
  ((name        conduit)
   (public_name conduit)
@@ -5,4 +6,3 @@
   (preprocess (pps (ppx_sexp_conv)))
   (modules (conduit conduit_trie resolver))
   (libraries (ipaddr uri))))
-(jbuild_version 1)

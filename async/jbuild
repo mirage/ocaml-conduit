@@ -1,3 +1,4 @@
+(jbuild_version 1)
 (library
  ((name        conduit_async)
   (public_name conduit-async)
@@ -11,5 +12,3 @@
      (async_ssl  -> conduit_async_ssl_real.mli)
      (!async_ssl -> conduit_async_ssl_dummy.mli))
   ))))
-(jbuild_version 1)
-

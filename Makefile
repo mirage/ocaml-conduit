@@ -5,3 +5,6 @@ all:
 
 clean:
 	rm -rf _build *.install
+
+test:
+	jbuilder runtest

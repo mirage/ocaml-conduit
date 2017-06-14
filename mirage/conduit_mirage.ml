@@ -15,7 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  *)
-#import "conduit_config.mlh"
 
 open Sexplib.Std
 open Sexplib.Conv
@@ -76,8 +75,6 @@ type tcp_server = [ `TCP of int ] [@@deriving sexp]
 type 'a stackv4 = (module Mirage_types_lwt.STACKV4 with type t = 'a)
 let stackv4 x = x
 
-#if HAVE_VCHAN
-
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
 module type XS = Xs_client_lwt.S
 
@@ -95,33 +92,14 @@ type vchan_server = [
     ]
 ] [@@deriving sexp]
 
-#else
-
-module type VCHAN = sig type t end
-module type XS = sig end
-
-type vchan_client = [ `Vchan of [`None] ] [@@deriving sexp]
-type vchan_server = [ `Vchan of [`None] ] [@@deriving sexp]
-
-#endif
-
 type vchan = (module VCHAN)
 type xs = (module XS)
 
 let vchan x = x
 let xs x = x
 
-#if HAVE_MIRAGE_TLS
-
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ] [@@deriving sexp]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ] [@@deriving sexp]
-
-#else
-
-type 'a tls_client = [`TLS of [`None] ] [@@deriving sexp]
-type 'a tls_server = [`TLS of [`None] ] [@@deriving sexp]
-
-#endif
 
 type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
 type server = [ tcp_server | vchan_server | server tls_server ] [@@deriving sexp]
@@ -224,8 +202,6 @@ let with_tcp (type t) t (module S: Mirage_types_lwt.STACKV4 with type t = t) sta
 
 (* VCHAN *)
 
-#if HAVE_VCHAN
-
 let err_vchan_port = fail "%s: invalid Vchan port"
 
 let port p =
@@ -279,19 +255,9 @@ let mk_vchan (type t) (module X: XS) (module V: VCHAN) t =
   V.register t >|= fun t ->
   S ((module V), t)
 
-#else
-
-let mk_vchan _ _ _ = err_vchan_not_supported "register"
-let vchan_client _ = err_vchan_not_supported "client"
-let vchan_server _ = err_vchan_not_supported "server"
-
-#endif
-
 let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
-
-#if HAVE_MIRAGE_TLS
 
 let err_eof = fail "%s: End-of-file!"
 
@@ -332,14 +298,6 @@ module TLS = struct
 end
 
 let tls t = Lwt.return (S ( (module TLS), t))
-
-#else
-
-let tls_client _ _ = err_tls_not_supported "client"
-let tls_server _ _ = err_tls_not_supported "server"
-let tls _ = err_tls_not_supported "register"
-
-#endif
 
 let with_tls t = tls t >|= fun x -> { t with tls = Some x }
 

@@ -1,0 +1,8 @@
+(jbuild_version 1)
+(library
+ ((name        conduit_mirage)
+  (public_name mirage-conduit)
+  (preprocess (pps (ppx_sexp_conv)))
+  (modules (conduit_mirage resolver_mirage conduit_xenstore))
+  (wrapped false)
+  (libraries (conduit conduit-lwt mirage-types-lwt dns.mirage vchan tls))))

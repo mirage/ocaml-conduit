@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2012-2017 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,46 +15,10 @@
  *
  *)
 
-#import "conduit_config.mlh"
+open Core
+open Async
 
-open Core.Std
-open Async.Std
-
-exception Ssl_unsupported [@@deriving sexp]
-
-#if HAVE_ASYNC_SSL
-open Async_ssl.Std
-#endif
-
-module Ssl = struct
-#if HAVE_ASYNC_SSL
-  type config = {
-    version : Ssl.Version.t option;
-    name : string option;
-    ca_file : string option;
-    ca_path : string option;
-    session : Ssl.Session.t option sexp_opaque;
-    verify : (Ssl.Connection.t -> bool Deferred.t) option;
-  } [@@deriving sexp]
-
-  let verify_certificate connection =
-    match Ssl.Connection.peer_certificate connection with
-    | None -> return false
-    | Some (Error _) -> return false
-    | Some (Ok _) -> return true
-
-  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    { version; name; ca_file; ca_path; session; verify}
-#else
-  type config = unit [@@deriving sexp]
-
-  let verify_certificate _ =
-    raise Ssl_unsupported
-
-  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    raise Ssl_unsupported
-#endif
-end
+module Ssl = Conduit_async_ssl.Ssl_config
 
 type +'a io = 'a Deferred.t
 type ic = Reader.t
@@ -74,24 +38,15 @@ let connect ?interrupt dst =
       >>= fun (_, rd, wr) -> return (rd,wr)
   end
   | `OpenSSL (host, ip, port) -> begin
-#if HAVE_ASYNC_SSL
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
-      Conduit_async_ssl.ssl_connect rd wr
-#else
-      raise Ssl_unsupported
-#endif
+      let config = Conduit_async_ssl.Ssl_config.configure () in
+      Conduit_async_ssl.ssl_connect config rd wr
   end
   | `OpenSSL_with_config (host, ip, port, config) -> begin
-#if HAVE_ASYNC_SSL
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
-      let open Ssl in
-      match config with | {version; name; ca_file; ca_path; session; verify} ->
-      Conduit_async_ssl.ssl_connect ?version ?name ?ca_file ?ca_path ?session ?verify rd wr
-#else
-      raise Ssl_unsupported
-#endif
+      Conduit_async_ssl.ssl_connect config rd wr
   end
   | `Unix_domain_socket file -> begin
       Tcp.connect ?interrupt (Tcp.to_file file)
@@ -105,36 +60,25 @@ let with_connection ?interrupt dst f =
       Tcp.with_connection ?interrupt
         (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
         (fun _ rd wr -> f rd wr)
-  end
+    end
   | `OpenSSL (host, ip, port) -> begin
-#if HAVE_ASYNC_SSL
+    let config = Conduit_async_ssl.Ssl_config.configure () in
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
-    Conduit_async_ssl.ssl_connect rd wr >>= fun (rd, wr) ->
+    Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
     Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
       Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
+      end
     end
   end
-
-#else
-      raise Ssl_unsupported
-#endif
-  end
   | `OpenSSL_with_config (host, ip, port, config) -> begin
-#if HAVE_ASYNC_SSL
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
-    let open Ssl in
-    match config with | {version; name; ca_file; ca_path; session; verify} ->
-      Conduit_async_ssl.ssl_connect
-        ?version ?name ?ca_file ?ca_path ?session ?verify rd wr >>= fun (rd, wr) ->
-      Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
-          Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
-      end
-  end
-#else
-      raise Ssl_unsupported
-#endif
+     Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
+     Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
+       Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
+     end
+    end
   end
   | `Unix_domain_socket file -> begin
     Tcp.with_connection ?interrupt (Tcp.to_file file)
@@ -172,7 +116,6 @@ let serve
     match mode with
     | `TCP -> handle_request sock rd wr
     | #requires_async_ssl as async_ssl ->
-#if HAVE_ASYNC_SSL
         let (crt_file, key_file, ca_file, ca_path) =
           match async_ssl with
           | `OpenSSL (`Crt_file_path crt_file, `Key_file_path key_file) ->
@@ -194,9 +137,6 @@ let serve
           (fun () -> handle_request sock rd wr)
           ~finally:(fun () ->
               Deferred.all_unit [ Reader.close rd ; Writer.close wr ])
-#else
-        raise Ssl_unsupported
-#endif
     in
     Tcp.Server.create ?max_connections ?backlog
       ?buffer_age_limit ?on_handler_error

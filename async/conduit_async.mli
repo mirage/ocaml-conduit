@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2012-2017 Anil Madhavapeddy <anil@recoil.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -17,50 +17,11 @@
 
 (** Connection establishment using the
     {{:https://github.com/janestreet/async}Async} library *)
-#import "conduit_config.mlh"
 
-open Core.Std
-open Async.Std
+open Core
+open Async
 
-exception Ssl_unsupported [@@deriving sexp]
-
-#if HAVE_ASYNC_SSL
-open Async_ssl.Std
-#endif
-
-module Ssl : sig
-  type config
-
-#if HAVE_ASYNC_SSL
-  val verify_certificate :
-    Ssl.Connection.t ->
-    bool Deferred.t
-
-  val configure :
-    ?version:Ssl.Version.t ->
-    ?name:string ->
-    ?ca_file:string ->
-    ?ca_path:string ->
-    ?session:Ssl.Session.t ->
-    ?verify:(Ssl.Connection.t -> bool Deferred.t) ->
-    unit ->
-    config
-#else
-  val verify_certificate :
-    'a ->
-    bool Deferred.t
-
-  val configure :
-    ?version:'a ->
-    ?name:string ->
-    ?ca_file:string ->
-    ?ca_path:string ->
-    ?session:'e ->
-    ?verify:'f ->
-    unit ->
-    config
-#endif
-end
+module Ssl = Conduit_async_ssl.Ssl_config
 
 type +'a io = 'a Deferred.t
 type ic = Reader.t

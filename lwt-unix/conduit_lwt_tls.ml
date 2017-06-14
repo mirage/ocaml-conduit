@@ -22,11 +22,9 @@ let _ = Nocrypto_entropy_lwt.initialize ()
 module Client = struct
   let connect ?src host sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
-        let () =
-          match src with
-          | None -> ()
-          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
-        in
+        (match src with
+         | None -> Lwt.return_unit
+         | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
         let config = Tls.Config.client ~authenticator () in
         Lwt_unix.connect fd sa >>= fun () ->

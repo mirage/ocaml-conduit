@@ -1,6 +1,6 @@
 opam-version: "1.2"
 maintainer:   "anil@recoil.org"
-authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire"]
+authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire" "Rudi Grinberg"]
 homepage:     "https://github.com/mirage/ocaml-conduit"
 dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
 bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
@@ -11,14 +11,16 @@ build: [
   ["jbuilder" "subst" "-p" name "--name" name] {pinned}
   ["jbuilder" "build" "-p" name "-j" jobs]
 ]
-
 depends: [
-  "cstruct"          {>= "1.0.1"}
-  "mirage-types-lwt" {>= "3.0.0"}
-  "mirage-flow-lwt"  {>= "1.2.0"}
-  "mirage-dns"       {>= "2.6.0"}
+  "base-unix"
+  "jbuilder" {build & >="1.0+beta9"}
   "conduit-lwt"
-  "vchan"
-  "tls" {>="0.8.0"}
+  "tls"
+  "uri"
+  "ipaddr"
 ]
-available: [ocaml-version >="4.03.0"]
+depopts: [
+  "ssl"
+  "launchd"
+]
+available: [ocaml-version >= "4.03.0"]

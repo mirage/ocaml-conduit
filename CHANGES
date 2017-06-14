@@ -1,3 +1,7 @@
+0.16.0
+Port to Jbuilder:
+- Async SSL is no longer optional and is always a build time dependency
+
 0.15.4 (2017-05-31)
 * Lwt: Fix meta file and building  with lwt_ssl (#222, @dkim)
 

@@ -14,10 +14,10 @@ build: [
 depends: [
   "base-unix"
   "jbuilder" {build & >="1.0+beta9"}
-  "conduit-lwt"
-  "tls"
-  "uri"
-  "ipaddr"
+  "conduit-lwt" {>="1.0.0"}
+  "tls" {>="0.8.0"}
+  "uri" {>="1.9.4"}
+  "ipaddr" {>="2.8.0"}
 ]
 depopts: [
   "ssl"

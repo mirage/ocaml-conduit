@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 all:
-	jbuilder build
+	jbuilder build @install
 
 clean:
 	rm -rf _build *.install

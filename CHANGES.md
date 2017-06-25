@@ -1,4 +1,4 @@
-## 1.0.0
+## v0.99 
 
 Port to Jbuilder. (TODO full changelog)
 

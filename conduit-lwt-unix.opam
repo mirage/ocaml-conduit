@@ -16,6 +16,7 @@ depends: [
   "jbuilder" {build & >="1.0+beta9"}
   "conduit-lwt"
   "tls" {>="0.8.0"}
+  "lwt"
   "uri" {>="1.9.4"}
   "ipaddr" {>="2.8.0"}
 ]

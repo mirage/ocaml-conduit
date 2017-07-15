@@ -5,7 +5,7 @@
   (preprocess (pps (ppx_sexp_conv)))
   (wrapped false)
   (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd))
-  (libraries (conduit-lwt tls.lwt uri.services ipaddr.unix logs
+  (libraries (conduit-lwt uri.services ipaddr.unix logs
     (select conduit_lwt_launchd.ml from
      (launchd  -> conduit_lwt_launchd_real.ml)
      (!launchd -> conduit_lwt_launchd_dummy.ml))
@@ -15,4 +15,10 @@
     (select conduit_lwt_unix_ssl.mli from
      (lwt_ssl  -> conduit_lwt_unix_ssl_real.mli)
      (!lwt_ssl -> conduit_lwt_unix_ssl_dummy.mli))
+    (select conduit_lwt_tls.ml from
+     (tls.lwt  -> conduit_lwt_tls_real.ml)
+     (!tls.lwt -> conduit_lwt_tls_dummy.ml))
+    (select conduit_lwt_tls.mli from
+     (tls.lwt  -> conduit_lwt_tls_real.mli)
+     (!tls.lwt -> conduit_lwt_tls_dummy.mli))
     ))))

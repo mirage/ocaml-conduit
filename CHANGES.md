@@ -1,6 +1,34 @@
-## v0.99
+## v1.0.0
 
-Port to Jbuilder. (TODO full changelog)
+Port build to jbuilder, and break up OPAM packages into multiple
+independent packages instead of being optional dependencies against
+the main `conduit` package. This makes it significantly easier to
+depend on precisely the libraries you need, but requires porting
+applications to use the new `ocamlfind` and `opam` scheme.
+
+The new package layout is:
+
+- `conduit`: the main `Conduit` module
+- `conduit-lwt`: the portable Lwt implementation
+- `conduit-lwt-unix`: the Lwt/Unix implementation
+- `conduit-async` the Jane Street Async implementation
+- `mirage-conduit`: the MirageOS compatible implementation
+
+In each of these packages, the `opam` and `ocamlfind` package
+names are now _the same_, so you will need to rename the former
+subpackages such as `conduit.async` to `conduit-async`.  The
+implementation is otherwise the same, so no other code changes
+should be required.
+
+In return for these breaking changes to the packaging, it is
+now significantly easier to depend on a particular backend,
+also for us to rev the interfaces towards a stable 1.0 release.
+Jbuilder also builds the source tree around 4x faster than it
+did previously.
+
+There are still some optional dependencies remaining, most
+notably the `tls` and `ssl` packages.  If they are present,
+then conduit will be compiled with TLS support.
 
 ## 0.15.4 (2017-05-31)
 * Lwt: Fix meta file and building with lwt_ssl (#222, @dkim)

@@ -16,7 +16,7 @@ uninstall:
 clean:
 	rm -rf _build
 
-REPO=../../mirage/mirage-dev
+REPO=../../mirage/opam-repository
 PACKAGES=$(REPO)/packages
 # until we have https://github.com/ocaml/opam-publish/issues/38
 pkg-%:

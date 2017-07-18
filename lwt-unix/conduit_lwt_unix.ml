@@ -160,7 +160,7 @@ module Sockaddr_client = struct
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
          | None -> Lwt.return_unit
-         | Some src_sa -> Lwt_unix.Versioned.bind_2 fd src_sa) >>= fun () ->
+         | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
         let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
         let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in

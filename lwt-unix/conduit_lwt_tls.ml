@@ -24,7 +24,7 @@ module Client = struct
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
          | None -> Lwt.return_unit
-         | Some src_sa -> Lwt_unix.Versioned.bind_2 fd src_sa) >>= fun () ->
+         | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
         let config = Tls.Config.client ~authenticator ?certificates () in
         Lwt_unix.connect fd sa >>= fun () ->

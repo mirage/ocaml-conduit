@@ -16,6 +16,7 @@
  *)
 
 open Sexplib.Std
+open Astring
 
 type service = {
   name: string;
@@ -112,7 +113,7 @@ module Make(IO:Conduit.IO) = struct
 
   let host_to_domain_list host =
     (* TODO: slow, specialise the Trie to be a rev string list instead *)
-    String.concat "." (List.rev (Stringext.split ~on:'.' host))
+    String.concat ~sep:"." (List.rev (String.cuts ~sep:"." host))
 
   let add_rewrite ~host ~f t =
     t.domains <- Conduit_trie.insert (host_to_domain_list host) f t.domains

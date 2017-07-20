@@ -5,4 +5,4 @@
   (wrapped false)
   (preprocess (pps (ppx_sexp_conv)))
   (modules (conduit conduit_trie resolver))
-  (libraries (ipaddr uri))))
+  (libraries (ipaddr uri astring))))

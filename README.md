@@ -14,16 +14,13 @@ By default, OpenSSL is used as the preferred connection library, but
 you can force the use of the pure OCaml TLS stack by setting the
 environment variable `CONDUIT_TLS=native` when starting your program.
 
-### Modules
+The opam packages available are:
 
-Source code is in `lib/`.
-
-* `Conduit_lwt_unix` has the Lwt UNIX modules.
-* `Conduit_async` has the Core/Async modules.
-
-There are also resolvers that map URIs to Conduit endpoints.
-See <http://mirage.github.io/ocaml-conduit/> for the online `ocamldoc`
-for more details.
+- `conduit`: the main `Conduit` module
+- `conduit-lwt`: the portable Lwt implementation
+- `conduit-lwt-unix`: the Lwt/Unix implementation
+- `conduit-async` the Jane Street Async implementation
+- `mirage-conduit`: the MirageOS compatible implementation
 
 ### Debugging
 
@@ -34,6 +31,7 @@ are being resolved to.
 
 ### Further Informartion
 
+* **API Docs:** http://docs.mirage.io/
 * **WWW:** https://github.com/mirage/ocaml-conduit
 * **E-mail:** <mirageos-devel@lists.xenproject.org>
 * **Bugs:** https://github.com/mirage/ocaml-conduit/issues

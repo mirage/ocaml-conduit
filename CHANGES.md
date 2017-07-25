@@ -1,4 +1,9 @@
-## v1.0.0
+## v1.0.1 (2017-07-25)
+
+* Fix linkage of mirage-conduit with apps, as a `tls.mirage` dependency
+  was missing in the mirage-conduit-3.0.0 release (#232 by @samoht)
+
+## v1.0.0 (2017-07-22)
 
 Details on changes: https://discuss.ocaml.org/t/ann-major-releases-of-cohttp-conduit-dns-tcpip/571
 

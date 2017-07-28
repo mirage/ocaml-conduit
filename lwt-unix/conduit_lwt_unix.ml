@@ -32,6 +32,8 @@ let default_tls_library =
   try
     match String.lowercase_ascii (Sys.getenv "CONDUIT_TLS") with
     | "native" -> Native
+    | "openssl" | "libressl" -> OpenSSL
+    | "none" | "notls" -> No_tls
     | _ -> OpenSSL
   with Not_found ->
     if Conduit_lwt_unix_ssl.available then

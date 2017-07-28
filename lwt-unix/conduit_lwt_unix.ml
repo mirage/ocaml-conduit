@@ -28,14 +28,21 @@ let () =
   with Not_found -> ()
 
 type tls_lib = | OpenSSL | Native | No_tls [@@deriving sexp]
-let tls_library = ref No_tls
-let () =
-    tls_library := try
-        match Sys.getenv "CONDUIT_TLS" with
-        | "native" | "Native" | "NATIVE" -> Native
-        | _ -> OpenSSL
-      with Not_found -> OpenSSL
-    (* TODO build time selection *)
+let default_tls_library =
+  try
+    match String.lowercase_ascii (Sys.getenv "CONDUIT_TLS") with
+    | "native" -> Native
+    | _ -> OpenSSL
+  with Not_found ->
+    if Conduit_lwt_unix_ssl.available then
+      OpenSSL
+    else if Conduit_lwt_tls.available then
+      Native
+    else
+      No_tls
+  (* TODO build time selection *)
+
+let tls_library = ref default_tls_library
 
 let () = if !debug then
   !debug_print "Selected TLS library: %s\n"

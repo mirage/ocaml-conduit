@@ -68,3 +68,5 @@ module Server = struct
         >>= Conduit_lwt_server.process_accept ?timeout cb)
 
 end
+
+let available = true

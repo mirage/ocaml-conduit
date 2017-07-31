@@ -62,3 +62,5 @@ module Server = struct
     let config = Tls.Config.server ~certificates:(`Single certificate) () in
     init' ?backlog ?stop ?timeout config sa callback
 end
+
+let available = true

@@ -10,3 +10,5 @@ module Server = struct
   let init ?backlog ~certfile ~keyfile ?stop ?timeout sa callback =
     Lwt.fail_with "Tls not available"
 end
+
+let available = false

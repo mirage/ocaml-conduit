@@ -34,3 +34,5 @@ module Server = struct
       ?timeout sa cb =
     Lwt.fail_with "Ssl not available"
 end
+
+let available = false

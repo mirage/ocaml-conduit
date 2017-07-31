@@ -53,3 +53,7 @@ module Server : sig
         -> unit Lwt.t)
     -> unit Lwt.t
 end
+
+(**/**)
+
+val available : bool

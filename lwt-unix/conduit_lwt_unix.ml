@@ -190,11 +190,10 @@ module Sockaddr_server = struct
     Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
 
   let init ~on ?stop ?backlog ?timeout callback =
-    let s =
-      match on with
-      | `Socket s -> s
-      | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr in
-    Conduit_lwt_server.init ?stop (process_accept ?timeout callback) s
+    (match on with
+     | `Socket s -> Lwt.return s
+     | `Sockaddr sockaddr -> Conduit_lwt_server.listen ?backlog sockaddr)
+    >>= Conduit_lwt_server.init ?stop (process_accept ?timeout callback)
 end
 
 let set_max_active maxactive =

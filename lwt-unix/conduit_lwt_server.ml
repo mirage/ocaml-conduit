@@ -15,10 +15,10 @@ let close (ic, oc) =
 let listen ?(backlog=128) sa =
   let fd = Lwt_unix.socket (Unix.domain_of_sockaddr sa) Unix.SOCK_STREAM 0 in
   Lwt_unix.(setsockopt fd SO_REUSEADDR true);
-  Lwt_unix.Versioned.bind_1 fd sa;
-  Lwt_unix.listen fd backlog;
-  Lwt_unix.set_close_on_exec fd;
-  fd
+  Lwt_unix.bind fd sa >|= (fun () ->
+      Lwt_unix.listen fd backlog;
+      Lwt_unix.set_close_on_exec fd;
+      fd)
 
 let with_socket sockaddr f =
   let fd =

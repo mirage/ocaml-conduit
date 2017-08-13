@@ -3,7 +3,7 @@ val close : 'a Lwt_io.channel * 'b Lwt_io.channel -> unit Lwt.t
 
 val set_max_active : int -> unit
 
-val listen : ?backlog:int -> Unix.sockaddr -> Lwt_unix.file_descr
+val listen : ?backlog:int -> Unix.sockaddr -> Lwt_unix.file_descr Lwt.t
 
 val with_socket
   : Unix.sockaddr

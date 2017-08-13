@@ -15,7 +15,7 @@ depends: [
   "base-unix"
   "jbuilder" {build & >="1.0+beta9"}
   "conduit-lwt"
-  "lwt"
+  "lwt" {>= "3.0.0"}
   "uri" {>="1.9.4"}
   "ipaddr" {>="2.8.0"}
 ]

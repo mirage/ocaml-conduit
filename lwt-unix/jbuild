@@ -7,8 +7,8 @@
   (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd))
   (libraries (conduit-lwt lwt.unix uri.services ipaddr.unix logs
     (select conduit_lwt_launchd.ml from
-     (launchd  -> conduit_lwt_launchd_real.ml)
-     (!launchd -> conduit_lwt_launchd_dummy.ml))
+     (launchd.lwt  -> conduit_lwt_launchd_real.ml)
+     (!launchd.lwt -> conduit_lwt_launchd_dummy.ml))
     (select conduit_lwt_unix_ssl.ml from
      (lwt_ssl  -> conduit_lwt_unix_ssl_real.ml)
      (!lwt_ssl -> conduit_lwt_unix_ssl_dummy.ml))

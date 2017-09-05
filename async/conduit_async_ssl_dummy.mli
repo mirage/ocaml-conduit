@@ -17,7 +17,6 @@
 *)
 
 (** TLS/SSL connection establishment using OpenSSL and Async *)
-open Core
 open Async
 
 module Ssl_config : sig

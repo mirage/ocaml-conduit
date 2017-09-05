@@ -35,14 +35,6 @@ module Client = struct
 end
 
 module Server = struct
-  let accept config s =
-    Lwt_unix.accept s >>= fun (fd, _) ->
-    Lwt.try_bind (fun () ->
-        Tls_lwt.Unix.server_of_fd config fd)
-      (fun t ->
-         let ic, oc = Tls_lwt.of_t t in
-         Lwt.return (fd, ic, oc))
-      (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
 
   let init' ?backlog ?stop ?timeout tls sa callback =
     sa

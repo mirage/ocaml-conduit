@@ -18,7 +18,6 @@
 (** Connection establishment using the
     {{:https://github.com/janestreet/async}Async} library *)
 
-open Core
 open Async
 
 module Ssl = Conduit_async_ssl.Ssl_config

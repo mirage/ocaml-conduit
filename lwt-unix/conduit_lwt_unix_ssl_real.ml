@@ -33,11 +33,10 @@ module Client = struct
 
   let connect ?(ctx=default_ctx) ?src sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
-        let () =
-          match src with
-          | None -> ()
-          | Some src_sa -> Lwt_unix.Versioned.bind_1 fd src_sa
-        in
+        (match src with
+         | None        -> Lwt.return_unit
+         | Some src_sa -> Lwt_unix.bind fd src_sa
+        ) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
         Lwt_ssl.ssl_connect fd ctx >>= fun sock ->
         Lwt.return (chans_of_fd sock)

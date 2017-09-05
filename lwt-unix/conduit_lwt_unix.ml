@@ -208,7 +208,7 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let flow = TCP { fd ; ip ; port } in
   (flow, ic, oc)
 
-let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
+let connect_with_openssl ~ctx (`Hostname _, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
   Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
   >>= fun (fd, ic, oc) ->
@@ -239,7 +239,7 @@ let connect ~ctx (mode:client) =
   | `TLS c -> connect_with_default_tls ~ctx c
   | `OpenSSL c -> connect_with_openssl ~ctx c
   | `TLS_native c -> connect_with_tls_native ~ctx c
-  | `Vchan_direct c -> Lwt.fail_with "Vchan_direct not available on unix"
+  | `Vchan_direct _ -> Lwt.fail_with "Vchan_direct not available on unix"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
 
@@ -292,7 +292,7 @@ let serve ?backlog ?timeout ?stop
   in
   match mode with
   | `TCP (`Port port) ->
-    let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+    let sockaddr, _ = sockaddr_on_tcp_port ctx port in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
   | `Unix_domain_socket (`File path) ->
     let sockaddr = Unix.ADDR_UNIX path in
@@ -308,8 +308,7 @@ let serve ?backlog ?timeout ?stop
                  pass, `Port port) ->
     serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
       ~pass ~port callback
-  |`Vchan_direct (domid, sport) ->
-    Lwt.fail_with "Vchan_direct not implemented"
+  |`Vchan_direct _ -> Lwt.fail_with "Vchan_direct not implemented"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
   | `Launchd name ->
@@ -324,7 +323,7 @@ let endp_of_flow = function
 (** Use the configuration of the server to interpret how to
     handle a particular endpoint from the resolver into a
     concrete implementation of type [client] *)
-let endp_to_client ~ctx (endp:Conduit.endp) : client Lwt.t =
+let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
   match endp with
   | `TCP (ip, port) -> Lwt.return (`TCP (`IP ip, `Port port))
   | `Unix_domain_socket file -> Lwt.return (`Unix_domain_socket (`File file))

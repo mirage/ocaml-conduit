@@ -7,16 +7,15 @@ script: bash ./.travis-docker.sh
 env:
  global:
    - PINS="conduit:. mirage-conduit:. conduit-async:. conduit-lwt:. conduit-lwt-unix:."
-   - PACKAGE="conduit"
-   - DEPOPTS="mirage-conduit conduit-async conduit-lwt conduit-lwt-unix"
+   - TESTS=true
  matrix:
-   - DISTRO=debian-stable OCAML_VERSION=4.04.2
-   - PRE_INSTALL_HOOK="opam depext -uiy ssl" DISTRO=debian-stable OCAML_VERSION=4.04.1
-   - DISTRO=debian-testing OCAML_VERSION=4.03.0
-   - PRE_INSTALL_HOOK="opam depext -uiy ssl" DISTRO=debian-unstable OCAML_VERSION=4.04.1
-   - DISTRO=ubuntu-16.04 OCAML_VERSION=4.03.0
-   - PRE_INSTALL_HOOK="opam depext -uiy ctypes-foreign async_ssl" DISTRO=ubuntu-17.04 OCAML_VERSION=4.04.1
-   - DISTRO=centos-6 OCAML_VERSION=4.03.0
-   - DISTRO=centos-7 OCAML_VERSION=4.04.2
-   - DISTRO=fedora-25 OCAML_VERSION=4.03.0
-   - DISTRO=alpine-3.5 OCAML_VERSION=4.04.2
+   - OCAML_VERSION=4.04.2 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.04.2 PACKAGE=conduit-async    DISTRO=centos-7        DEPOPTS=async_ssl
+   - OCAML_VERSION=4.04.2 PACKAGE=conduit-lwt-unix DISTRO=alpine-3.5      DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.04.1 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.04.1 PACKAGE=conduit-async    DISTRO=debian-unstable DEPOPTS=async_ssl
+   - OCAML_VERSION=4.04.1 PACKAGE=conduit-async    DISTRO=ubuntu-17.04    DEPOPTS=async_ssl
+   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=debian-testing  DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=ubuntu-16.04    DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=centos-6        DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=fedora-25       DEPOPTS="ssl tls"

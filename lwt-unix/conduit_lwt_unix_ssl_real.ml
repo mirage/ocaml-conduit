@@ -61,7 +61,7 @@ module Server = struct
       ?timeout sa cb =
     sa
     |> listen ~ctx ?backlog ?password ~certfile ~keyfile
-    |> Conduit_lwt_server.init ?stop (fun (fd, _) ->
+    >>= Conduit_lwt_server.init ?stop (fun (fd, _) ->
         Lwt.try_bind (fun () -> Lwt_ssl.ssl_accept fd ctx)
           (fun sock -> Lwt.return (chans_of_fd sock))
           (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)

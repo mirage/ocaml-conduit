@@ -2,10 +2,10 @@
 .PHONY: build clean test
 
 build:
-	jbuilder build @install
+	jbuilder build --dev @install
 
 test:
-	jbuilder runtest
+	jbuilder runtest --dev
 
 install:
 	jbuilder install
@@ -28,5 +28,3 @@ pkg-%:
 PKGS=$(basename $(wildcard *.opam))
 opam-pkg:
 	$(MAKE) $(PKGS:%=pkg-%)
-
-

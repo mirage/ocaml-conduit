@@ -80,12 +80,6 @@ end
 module Make(DNS:Dns_resolver_mirage.S) = struct
   module DNS = DNS
 
-  type t = {
-    dns: DNS.t;
-    ns: Ipaddr.V4.t;
-    dns_port: int;
-  }
-
   let vchan_resolver ~tld =
     let tld_len = String.length tld in
     let get_short_host uri =

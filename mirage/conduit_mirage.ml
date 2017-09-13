@@ -16,7 +16,6 @@
  *
  *)
 
-open Sexplib.Std
 open Sexplib.Conv
 open Result
 
@@ -250,7 +249,7 @@ module Vchan (Xs: Xs_client_lwt.S) (V: VCHAN) = struct
 
 end
 
-let mk_vchan (type t) (module X: XS) (module V: VCHAN) t =
+let mk_vchan (module X: XS) (module V: VCHAN) t =
   let module V = Vchan(X)(V) in
   V.register t >|= fun t ->
   S ((module V), t)
@@ -259,9 +258,7 @@ let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
 
-let err_eof = fail "%s: End-of-file!"
-
-let client_of_bytes str =
+let client_of_bytes _ =
   (* an https:// request doesn't need client-side authentication *)
   Tls.Config.client ~authenticator:X509.Authenticator.null ()
 
@@ -273,7 +270,6 @@ let tls_server s x = Lwt.return (`TLS (server_of_bytes s, x))
 module TLS = struct
 
   module TLS = Tls_mirage.Make(Flow)
-  let err_tls m e = fail "%s: %a" m TLS.pp_error e
   let err_flow_write m e = fail "%s: %a" m TLS.pp_write_error e
 
   type x = t

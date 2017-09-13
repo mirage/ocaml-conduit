@@ -15,7 +15,6 @@
  *
  *)
 
-open Core
 open Async
 
 module Ssl = Conduit_async_ssl.Ssl_config
@@ -37,13 +36,13 @@ let connect ?interrupt dst =
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) -> return (rd,wr)
   end
-  | `OpenSSL (host, ip, port) -> begin
+  | `OpenSSL (_, ip, port) -> begin
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       let config = Conduit_async_ssl.Ssl_config.configure () in
       Conduit_async_ssl.ssl_connect config rd wr
   end
-  | `OpenSSL_with_config (host, ip, port, config) -> begin
+  | `OpenSSL_with_config (_, ip, port, config) -> begin
       Tcp.connect ?interrupt (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
       >>= fun (_, rd, wr) ->
       Conduit_async_ssl.ssl_connect config rd wr
@@ -61,7 +60,7 @@ let with_connection ?interrupt dst f =
         (Tcp.to_host_and_port (Ipaddr.to_string ip) port)
         (fun _ rd wr -> f rd wr)
     end
-  | `OpenSSL (host, ip, port) -> begin
+  | `OpenSSL (_, ip, port) -> begin
     let config = Conduit_async_ssl.Ssl_config.configure () in
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
@@ -71,7 +70,7 @@ let with_connection ?interrupt dst f =
       end
     end
   end
-  | `OpenSSL_with_config (host, ip, port, config) -> begin
+  | `OpenSSL_with_config (_, ip, port, config) -> begin
     Tcp.with_connection ?interrupt
     (Tcp.to_host_and_port (Ipaddr.to_string ip) port) begin fun _ rd wr ->
      Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->

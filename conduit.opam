@@ -4,6 +4,8 @@ authors:      ["Anil Madhavapeddy" "Thomas Leonard" "Thomas Gazagnaire" "Rudi Gr
 homepage:     "https://github.com/mirage/ocaml-conduit"
 dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
 bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
+doc:          "https://mirage.github.io/ocaml-conduit/"
+
 tags:         "org:mirage"
 license:      "ISC"
 

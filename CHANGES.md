@@ -1,3 +1,10 @@
+## v1.0.2 (2017-09-13)
+
+* Fix regression with TLS/SSL backend: there is no need to set `CONDUIT_TLS`
+  manually when using tls (#234, @hcarty)
+* Update to lwt.3.0.0 (#236, #241, @rgrinberg and @samoht)
+* Fix regression in linking with the launchd backend (#240, @samoht)
+
 ## v1.0.1 (2017-07-25)
 
 * Fix linkage of mirage-conduit with apps, as a `tls.mirage` dependency

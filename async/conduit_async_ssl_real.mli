@@ -17,7 +17,6 @@
 *)
 
 (** TLS/SSL connection establishment using OpenSSL and Async *)
-open Core
 open Async
 open Async_ssl
 

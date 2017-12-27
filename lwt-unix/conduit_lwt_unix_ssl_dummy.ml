@@ -15,23 +15,21 @@
  *
  *)
 
-open Lwt.Infix
-
 module Client = struct
   let default_ctx = `Ssl_not_available
 
-  let connect ?(ctx=default_ctx) ?src sa = Lwt.fail_with "Ssl not available"
+  let connect ?(ctx=default_ctx) ?src:_ _sa =
+    ignore ctx;
+    Lwt.fail_with "Ssl not available"
 end
 
 module Server = struct
 
   let default_ctx = `Ssl_not_available
 
-  let listen ?(ctx=default_ctx) ?backlog ?password ~certfile ~keyfile sa =
-    Lwt.fail_with "Ssl not available"
-
-  let init ?(ctx=default_ctx) ?backlog ?password ~certfile ~keyfile ?stop
-      ?timeout sa cb =
+  let init ?(ctx=default_ctx) ?backlog:_ ?password:_ ~certfile:_ ~keyfile:_ ?stop:_
+      ?timeout:_ _sa _cb =
+    ignore ctx;
     Lwt.fail_with "Ssl not available"
 end
 

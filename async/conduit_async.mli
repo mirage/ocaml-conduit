@@ -61,10 +61,10 @@ val serve :
   ?max_connections:int ->
   ?backlog:int ->
   ?buffer_age_limit:Writer.buffer_age_limit ->
-  ?on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
-    | `Ignore
-    | `Raise ] ->
-    server ->
-    ('a, 'b) Tcp.Where_to_listen.t ->
-    ('a -> ic -> oc -> unit io) ->
-    ('a, 'b) Tcp.Server.t io
+  on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
+                   | `Ignore
+                   | `Raise ] ->
+  server ->
+  ('a, 'b) Tcp.Where_to_listen.t ->
+  ('a -> ic -> oc -> unit io) ->
+  ('a, 'b) Tcp.Server.t io

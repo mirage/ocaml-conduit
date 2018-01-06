@@ -1,3 +1,11 @@
+## v1.0.3 (2018-01-06)
+
+* Favour resolving over IPv4 instead of IPv6, if both are available
+  and one has to be chosen. (#245 via @rixed)
+* Fix some warnings with the dummy `Lwt_unix_ssl` module.
+* Add a direct dependency on xenstore for mirage-conduit.
+* Support latest Async v0.10.0 interfaces (no more `Async.Std`).
+
 ## v1.0.2 (2017-09-13)
 
 * Fix regression with TLS/SSL backend: there is no need to set `CONDUIT_TLS`

@@ -77,7 +77,10 @@ let system_resolver service uri =
   let host = get_host uri in
   let port = get_port service uri in
   getaddrinfo host (string_of_int port) [AI_SOCKTYPE SOCK_STREAM]
-  >>= function
+  >>= fun addrinfos ->
+  (* In case both IPv4 and IPv6 addresses exist, favor IPv4: *)
+  let v4, rest = List.partition (fun i -> i.ai_family = PF_INET) addrinfos in
+  match List.rev_append v4 rest with
   | [] -> return_endp "system" service uri (`Unknown ("name resolution failed"))
   | {ai_addr=ADDR_INET (addr,port);_}::_ ->
      return_endp "system" service uri

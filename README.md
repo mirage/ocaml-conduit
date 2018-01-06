@@ -1,6 +1,6 @@
-[![Build Status](https://travis-ci.org/mirage/ocaml-conduit.svg?branch=master)](https://travis-ci.org/mirage/ocaml-conduit)
+## conduit -- an OCaml network connection establishment library
 
-## OCaml network conduit library
+[![Build Status](https://travis-ci.org/mirage/ocaml-conduit.svg?branch=master)](https://travis-ci.org/mirage/ocaml-conduit)
 
 The `conduit` library takes care of establishing and listening for 
 TCP and SSL/TLS connections for the Lwt and Async libraries.

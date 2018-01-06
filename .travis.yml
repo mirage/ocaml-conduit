@@ -9,13 +9,13 @@ env:
    - PINS="conduit:. mirage-conduit:. conduit-async:. conduit-lwt:. conduit-lwt-unix:."
    - TESTS=true
  matrix:
-   - OCAML_VERSION=4.04.2 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
-   - OCAML_VERSION=4.04.2 PACKAGE=conduit-async    DISTRO=centos-7        DEPOPTS=async_ssl
-   - OCAML_VERSION=4.04.2 PACKAGE=conduit-lwt-unix DISTRO=alpine-3.5      DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.06.0 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.05.2 PACKAGE=conduit-async    DISTRO=centos-7        DEPOPTS=async_ssl
+   - OCAML_VERSION=4.04.2 PACKAGE=conduit-lwt-unix DISTRO=alpine-3.6      DEPOPTS="ssl tls"
    - OCAML_VERSION=4.04.1 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
    - OCAML_VERSION=4.04.1 PACKAGE=conduit-async    DISTRO=debian-unstable DEPOPTS=async_ssl
    - OCAML_VERSION=4.04.1 PACKAGE=conduit-async    DISTRO=ubuntu-17.04    DEPOPTS=async_ssl
    - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=debian-testing  DEPOPTS="ssl tls"
    - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=ubuntu-16.04    DEPOPTS="ssl tls"
    - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=centos-6        DEPOPTS="ssl tls"
-   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=fedora-25       DEPOPTS="ssl tls"
+   - OCAML_VERSION=4.03.0 PACKAGE=conduit-lwt-unix DISTRO=fedora-26       DEPOPTS="ssl tls"

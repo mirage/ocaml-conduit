@@ -23,6 +23,7 @@ module Client : sig
   val connect :
     ?ctx:[`Ssl_not_available] ->
     ?src:Lwt_unix.sockaddr ->
+    string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 

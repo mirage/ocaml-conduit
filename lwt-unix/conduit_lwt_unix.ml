@@ -208,9 +208,9 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let flow = TCP { fd ; ip ; port } in
   (flow, ic, oc)
 
-let connect_with_openssl ~ctx (`Hostname _, `IP ip, `Port port) =
+let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip,port) in
-  Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src sa
+  Conduit_lwt_unix_ssl.Client.connect ?src:ctx.src ~hostname sa
   >>= fun (fd, ic, oc) ->
   let flow = TCP {fd;ip;port} in
   Lwt.return (flow, ic, oc)

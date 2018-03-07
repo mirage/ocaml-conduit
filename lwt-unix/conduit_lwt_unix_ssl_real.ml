@@ -31,17 +31,22 @@ module Client = struct
   let default_ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
   let () = Ssl.disable_protocols default_ctx [Ssl.SSLv23]
 
-  let connect ?(ctx=default_ctx) ?src host sa =
+  let connect ?(ctx=default_ctx) ?src ?hostname sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
          | None        -> Lwt.return_unit
          | Some src_sa -> Lwt_unix.bind fd src_sa
         ) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
-        let s = Lwt_ssl.embed_uninitialized_socket fd ctx in
-        Ssl.set_client_SNI_hostname
-          (Lwt_ssl.ssl_socket_of_uninitialized_socket s) host;
-        Lwt_ssl.ssl_perform_handshake s >>= fun sock ->
+        begin match hostname with
+          | Some host ->
+            let s = Lwt_ssl.embed_uninitialized_socket fd ctx in
+            Ssl.set_client_SNI_hostname
+              (Lwt_ssl.ssl_socket_of_uninitialized_socket s) host;
+            Lwt_ssl.ssl_perform_handshake s
+          | None ->
+            Lwt_ssl.ssl_connect fd ctx
+        end >>= fun sock ->
         Lwt.return (chans_of_fd sock)
       )
 end

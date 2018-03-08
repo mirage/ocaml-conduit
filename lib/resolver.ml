@@ -42,7 +42,7 @@ module type S = sig
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)
-  type rewrite_fn = svc -> Uri.t -> Conduit.endp io
+  type rewrite_fn = svc -> Uri.t -> Core.endp io
 
   (** A service function maps the string (such as [http] or [ftp]) from
       a URI scheme into a {{!svc}service} description that includes
@@ -78,10 +78,10 @@ module type S = sig
       resolver, but not otherwise modify it. *)
   val resolve_uri :
     ?rewrites:(string * rewrite_fn) list ->
-    uri:Uri.t -> t -> Conduit.endp io
+    uri:Uri.t -> t -> Core.endp io
 end
 
-module Make(IO:Conduit.IO) = struct
+module Make(IO:Core.IO) = struct
   open IO
 
   type svc = service [@@deriving sexp]
@@ -89,12 +89,12 @@ module Make(IO:Conduit.IO) = struct
 
   (** A rewrite modifies an input URI with more specialization
       towards a concrete [endp] *)
-  type rewrite_fn = service -> Uri.t -> Conduit.endp IO.t [@@deriving sexp]
+  type rewrite_fn = service -> Uri.t -> Core.endp IO.t [@@deriving sexp]
   type service_fn = string -> service option IO.t [@@deriving sexp]
 
   type t = {
     default_lookup : rewrite_fn;
-    mutable domains: rewrite_fn Conduit_trie.t;
+    mutable domains: rewrite_fn Trie.t;
     mutable service: service_fn;
   } [@@deriving sexp]
 
@@ -116,7 +116,7 @@ module Make(IO:Conduit.IO) = struct
     String.concat ~sep:"." (List.rev (String.cuts ~sep:"." host))
 
   let add_rewrite ~host ~f t =
-    t.domains <- Conduit_trie.insert (host_to_domain_list host) f t.domains
+    t.domains <- Trie.insert (host_to_domain_list host) f t.domains
 
   let set_service ~f t =
     t.service <- f
@@ -129,7 +129,7 @@ module Make(IO:Conduit.IO) = struct
     | x    -> return x
 
   let init ?(service=default_service) ?(rewrites=[]) () =
-    let domains = Conduit_trie.empty in
+    let domains = Trie.empty in
     let t = { domains; default_lookup; service } in
     List.iter (fun (host,f) -> add_rewrite ~host ~f t) rewrites;
     t
@@ -155,12 +155,12 @@ module Make(IO:Conduit.IO) = struct
             | None -> t.domains
             | Some rewrites ->
               List.fold_left (fun acc (host, f) ->
-                  Conduit_trie.insert (host_to_domain_list host) f acc)
+                  Trie.insert (host_to_domain_list host) f acc)
                 t.domains rewrites
           in
           (* Find the longest prefix function that matches this host *)
           let fn =
-            match Conduit_trie.longest_prefix (host_to_domain_list host) trie
+            match Trie.longest_prefix (host_to_domain_list host) trie
             with
             | None -> t.default_lookup
             | Some fn -> fn

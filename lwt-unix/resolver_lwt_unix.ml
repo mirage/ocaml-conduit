@@ -29,7 +29,7 @@ let return_endp name svc uri endp =
   if !debug then
     !debug_print "Resolver %s: %s %s -> %s\n%!"
      name (Uri.to_string uri)
-     (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service svc))
+     (Sexplib.Sexp.to_string_hum (Conduit.Resolver.sexp_of_service svc))
      (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
   Lwt.return endp
 
@@ -45,7 +45,7 @@ let system_service name =
     (fun () ->
       Lwt_unix.getservbyname name "tcp" >>= fun s ->
       let tls = is_tls_service name in
-      let svc = { Resolver.name; port=s.Lwt_unix.s_port; tls } in
+      let svc = { Conduit.Resolver.name; port=s.Lwt_unix.s_port; tls } in
       Lwt.return (Some svc))
     (function Not_found -> Lwt.return_none | e -> Lwt.fail e)
 
@@ -54,7 +54,7 @@ let static_service name =
   | [] -> Lwt.return_none
   | port::_ ->
      let tls = is_tls_service name in
-     let svc = { Resolver.name; port; tls } in
+     let svc = { Conduit.Resolver.name; port; tls } in
      Lwt.return (Some svc)
 
 let get_host uri =
@@ -67,7 +67,7 @@ let get_host uri =
 
 let get_port service uri =
   match Uri.port uri with
-  | None -> service.Resolver.port
+  | None -> service.Conduit.Resolver.port
   | Some port -> port
 
 (* Build a default resolver that uses the system gethostbyname and

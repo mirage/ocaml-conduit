@@ -45,7 +45,7 @@ module type S = sig
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)
-  type rewrite_fn = svc -> Uri.t -> Conduit.endp io
+  type rewrite_fn = svc -> Uri.t -> Core.endp io
 
   (** A service function maps the string (such as [http] or [ftp]) from
       a URI scheme into a {{!svc}service} description that includes
@@ -86,11 +86,11 @@ module type S = sig
       resolver, but not otherwise modify it. *)
   val resolve_uri :
     ?rewrites:(string * rewrite_fn) list ->
-    uri:Uri.t -> t -> Conduit.endp io
+    uri:Uri.t -> t -> Core.endp io
 end
 
 (** Functor to construct a concrete resolver using a {!Conduit.IO}
     implementation, usually via either Lwt or Async *)
-module Make (IO : Conduit.IO) : S
+module Make (IO : Core.IO) : S
   with type svc = service
   and  type 'a io = 'a IO.t

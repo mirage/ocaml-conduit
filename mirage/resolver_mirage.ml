@@ -33,7 +33,7 @@ let get_host uri =
 
 let get_port service uri =
   match Uri.port uri with
-  | None -> service.Resolver.port
+  | None -> service.Conduit.Resolver.port
   | Some port -> port
 
 let static_resolver hosts service uri =
@@ -49,7 +49,7 @@ let static_service name =
   | [] -> Lwt.return_none
   | port::_ ->
      let tls = is_tls_service name in
-     let svc = { Resolver.name; port; tls } in
+     let svc = { Conduit.Resolver.name; port; tls } in
      Lwt.return (Some svc)
 
 let static hosts =
@@ -94,9 +94,9 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
       (* Strip the tld from the hostname *)
       let remote_name = get_short_host uri in
       Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
-        (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service service))
+        (Sexplib.Sexp.to_string_hum (Conduit.Resolver.sexp_of_service service))
         (Uri.to_string uri) remote_name;
-      Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
+      Lwt.return (`Vchan_domain_socket (remote_name, service.Conduit.Resolver.name))
 
   let default_ns = Ipaddr.V4.of_string_exn "8.8.8.8"
 

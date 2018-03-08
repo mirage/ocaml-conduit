@@ -97,10 +97,10 @@ let static_resolver hosts service uri =
 let system =
   let service = system_service in
   let rewrites = ["", system_resolver] in
-  Resolver_lwt.init ~service ~rewrites ()
+  Conduit_lwt.Resolver.init ~service ~rewrites ()
 
 (* Build a default resolver from a static set of lookup rules *)
 let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
-  Resolver_lwt.init ~service ~rewrites ()
+  Conduit_lwt.Resolver.init ~service ~rewrites ()

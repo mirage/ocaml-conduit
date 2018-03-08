@@ -330,7 +330,7 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
 
 module Context (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) = struct
 
-  type t = Resolver_lwt.t * conduit
+  type t = Conduit_lwt.Resolver.t * conduit
 
   module DNS = Dns_resolver_mirage.Make(T)(S)
   module RES = Resolver_mirage.Make(DNS)
@@ -339,7 +339,7 @@ module Context (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) = struct
   let stackv4 = stackv4 (module S: Mirage_types_lwt.STACKV4 with type t = S.t)
 
   let create ?(tls=false) stack =
-    let res = Resolver_lwt.init () in
+    let res = Conduit_lwt.Resolver.init () in
     RES.register ~stack res;
     with_tcp conduit stackv4 stack >>= fun conduit ->
     if tls then

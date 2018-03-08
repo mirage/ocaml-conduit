@@ -23,9 +23,9 @@ module Client (C:CONSOLE) (S:STACKV4) = struct
   let start c stack _ =
     C.log_s c (sprintf "Resolving in 3s using DNS server %s" ns) >>= fun () ->
     OS.Time.sleep 3.0 >>= fun () ->
-    let res = Resolver_lwt.init () in
+    let res = Conduit_lwt.Resolver.init () in
     RES.register ~ns:(Ipaddr.V4.of_string_exn ns) ~stack res;
-    Resolver_lwt.resolve_uri ~uri res >>= fun endp ->
+    Conduit_lwt.Resolver.resolve_uri ~uri res >>= fun endp ->
     mk_conduit stack >>= fun conduit ->
     Conduit_mirage.client endp >>= fun client ->
     let endp = Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp) in

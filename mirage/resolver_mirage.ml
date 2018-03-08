@@ -55,7 +55,7 @@ let static_service name =
 let static hosts =
   let service = static_service in
   let rewrites = ["", static_resolver hosts] in
-  Resolver_lwt.init ~service ~rewrites ()
+  Conduit_lwt.Resolver.init ~service ~rewrites ()
 
 let localhost =
   let hosts = Hashtbl.create 3 in
@@ -67,14 +67,14 @@ let localhost =
 module type S = sig
   module DNS : Dns_resolver_mirage.S
   val default_ns : Ipaddr.V4.t
-  val vchan_resolver : tld:string -> Resolver_lwt.rewrite_fn
+  val vchan_resolver : tld:string -> Conduit_lwt.Resolver.rewrite_fn
   val dns_stub_resolver:
-    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Resolver_lwt.rewrite_fn
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> DNS.t -> Conduit_lwt.Resolver.rewrite_fn
   val register:
     ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack ->
-    Resolver_lwt.t -> unit
+    Conduit_lwt.Resolver.t -> unit
   val init:
-    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack -> unit -> Resolver_lwt.t
+    ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:DNS.stack -> unit -> Conduit_lwt.Resolver.t
 end
 
 module Make(DNS:Dns_resolver_mirage.S) = struct
@@ -118,22 +118,22 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
          (* DNS stub resolver *)
          let dns = DNS.create s in
          let f = dns_stub_resolver ~ns ~ns_port dns in
-         Resolver_lwt.add_rewrite ~host:"" ~f res
+         Conduit_lwt.Resolver.add_rewrite ~host:"" ~f res
       | None -> ()
       end;
-      let service = Resolver_lwt.(service res ++ static_service) in
-      Resolver_lwt.set_service ~f:service res;
+      let service = Conduit_lwt.Resolver.(service res ++ static_service) in
+      Conduit_lwt.Resolver.set_service ~f:service res;
       let vchan_tld = ".xen" in
       let vchan_res = vchan_resolver ~tld:vchan_tld in
-      Resolver_lwt.add_rewrite ~host:vchan_tld ~f:vchan_res res
+      Conduit_lwt.Resolver.add_rewrite ~host:vchan_tld ~f:vchan_res res
 
   let init ?ns ?ns_port ?stack () =
-    let res = Resolver_lwt.init () in
+    let res = Conduit_lwt.Resolver.init () in
     register ?ns ?ns_port ?stack res;
     res
 end
 
 module Make_with_stack (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4) = struct
   module R = Make(Dns_resolver_mirage.Make(T)(S))
-  include Resolver_lwt
+  include Conduit_lwt.Resolver
 end

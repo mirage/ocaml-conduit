@@ -134,7 +134,7 @@ module Context (T: Mirage_types_lwt.TIME) (S: Mirage_types_lwt.STACKV4): sig
 
   (** {1 Context for MirageOS conduit resolvers} *)
 
-  type t = Resolver_lwt.t * conduit
+  type t = Conduit_lwt.Resolver.t * conduit
   (** The type for contexts of conduit resolvers. *)
 
   val create: ?tls:bool -> S.t -> t Lwt.t

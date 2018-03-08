@@ -21,26 +21,26 @@
 
 (** Use the Unix system name resolver via [getaddrinfo] and
     [getservbyname] *)
-val system : Resolver_lwt.t
+val system : Conduit_lwt.Resolver.t
 
 (** [static hosts] constructs a resolver that looks up any resolution
     requests from the static [hosts] hashtable instead of using the
     system resolver. *)
-val static : (string, Conduit.endp) Hashtbl.t -> Resolver_lwt.t
+val static : (string, Conduit.endp) Hashtbl.t -> Conduit_lwt.Resolver.t
 
 (** {2 Rewrite and service functions}
     These can be used to assemble your own resolvers if the
     prebuilt ones are not quite what you need. *)
 
 (** Perform service lookup using [getservbyname] *)
-val system_service : string -> Resolver_lwt.svc option Lwt.t
+val system_service : string -> Conduit_lwt.Resolver.svc option Lwt.t
 
 (** Perform service lookup using the builtin {!Uri_services} module *)
-val static_service : string -> Resolver_lwt.svc option Lwt.t
+val static_service : string -> Conduit_lwt.Resolver.svc option Lwt.t
 
 (** Rewrite function that uses the {!system_service} and {!static_service}
     to resolve hosts *)
-val system_resolver : Resolver_lwt.rewrite_fn
+val system_resolver : Conduit_lwt.Resolver.rewrite_fn
 
 (** {2 Debugging Hooks} *)
 

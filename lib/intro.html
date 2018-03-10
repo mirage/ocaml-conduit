@@ -8,7 +8,7 @@ machine) or on a remote host via TCP.  It consists of:
 - OS-specific {{!resolution}name resolvers} that use available
   resolution mechanisms
 
-{2:transport Connection Establishment} 
+{2:transport Connection Establishment}
 
 Connections are created by identifying remote nodes using an
 {{!Conduit.endp}endp} value.  To ensure portability, the
@@ -28,8 +28,8 @@ addresses that can
 then be connected to by the {{!transport}connection establishment} modules.
 
 All of the name resolvers conform to the {!Resolver.S} module type.
-The OS-specific implementations of this interface are: 
-{!modules: Conduit_lwt.Resolver Conduit_lwt.Resolver_unix Resolver_mirage}
+The OS-specific implementations of this interface are:
+{!modules: Conduit_lwt.Resolver Resolver_lwt_unix Resolver_mirage}
 
 {2:resolution Mirage Connections}
 

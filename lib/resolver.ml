@@ -42,7 +42,7 @@ module type S = sig
 
   (** A rewrite function resolves a {{!svc}service} and a URI into
       a concrete endpoint. *)
-  type rewrite_fn = svc -> Uri.t -> Core.endp io
+  type rewrite_fn = svc -> Uri.t -> S.endp io
 
   (** A service function maps the string (such as [http] or [ftp]) from
       a URI scheme into a {{!svc}service} description that includes
@@ -78,10 +78,10 @@ module type S = sig
       resolver, but not otherwise modify it. *)
   val resolve_uri :
     ?rewrites:(string * rewrite_fn) list ->
-    uri:Uri.t -> t -> Core.endp io
+    uri:Uri.t -> t -> S.endp io
 end
 
-module Make(IO:Core.IO) = struct
+module Make(IO:S.IO) = struct
   open IO
 
   type svc = service [@@deriving sexp]
@@ -89,7 +89,7 @@ module Make(IO:Core.IO) = struct
 
   (** A rewrite modifies an input URI with more specialization
       towards a concrete [endp] *)
-  type rewrite_fn = service -> Uri.t -> Core.endp IO.t [@@deriving sexp]
+  type rewrite_fn = service -> Uri.t -> S.endp IO.t [@@deriving sexp]
   type service_fn = string -> service option IO.t [@@deriving sexp]
 
   type t = {

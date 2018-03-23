@@ -1,3 +1,9 @@
+## v1.1.0 (2018-03-22)
+
+* Implement SNI (Server Name Indication) for SSL backend (#255 by @vouillon)
+* Make hostname optional in `Conduit_lwt_unix_ssl.Client.connect` (#255 by @vouillon)
+* Fix file descriptor leakage on `EADDRINUSE` for the Lwt backend (#257 by @rixed)
+
 ## v1.0.3 (2018-01-06)
 
 * Favour resolving over IPv4 instead of IPv6, if both are available

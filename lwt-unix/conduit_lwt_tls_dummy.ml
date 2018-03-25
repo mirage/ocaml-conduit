@@ -1,13 +1,13 @@
 module Client = struct
-  let connect ?src host sa =
+  let connect ?src:_ _host _sa =
     Lwt.fail_with "Tls not available"
 end
 
 module Server = struct
-  let init' ?backlog ?stop ?timeout tls sa callback =
+  let init' ?backlog:_ ?stop:_ ?timeout:_ _tls _sa _callback =
     Lwt.fail_with "Tls not available"
 
-  let init ?backlog ~certfile ~keyfile ?stop ?timeout sa callback =
+  let init ?backlog:_ ~certfile:_ ~keyfile:_ ?stop:_ ?timeout:_ _sa _callback =
     Lwt.fail_with "Tls not available"
 end
 

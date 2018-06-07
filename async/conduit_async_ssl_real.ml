@@ -21,12 +21,18 @@ open Async
 open Async_ssl
 
 module Ssl_config = struct
-  type config = {
+  type t = {
     version : Ssl.Version.t option;
+    options: Ssl.Opt.t list option;
     name : string option;
+    hostname : string option;
+    allowed_ciphers: [ `Only of string list | `Openssl_default | `Secure ] option;
     ca_file : string option;
     ca_path : string option;
-    session : Ssl.Session.t option sexp_opaque;
+    crt_file : string option;
+    key_file : string option;
+    session : Ssl.Session.t option;
+    verify_modes:Verify_mode.t list option;
     verify : (Ssl.Connection.t -> bool Deferred.t) option;
   } [@@deriving sexp]
 
@@ -36,12 +42,19 @@ module Ssl_config = struct
     | Some (Error _) -> return false
     | Some (Ok _) -> return true
 
-  let configure ?version ?name ?ca_file ?ca_path ?session ?verify () =
-    { version; name; ca_file; ca_path; session; verify}
+  let create
+      ?version ?options ?name ?hostname ?allowed_ciphers
+      ?ca_file ?ca_path ?crt_file ?key_file
+      ?session ?verify_modes ?verify () =
+    { version; options; name; hostname; allowed_ciphers;
+      ca_file; ca_path; crt_file; key_file; session; verify_modes;
+      verify}
 end
 
-let ssl_connect cfg r w =
-  let {Ssl_config.version; name; ca_file; ca_path; session; verify} = cfg in
+let ssl_connect ?(cfg=Ssl_config.create ()) r w =
+  let { Ssl_config.version; options; name; hostname;
+        allowed_ciphers; ca_file; ca_path;
+        crt_file; key_file; session; verify_modes; verify } = cfg in
   let net_to_ssl = Reader.pipe r in
   let ssl_to_net = Writer.pipe w in
   let app_to_ssl, app_wr = Pipe.create () in
@@ -52,10 +65,16 @@ let ssl_connect cfg r w =
   in
   Ssl.client
     ?version
+    ?options
     ?name
+    ?hostname
+    ?allowed_ciphers
     ?ca_file
     ?ca_path
+    ?crt_file
+    ?key_file
     ?session
+    ?verify_modes
     ~app_to_ssl
     ~ssl_to_app
     ~net_to_ssl
@@ -83,17 +102,28 @@ let ssl_connect cfg r w =
     end ;
     (app_reader, app_writer)
 
-let ssl_listen ?(version=Ssl.Version.Tlsv1_2) ?ca_file ?ca_path ~crt_file ~key_file r w =
+let ssl_listen
+    { Ssl_config.version; options; name; allowed_ciphers; ca_file; ca_path;
+      crt_file; key_file; verify_modes ; _ } r w =
+  let crt_file, key_file =
+    match crt_file, key_file with
+    | Some crt_file, Some key_file -> crt_file, key_file
+    | _ -> invalid_arg "Conduit_async_ssl.ssl_listen: crt_file and \
+                        key_file must be specified in cfg." in
   let net_to_ssl = Reader.pipe r in
   let ssl_to_net = Writer.pipe w in
   let app_to_ssl, app_wr = Pipe.create () in
   let app_rd, ssl_to_app = Pipe.create () in
   Ssl.server
+    ?version
+    ?options
+    ?name
+    ?allowed_ciphers
     ?ca_file
     ?ca_path
-    ~version
     ~crt_file
     ~key_file
+    ?verify_modes
     ~app_to_ssl
     ~ssl_to_app
     ~net_to_ssl

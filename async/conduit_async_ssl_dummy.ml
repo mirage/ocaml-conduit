@@ -17,17 +17,30 @@
 *)
 
 module Ssl_config = struct
-  type config = [`Ssl_not_compiled_in]
+  type t = [`Ssl_not_compiled_in]
 
   let verify_certificate _ =
     failwith "Ssl not available, recompile with Async_ssl"
 
-  let configure ?version:_ ?name:_ ?ca_file:_ ?ca_path:_ ?session:_ ?verify:_ () =
+  let create
+      ?version:_
+      ?options:_
+      ?name:_
+      ?hostname:_
+      ?allowed_ciphers:_
+      ?ca_file:_
+      ?ca_path:_
+      ?crt_file:_
+      ?key_file:_
+      ?session:_
+      ?verify_modes:_
+      ?verify:_
+      () =
     failwith "Ssl not available, recompile with Async_ssl"
 end
 
-let ssl_connect _cfg _r _w =
+let ssl_connect ?cfg:_ _r _w =
   failwith "Ssl not available, recompile with Async_ssl"
 
-let ssl_listen ?version:_ ?ca_file:_ ?ca_path:_ ~crt_file:_ ~key_file:_ _ _ =
+let ssl_listen _cfg _r _w =
   failwith "Ssl not available, recompile with Async_ssl"

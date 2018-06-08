@@ -68,18 +68,22 @@ module type V1 = sig
     ('a -> ic -> oc -> unit io) ->
     ('a, 'b) Tcp.Server.t io
 
-  val ssl_connect : Ssl.config -> Reader.t -> Writer.t ->
-    (Reader.t * Writer.t) Deferred.t
+  module Conduit_async_ssl : sig
+    module Ssl_config = Ssl
 
-  val ssl_listen
-    : ?version:ssl_version
-    -> ?ca_file:string
-    -> ?ca_path:string
-    -> crt_file:string
-    -> key_file:string
-    -> Reader.t
-    -> Writer.t
-    -> (Reader.t * Writer.t) Deferred.t
+    val ssl_connect : Ssl.config -> Reader.t -> Writer.t ->
+      (Reader.t * Writer.t) Deferred.t
+
+    val ssl_listen
+      : ?version:ssl_version
+      -> ?ca_file:string
+      -> ?ca_path:string
+      -> crt_file:string
+      -> key_file:string
+      -> Reader.t
+      -> Writer.t
+      -> (Reader.t * Writer.t) Deferred.t
+  end
 end
 
 module type V2 = sig

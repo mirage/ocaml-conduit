@@ -136,5 +136,8 @@ let serve
     ?buffer_age_limit ~on_handler_error
     where_to_listen (handle_client handle_request)
 
-let ssl_connect = Ssl.connect
-let ssl_listen = Ssl.listen
+module Conduit_async_ssl = struct
+  module Ssl_config = Ssl
+  let ssl_connect = Ssl.connect
+  let ssl_listen = Ssl.listen
+end

@@ -1,14 +1,21 @@
 (jbuild_version 1)
+
 (library
  ((name        conduit_async)
   (public_name conduit-async)
-  (wrapped false)
-  (modules (conduit_async conduit_async_ssl))
-  (libraries (conduit async 
-    (select conduit_async_ssl.ml from
-     (async_ssl  -> conduit_async_ssl_real.ml)
-     (!async_ssl -> conduit_async_ssl_dummy.ml))
-    (select conduit_async_ssl.mli from
-     (async_ssl  -> conduit_async_ssl_real.mli)
-     (!async_ssl -> conduit_async_ssl_dummy.mli))
-  ))))
+  (modules (private_ssl v1 v2 s))
+  (libraries
+   (conduit async
+
+    (select private_ssl.ml from
+     (async_ssl  -> private_ssl_real.ml)
+     (!async_ssl -> private_ssl_dummy.ml))
+
+    (select v1.mli from
+     (async_ssl  -> v1_real.mli)
+     (!async_ssl -> v1_dummy.mli))
+
+    (select v2.mli from
+     (async_ssl  -> v2_real.mli)
+     (!async_ssl -> v2_dummy.mli))
+ ))))

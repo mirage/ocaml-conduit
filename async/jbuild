@@ -4,6 +4,7 @@
  ((name        conduit_async)
   (public_name conduit-async)
   (modules (private_ssl v1 v2 s))
+  (preprocess (pps (ppx_sexp_conv)))
   (libraries
    (conduit async
 

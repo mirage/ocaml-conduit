@@ -13,7 +13,8 @@ build: [
 ]
 depends: [
   "jbuilder" {build & >="1.0+beta9"}
-  "ppx_sexp_conv" {build}
+  "core"
+  "ppx_sexp_conv"
   "sexplib"
   "conduit"
   "async" {>= "v0.10.0"}

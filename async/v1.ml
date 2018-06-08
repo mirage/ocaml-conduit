@@ -2,14 +2,14 @@ open Core
 open Async
 open Private_ssl.V1
 
-type session = Ssl.session
-type ssl_version = Ssl.version
-type ssl_conn = Ssl.connection
+type session = Ssl.session [@@deriving sexp]
+type ssl_version = Ssl.version [@@deriving sexp]
+type ssl_conn = Ssl.connection [@@deriving sexp]
 
 module Ssl = struct
   include Ssl
 
-  type nonrec config     = Config.t
+  type nonrec config     = Config.t [@@deriving sexp]
   let configure          = Config.create
   let verify_certificate = Config.verify_certificate
 end

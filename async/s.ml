@@ -1,12 +1,12 @@
 open Async
 
 module type V1 = sig
-  type session
-  type ssl_conn
-  type ssl_version
+  type session [@@deriving sexp_of]
+  type ssl_conn [@@deriving sexp_of]
+  type ssl_version [@@deriving sexp]
 
   module Ssl : sig
-    type config
+    type config [@@deriving sexp]
 
     val verify_certificate : ssl_conn -> bool Deferred.t
 
@@ -85,16 +85,17 @@ end
 module type V2 = sig
   type allowed_ciphers =
     [ `Only of string list | `Openssl_default | `Secure ]
-  type ssl_version
-  type session
-  type verify_mode
-  type ssl_opt
-  type ssl_conn
+  [@@deriving sexp]
+  type ssl_version [@@deriving sexp]
+  type session [@@deriving sexp_of]
+  type verify_mode [@@deriving sexp_of]
+  type ssl_opt [@@deriving sexp]
+  type ssl_conn [@@deriving sexp_of]
 
 
   module Ssl : sig
     module Config : sig
-      type t
+      type t [@@deriving sexp_of]
 
       val create
         : ?version:ssl_version
@@ -118,7 +119,7 @@ module type V2 = sig
     | `OpenSSL of Ipaddr.t * int * Ssl.Config.t
     | `TCP of Ipaddr.t * int
     | `Unix_domain_socket of string
-  ] [@@deriving sexp]
+  ] [@@deriving sexp_of]
 
   val connect
     : ?interrupt:unit Deferred.t

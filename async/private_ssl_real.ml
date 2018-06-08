@@ -100,9 +100,9 @@ module V1 = struct
       end;
       (app_reader, app_writer)
 
-    type session = Ssl.Session.t
-    type version = Ssl.Version.t
-    type connection = Ssl.Connection.t
+    type session = Ssl.Session.t sexp_opaque [@@deriving sexp]
+    type version = Ssl.Version.t  [@@deriving sexp]
+    type connection = Ssl.Connection.t sexp_opaque [@@deriving sexp]
   end
 end
 
@@ -110,6 +110,8 @@ module V2 = struct
   module Ssl = struct
     type allowed_ciphers =
       [ `Only of string list | `Openssl_default | `Secure ]
+      [@@deriving sexp]
+
     module Config = struct
       type t = {
         version : Ssl.Version.t option;
@@ -121,10 +123,10 @@ module V2 = struct
         ca_path : string option;
         crt_file : string option;
         key_file : string option;
-        session : Ssl.Session.t option;
-        verify_modes:Verify_mode.t list option;
+        session : Ssl.Session.t option sexp_opaque;
+        verify_modes:Verify_mode.t sexp_opaque list option;
         verify : (Ssl.Connection.t -> bool Deferred.t) option;
-      } [@@deriving sexp]
+      } [@@deriving sexp_of]
 
       let verify_certificate = verify_certificate
 
@@ -230,10 +232,10 @@ module V2 = struct
       end;
       (app_reader, app_writer)
 
-    type verify_mode = Ssl.Verify_mode.t
-    type session = Ssl.Session.t
-    type version = Ssl.Version.t
-    type connection = Ssl.Connection.t
-    type opt = Ssl.Opt.t
+    type verify_mode = Ssl.Verify_mode.t [@@deriving sexp_of]
+    type session = Ssl.Session.t sexp_opaque [@@deriving sexp_of]
+    type version = Ssl.Version.t [@@deriving sexp]
+    type connection = Ssl.Connection.t [@@deriving sexp_of]
+    type opt = Ssl.Opt.t [@@deriving sexp]
   end
 end

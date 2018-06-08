@@ -1,7 +1,9 @@
+open Core
+
 module V1 = struct
   module Ssl = struct
     module Config = struct
-      type t = [`Ssl_not_compiled_in]
+      type t = [`Ssl_not_compiled_in] [@@deriving sexp]
 
       let verify_certificate _ =
         failwith "Ssl not available, recompile with Async_ssl"
@@ -16,16 +18,16 @@ module V1 = struct
     let listen ?version:_ ?ca_file:_ ?ca_path:_ ~crt_file:_ ~key_file:_ _ _ =
       failwith "Ssl not available, recompile with Async_ssl"
 
-    type session = [`Ssl_not_compiled_in]
-    type version = [`Ssl_not_compiled_in]
-    type connection = [`Ssl_not_compiled_in]
+    type session = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type version = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type connection = [`Ssl_not_compiled_in] [@@deriving sexp]
   end
 end
 
 module V2 = struct
   module Ssl = struct
     module Config = struct
-      type t = [`Ssl_not_compiled_in]
+      type t = [`Ssl_not_compiled_in] [@@deriving sexp]
 
       let verify_certificate _ =
         failwith "Ssl not available, recompile with Async_ssl"
@@ -53,11 +55,11 @@ module V2 = struct
     let listen ?cfg _r _w =
       failwith "Ssl not available, recompile with Async_ssl"
 
-    type version = [`Ssl_not_compiled_in]
-    type session = [`Ssl_not_compiled_in]
-    type verify = [`Ssl_not_compiled_in]
-    type connection = [`Ssl_not_compiled_in]
-    type verify_mode = [`Ssl_not_compiled_in]
-    type opt = [`Ssl_not_compiled_in]
+    type version = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type session = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type verify = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type connection = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type verify_mode = [`Ssl_not_compiled_in] [@@deriving sexp]
+    type opt = [`Ssl_not_compiled_in] [@@deriving sexp]
   end
 end

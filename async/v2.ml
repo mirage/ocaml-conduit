@@ -6,7 +6,7 @@ type addr = [
   | `OpenSSL of Ipaddr.t * int * Ssl.Config.t
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
-] [@@deriving sexp]
+] [@@deriving sexp_of]
 
 let connect ?interrupt dst =
   match dst with
@@ -103,13 +103,14 @@ let serve
     ?buffer_age_limit ~on_handler_error
     where_to_listen (handle_client handle_request)
 
-type ssl_version = Ssl.version
-type ssl_opt = Ssl.opt
-type ssl_conn = Ssl.connection
+type ssl_version = Ssl.version [@@deriving sexp]
+type ssl_opt = Ssl.opt [@@deriving sexp]
+type ssl_conn = Ssl.connection [@@deriving sexp_of]
 type allowed_ciphers =
   [ `Only of string list | `Openssl_default | `Secure ]
-type verify_mode = Ssl.verify_mode
-type session = Ssl.session
+[@@deriving sexp]
+type verify_mode = Ssl.verify_mode [@@deriving sexp_of]
+type session = Ssl.session [@@deriving sexp_of]
 module Ssl = struct
   module Config = Ssl.Config
 end

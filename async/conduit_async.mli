@@ -20,15 +20,12 @@
 
 open Async
 
-module Ssl = Conduit_async_ssl.Ssl_config
-
 type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
-  | `OpenSSL of string * Ipaddr.t * int
-  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
+  | `OpenSSL of Ipaddr.t * int * Conduit_async_ssl.Ssl_config.t
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
 ] [@@deriving sexp]

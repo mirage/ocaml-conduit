@@ -20,28 +20,33 @@
 open Async
 
 module Ssl_config : sig
-  type config
+  type t
 
   val verify_certificate :
     [`Ssl_not_compiled_in] ->
     bool Deferred.t
 
-  val configure :
+  val create :
     ?version:[`Ssl_not_compiled_in] ->
+    ?options:[`Ssl_not_compiled_in] ->
     ?name:string ->
+    ?hostname:string ->
+    ?allowed_ciphers:[ `Only of string list | `Openssl_default | `Secure ] ->
     ?ca_file:string ->
     ?ca_path:string ->
+    ?crt_file:string ->
+    ?key_file:string ->
     ?session:[`Ssl_not_compiled_in] ->
-    ?verify:([`Ssl_not_compiled_in] -> bool Deferred.t) ->
-    unit ->
-    config
+    ?verify_modes:[`Ssl_not_compiled_in] ->
+    ?verify:[`Ssl_not_compiled_in] ->
+    unit -> t
 end
 
 (** [ssl_connect rd wr] will establish a client TLS/SSL session
     over an existing pair of a [rd] {!Reader.t} and [wd] {!Writer.t}
     Async connections. *)
-val ssl_connect : Ssl_config.config -> Reader.t -> Writer.t ->
-  (Reader.t * Writer.t) Deferred.t
+val ssl_connect :
+  Ssl_config.t -> Reader.t -> Writer.t -> (Reader.t * Writer.t) Deferred.t
 
 (** [ssl_listen ~crt_file ~key_file rd wr] will establish a server
     TLS/SSL session over an existing pair of [rd] {!Reader.t} and
@@ -54,11 +59,4 @@ val ssl_connect : Ssl_config.config -> Reader.t -> Writer.t ->
     the certificates in [ca_file] will be searched before the certificates in
     [ca_path].*)
 val ssl_listen :
-  ?version:[`Ssl_not_compiled_in] ->
-  ?ca_file:string ->
-  ?ca_path:string ->
-  crt_file:string ->
-  key_file:string ->
-  Reader.t ->
-  Writer.t ->
-  (Reader.t * Writer.t) Deferred.t
+  ?cfg:Ssl_config.t -> Reader.t -> Writer.t -> (Reader.t * Writer.t) Deferred.t

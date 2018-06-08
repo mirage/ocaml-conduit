@@ -18,15 +18,12 @@
 open Core
 open Async
 
-module Ssl = Conduit_async_ssl.Ssl_config
-
 type +'a io = 'a Deferred.t
 type ic = Reader.t
 type oc = Writer.t
 
 type addr = [
-  | `OpenSSL of string * Ipaddr.t * int
-  | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
+  | `OpenSSL of Ipaddr.t * int * Conduit_async_ssl.Ssl_config.t
   | `TCP of Ipaddr.t * int
   | `Unix_domain_socket of string
 ] [@@deriving sexp]
@@ -37,17 +34,11 @@ let connect ?interrupt dst =
     let endp = Host_and_port.create ~host:(Ipaddr.to_string ip) ~port in
     Tcp.connect ?interrupt (Tcp.Where_to_connect.of_host_and_port endp)
     >>= fun (_, rd, wr) -> return (rd,wr)
-  | `OpenSSL (_, ip, port) ->
+  | `OpenSSL (ip, port, cfg) ->
     let endp = Host_and_port.create ~host:(Ipaddr.to_string ip) ~port in
     Tcp.connect ?interrupt (Tcp.Where_to_connect.of_host_and_port endp)
     >>= fun (_, rd, wr) ->
-    let config = Conduit_async_ssl.Ssl_config.configure () in
-    Conduit_async_ssl.ssl_connect config rd wr
-  | `OpenSSL_with_config (_, ip, port, config) ->
-    let endp = Host_and_port.create ~host:(Ipaddr.to_string ip) ~port in
-    Tcp.connect ?interrupt (Tcp.Where_to_connect.of_host_and_port endp)
-    >>= fun (_, rd, wr) ->
-    Conduit_async_ssl.ssl_connect config rd wr
+    Conduit_async_ssl.ssl_connect ~cfg rd wr
   | `Unix_domain_socket file ->
     Tcp.connect ?interrupt (Tcp.Where_to_connect.of_file file)
     >>= fun (_, rd, wr) ->
@@ -60,23 +51,12 @@ let with_connection ?interrupt dst f =
     Tcp.with_connection ?interrupt
       (Tcp.Where_to_connect.of_host_and_port endp)
       (fun _ rd wr -> f rd wr)
-  | `OpenSSL (_, ip, port) ->
-    let config = Conduit_async_ssl.Ssl_config.configure () in
+  | `OpenSSL (ip, port, cfg) ->
     let endp = Host_and_port.create ~host:(Ipaddr.to_string ip) ~port in
     Tcp.with_connection ?interrupt
       (Tcp.Where_to_connect.of_host_and_port endp)
       begin fun _ rd wr ->
-        Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
-        Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
-          Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
-        end
-      end
-  | `OpenSSL_with_config (_, ip, port, config) ->
-    let endp = Host_and_port.create ~host:(Ipaddr.to_string ip) ~port in
-    Tcp.with_connection ?interrupt
-      (Tcp.Where_to_connect.of_host_and_port endp)
-      begin fun _ rd wr ->
-        Conduit_async_ssl.ssl_connect config rd wr >>= fun (rd, wr) ->
+        Conduit_async_ssl.ssl_connect ~cfg rd wr >>= fun (rd, wr) ->
         Monitor.protect (fun () -> f rd wr) ~finally:begin fun () ->
           Deferred.all_unit [ Reader.close rd ; Writer.close wr ]
         end
@@ -131,8 +111,9 @@ let serve
           in
           (crt, key, ca_file, ca_path)
       in
-      Conduit_async_ssl.ssl_listen
-        ?ca_file ?ca_path ~crt_file ~key_file rd wr >>= fun (rd,wr) ->
+      let cfg = Conduit_async_ssl.Ssl_config.create
+          ?ca_file ?ca_path ~crt_file ~key_file () in
+      Conduit_async_ssl.ssl_listen cfg rd wr >>= fun (rd,wr) ->
       Monitor.protect
         (fun () -> handle_request sock rd wr)
         ~finally:(fun () ->

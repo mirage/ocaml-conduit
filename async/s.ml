@@ -5,73 +5,75 @@ module type V1 = sig
   type ssl_conn [@@deriving sexp_of]
   type ssl_version [@@deriving sexp]
 
-  module Ssl : sig
-    type config [@@deriving sexp]
+  module Conduit_async : sig
+    module Ssl : sig
+      type config [@@deriving sexp]
 
-    val verify_certificate : ssl_conn -> bool Deferred.t
+      val verify_certificate : ssl_conn -> bool Deferred.t
 
-    val configure
-      : ?version:ssl_version
-      -> ?name:string
-      -> ?ca_file:string
-      -> ?ca_path:string
-      -> ?session:session
-      -> ?verify:(ssl_conn -> bool Deferred.t)
-      -> unit
-      -> config
+      val configure
+        : ?version:ssl_version
+        -> ?name:string
+        -> ?ca_file:string
+        -> ?ca_path:string
+        -> ?session:session
+        -> ?verify:(ssl_conn -> bool Deferred.t)
+        -> unit
+        -> config
+    end
+
+    type +'a io = 'a Deferred.t
+    type ic = Reader.t
+    type oc = Writer.t
+
+    type addr = [
+      | `OpenSSL of string * Ipaddr.t * int
+      | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
+      | `TCP of Ipaddr.t * int
+      | `Unix_domain_socket of string
+    ] [@@deriving sexp]
+
+    val connect : ?interrupt:unit io -> addr -> (ic * oc) io
+    val with_connection : ?interrupt:unit io -> addr -> (ic -> oc -> unit io) -> unit io
+
+    type trust_chain =
+      [ `Ca_file of string
+      | `Ca_path of string
+      | `Search_file_first_then_path of
+          [ `File of string ] *
+          [ `Path of string ]
+      ] [@@deriving sexp]
+
+    type openssl =
+      [ `OpenSSL of
+          [ `Crt_file_path of string ] *
+          [ `Key_file_path of string ]
+      ] [@@deriving sexp]
+
+    type server = [
+      | openssl
+      | `TCP
+      | `OpenSSL_with_trust_chain of
+          (openssl * trust_chain)
+    ] [@@deriving sexp]
+
+    val serve :
+      ?max_connections:int ->
+      ?backlog:int ->
+      ?buffer_age_limit:Writer.buffer_age_limit ->
+      on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
+                       | `Ignore
+                       | `Raise ] ->
+      server ->
+      ('a, 'b) Tcp.Where_to_listen.t ->
+      ('a -> ic -> oc -> unit io) ->
+      ('a, 'b) Tcp.Server.t io
   end
 
-  type +'a io = 'a Deferred.t
-  type ic = Reader.t
-  type oc = Writer.t
-
-  type addr = [
-    | `OpenSSL of string * Ipaddr.t * int
-    | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
-    | `TCP of Ipaddr.t * int
-    | `Unix_domain_socket of string
-  ] [@@deriving sexp]
-
-  val connect : ?interrupt:unit io -> addr -> (ic * oc) io
-  val with_connection : ?interrupt:unit io -> addr -> (ic -> oc -> unit io) -> unit io
-
-  type trust_chain =
-    [ `Ca_file of string
-    | `Ca_path of string
-    | `Search_file_first_then_path of
-        [ `File of string ] *
-        [ `Path of string ]
-    ] [@@deriving sexp]
-
-  type openssl =
-    [ `OpenSSL of
-        [ `Crt_file_path of string ] *
-        [ `Key_file_path of string ]
-    ] [@@deriving sexp]
-
-  type server = [
-    | openssl
-    | `TCP
-    | `OpenSSL_with_trust_chain of
-        (openssl * trust_chain)
-  ] [@@deriving sexp]
-
-  val serve :
-    ?max_connections:int ->
-    ?backlog:int ->
-    ?buffer_age_limit:Writer.buffer_age_limit ->
-    on_handler_error:[ `Call of ([< Socket.Address.t ] as 'a) -> exn -> unit
-                     | `Ignore
-                     | `Raise ] ->
-    server ->
-    ('a, 'b) Tcp.Where_to_listen.t ->
-    ('a -> ic -> oc -> unit io) ->
-    ('a, 'b) Tcp.Server.t io
-
   module Conduit_async_ssl : sig
-    module Ssl_config = Ssl
+    module Ssl_config = Conduit_async.Ssl
 
-    val ssl_connect : Ssl.config -> Reader.t -> Writer.t ->
+    val ssl_connect : Conduit_async.Ssl.config -> Reader.t -> Writer.t ->
       (Reader.t * Writer.t) Deferred.t
 
     val ssl_listen

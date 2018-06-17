@@ -3,7 +3,7 @@
 (library
  ((name        conduit_async)
   (public_name conduit-async)
-  (modules (private_ssl v1 v2 s))
+  (modules (conduit_async private_ssl v1 v2 s))
   (preprocess (pps (ppx_sexp_conv)))
   (libraries
    (conduit async
@@ -18,5 +18,4 @@
 
     (select v2.mli from
      (async_ssl  -> v2_real.mli)
-     (!async_ssl -> v2_dummy.mli))
- ))))
+     (!async_ssl -> v2_dummy.mli))))))

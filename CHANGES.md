@@ -1,3 +1,10 @@
+## v.1.2.0 (2018-08-06)
+
+* Correct depopt for conduit-lwt-unix (#260, @dra27)
+* async: provide all `Async_ssl` options at config (#263, @vbmithr)
+* async: add a V2 module for a new versioned API (#265, @rgrinberg)
+* lwt-unix: do not link with tls.lwt on windows (#267, @samoht)
+
 ## v1.1.0 (2018-03-22)
 
 * Implement SNI (Server Name Indication) for SSL backend (#255 by @vouillon)

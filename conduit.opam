@@ -6,6 +6,7 @@ dev-repo:     "https://github.com/mirage/ocaml-conduit.git"
 bug-reports:  "https://github.com/mirage/ocaml-conduit/issues"
 tags:         "org:mirage"
 license:      "ISC"
+doc:          "https://mirage.github.io/ocaml-conduit/"
 
 build: [
   ["jbuilder" "subst" "-n" name] {pinned}

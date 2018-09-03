@@ -1,4 +1,4 @@
-## v.1.2.0 (2018-08-06)
+## v1.2.0 (2018-08-06)
 
 * Correct depopt for conduit-lwt-unix (#260, @dra27)
 * async: provide all `Async_ssl` options at config (#263, @vbmithr)

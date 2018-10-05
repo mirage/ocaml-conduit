@@ -93,7 +93,7 @@ let serve
       in
       let cfg = Ssl.Config.create
           ?ca_file ?ca_path ~crt_file ~key_file () in
-      Ssl.listen ~cfg rd wr >>= fun (rd,wr) ->
+      Ssl.listen cfg rd wr >>= fun (rd,wr) ->
       Monitor.protect
         (fun () -> handle_request sock rd wr)
         ~finally:(fun () ->

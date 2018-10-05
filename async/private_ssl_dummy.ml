@@ -52,7 +52,7 @@ module V2 = struct
     let connect ?cfg:_ _r _w =
       failwith "Ssl not available, recompile with Async_ssl"
 
-    let listen ?cfg:_ _r _w =
+    let listen _ _r _w =
       failwith "Ssl not available, recompile with Async_ssl"
 
     type version = [`Ssl_not_compiled_in] [@@deriving sexp]

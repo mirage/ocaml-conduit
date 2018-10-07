@@ -8,12 +8,12 @@ tags:         "org:mirage"
 license:      "ISC"
 
 build: [
-  ["jbuilder" "subst" "-n" name] {pinned}
-  ["jbuilder" "build" "-p" name "-j" jobs]
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
 ]
 depends: [
+  "dune" {build}
   "base-unix"
-  "jbuilder" {build & >="1.0+beta9"}
   "ppx_sexp_conv"
   "sexplib"
   "conduit"

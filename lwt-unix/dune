@@ -21,13 +21,13 @@ let v ~launchd ~ssl ~tls () =
 (rule (copy %s.mli conduit_lwt_tls.mli))
 
 (library
- ((name        conduit_lwt_unix)
+  (name        conduit_lwt_unix)
   (public_name conduit-lwt-unix)
-  (preprocess (pps (ppx_sexp_conv)))
-  (wrapped false)
-  (modules (resolver_lwt_unix conduit_lwt_unix conduit_lwt_server
-           conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd))
-  (libraries (conduit-lwt lwt.unix uri.services ipaddr.unix logs %s%s%s))))
+  (preprocess  (pps ppx_sexp_conv))
+  (wrapped     false)
+  (modules     resolver_lwt_unix conduit_lwt_unix conduit_lwt_server
+               conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd)
+  (libraries   conduit-lwt lwt.unix uri.services ipaddr.unix logs %s%s%s))
 |} launchd ssl tls ssl tls launchd_d ssl_d tls_d
 
 let main () =

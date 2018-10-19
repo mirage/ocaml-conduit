@@ -46,7 +46,7 @@ module type Handler = sig
 
 end
 
-(** {1 TCP} *)
+(** {2 TCP} *)
 
 (** The type for client connections. *)
 
@@ -56,7 +56,7 @@ and tcp_server  = [ `TCP of int ]                          (** listening port *)
 type 'a stackv4
 val stackv4: (module Mirage_stack_lwt.V4 with type t = 'a) -> 'a stackv4
 
-(** {1 VCHAN} *)
+(** {2 VCHAN} *)
 
 type vchan_client = [
   | `Vchan of [
@@ -79,7 +79,7 @@ type xs
 val vchan: (module VCHAN) -> vchan
 val xs: (module XS) -> xs
 
-(** {1 TLS} *)
+(** {2 TLS} *)
 
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
@@ -130,9 +130,8 @@ end
 
 include S
 
+(** {2 Context for MirageOS conduit resolvers} *)
 module Context (T: Mirage_time_lwt.S) (S: Mirage_stack_lwt.V4): sig
-
-  (** {1 Context for MirageOS conduit resolvers} *)
 
   type t = Resolver_lwt.t * conduit
   (** The type for contexts of conduit resolvers. *)

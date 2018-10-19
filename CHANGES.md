@@ -4,6 +4,7 @@
 * Switch build to dune from jbuilder.
 * Depend on more precise versions of `mirage-types` instead
   of just the generic package.
+* Fix ocamldoc headings to work with latest odoc (level 2 not 1).
 
 ## v1.2.0 (2018-08-06)
 

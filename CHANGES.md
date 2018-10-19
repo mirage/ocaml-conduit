@@ -1,3 +1,10 @@
+## v1.3.0 (2018-10-19)
+
+* Mark `ppx_sexp_conv` as not just a build dependency.
+* Switch build to dune from jbuilder.
+* Depend on more precise versions of `mirage-types` instead
+  of just the generic package.
+
 ## v1.2.0 (2018-08-06)
 
 * Correct depopt for conduit-lwt-unix (#260, @dra27)

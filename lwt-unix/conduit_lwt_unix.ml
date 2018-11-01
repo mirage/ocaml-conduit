@@ -252,7 +252,7 @@ let sockaddr_on_tcp_port ctx port =
 
 let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
                        ~pass ~port callback =
-  let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+  let sockaddr, _ = sockaddr_on_tcp_port ctx port in
   let password =
     match pass with
     | `No_password -> None
@@ -260,18 +260,18 @@ let serve_with_openssl ?timeout ?stop ~ctx ~certfile ~keyfile
   in
   Conduit_lwt_unix_ssl.Server.init
     ?password ~certfile ~keyfile ?timeout ?stop sockaddr
-    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
+    (fun addr fd ic oc -> callback (flow_of_fd fd addr) ic oc)
 
 let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile
                           ~pass ~port callback =
-  let sockaddr, ip = sockaddr_on_tcp_port ctx port in
+  let sockaddr, _ = sockaddr_on_tcp_port ctx port in
   (match pass with
     | `No_password -> Lwt.return ()
     | `Password _ -> Lwt.fail_with "OCaml-TLS cannot handle encrypted pem files"
   ) >>= fun () ->
   Conduit_lwt_tls.Server.init
     ~certfile ~keyfile ?timeout ?stop sockaddr
-    (fun fd ic oc -> callback (TCP {fd;ip;port}) ic oc)
+    (fun addr fd ic oc -> callback (flow_of_fd fd addr) ic oc)
 
 let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile
     ~pass ~port callback =

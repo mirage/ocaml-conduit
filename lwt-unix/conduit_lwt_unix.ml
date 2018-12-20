@@ -187,7 +187,9 @@ module Sockaddr_server = struct
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
+    Lwt.finalize
+      (fun () -> Lwt.pick events)
+      (fun () -> Conduit_lwt_server.close (ic,oc))
 
   let init ~on ?stop ?backlog ?timeout callback =
     (match on with

@@ -68,7 +68,7 @@ module type Handler = sig
   val listen: t -> server -> callback -> unit Lwt.t
 end
 
-type tcp_client = [ `TCP of Ipaddr.t * int ] [@@deriving sexp]
+type tcp_client = [ `TCP of Ipaddr_sexp.t * int ] [@@deriving sexp]
 type tcp_server = [ `TCP of int ] [@@deriving sexp]
 
 type 'a stackv4 = (module Mirage_stack_lwt.V4 with type t = 'a)

@@ -27,7 +27,7 @@ let v ~launchd ~ssl ~tls () =
   (wrapped     false)
   (modules     resolver_lwt_unix conduit_lwt_unix conduit_lwt_server
                conduit_lwt_tls conduit_lwt_unix_ssl conduit_lwt_launchd)
-  (libraries   conduit-lwt lwt.unix uri.services ipaddr.unix logs %s%s%s))
+  (libraries   conduit-lwt lwt.unix uri.services ipaddr.sexp ipaddr.unix logs %s%s%s))
 |} launchd ssl tls ssl tls launchd_d ssl_d tls_d
 
 let main () =

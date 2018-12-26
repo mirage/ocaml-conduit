@@ -5,5 +5,5 @@
   (modules     conduit_mirage resolver_mirage conduit_xenstore)
   (wrapped     false)
   (libraries   conduit conduit-lwt mirage-stack-lwt mirage-time-lwt
-               mirage-flow-lwt mirage-dns
+               mirage-flow-lwt mirage-dns ipaddr.sexp
                vchan tls tls.mirage xenstore.client))

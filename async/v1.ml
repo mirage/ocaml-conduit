@@ -20,9 +20,9 @@ module Conduit_async = struct
   type 'a io = 'a Deferred.t
 
   type addr = [
-    | `OpenSSL of string * Ipaddr.t * int
-    | `OpenSSL_with_config of string * Ipaddr.t * int * Ssl.config
-    | `TCP of Ipaddr.t * int
+    | `OpenSSL of string * Ipaddr_sexp.t * int
+    | `OpenSSL_with_config of string * Ipaddr_sexp.t * int * Ssl.config
+    | `TCP of Ipaddr_sexp.t * int
     | `Unix_domain_socket of string
   ] [@@deriving sexp]
 

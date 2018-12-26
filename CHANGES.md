@@ -1,3 +1,7 @@
+## dev
+
+* Use Ipaddr 3.0.0+ interfaces.
+
 ## v1.3.0 (2018-10-19)
 
 * Mark `ppx_sexp_conv` as not just a build dependency.

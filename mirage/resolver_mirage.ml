@@ -28,8 +28,8 @@ let get_host uri =
   | None -> "localhost"
   | Some host ->
       match Ipaddr.of_string host with
-      | Some ip -> Ipaddr.to_string ip
-      | None -> host
+      | Ok ip -> Ipaddr.to_string ip
+      | Error _ -> host
 
 let get_port service uri =
   match Uri.port uri with
@@ -105,8 +105,8 @@ module Make(DNS:Dns_resolver_mirage.S) = struct
     let host = get_host uri in
     let port = get_port service uri in
     (match Ipaddr.of_string host with
-    | None -> DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
-    | Some addr -> Lwt.return [addr]) >>= fun res ->
+    | Error _ -> DNS.gethostbyname ~server:ns ~dns_port:ns_port dns host
+    | Ok addr -> Lwt.return [addr]) >>= fun res ->
     List.filter (function Ipaddr.V4 _ -> true | _ -> false) res
     |> function
     | [] -> Lwt.return (`Unknown ("name resolution failed"))

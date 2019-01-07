@@ -3,8 +3,8 @@ open Async
 open Private_ssl.V2
 
 type addr = [
-  | `OpenSSL of Ipaddr.t * int * Ssl.Config.t
-  | `TCP of Ipaddr.t * int
+  | `OpenSSL of Ipaddr_sexp.t * int * Ssl.Config.t
+  | `TCP of Ipaddr_sexp.t * int
   | `Unix_domain_socket of string
 ] [@@deriving sexp_of]
 

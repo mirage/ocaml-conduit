@@ -62,8 +62,8 @@ let get_host uri =
   | None -> "localhost"
   | Some host ->
       match Ipaddr.of_string host with
-      | Some ip -> Ipaddr.to_string ip
-      | None -> host
+      | Ok ip -> Ipaddr.to_string ip
+      | Error _ -> host
 
 let get_port service uri =
   match Uri.port uri with

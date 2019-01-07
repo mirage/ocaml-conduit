@@ -20,7 +20,7 @@ open Sexplib.Std
 (** The resolver will return an [endp], which the Conduit
     backend must interpret to make a connection. *)
 type endp = [
-  | `TCP of Ipaddr.t * int        (** ipaddr and dst port *)
+  | `TCP of Ipaddr_sexp.t * int   (** ipaddr and dst port *)
   | `Unix_domain_socket of string (** unix file path *)
   | `Vchan_direct of int * string        (** domain id, port *)
   | `Vchan_domain_socket of string * string

@@ -1,3 +1,5 @@
+{1 Introduction}
+
 The {!Conduit} library abstracts the concerns of establishing connections to
 peers that may be running within the same host (e.g. in another virtual
 machine) or on a remote host via TCP.  It consists of:

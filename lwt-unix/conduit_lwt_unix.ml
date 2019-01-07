@@ -57,7 +57,7 @@ type oc = Lwt_io.output_channel
 
 type client_tls_config =
   [ `Hostname of string ] *
-  [ `IP of Ipaddr.t ] *
+  [ `IP of Ipaddr_sexp.t ] *
   [ `Port of int ]
 [@@deriving sexp]
 
@@ -65,7 +65,7 @@ type client = [
   | `TLS of client_tls_config
   | `TLS_native of client_tls_config
   | `OpenSSL of client_tls_config
-  | `TCP of [ `IP of Ipaddr.t ] * [`Port of int ]
+  | `TCP of [ `IP of Ipaddr_sexp.t ] * [`Port of int ]
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of [ `Domid of int ] * [ `Port of string ]
   | `Vchan_domain_socket of [ `Domain_name of string ] * [ `Port of string ]
@@ -121,7 +121,7 @@ let sexp_of_ctx ctx =
 
 type tcp_flow = {
   fd: Lwt_unix.file_descr sexp_opaque;
-  ip: Ipaddr.t;
+  ip: Ipaddr_sexp.t;
   port: int;
 } [@@deriving sexp]
 

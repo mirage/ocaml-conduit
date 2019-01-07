@@ -1,4 +1,4 @@
-## v1.4.0 (2019-01-07)
+## v1.4.0 (2019-01-07)
 
 * Use Ipaddr 3.0.0+ interfaces (#284 by @avsm).
 * Update opam metadata files to the opam 2.0 format (#284 by @avsm)

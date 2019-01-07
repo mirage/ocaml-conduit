@@ -2,6 +2,7 @@
 
 * Use Ipaddr 3.0.0+ interfaces (#284 by @avsm).
 * Update opam metadata files to the opam 2.0 format (#284 by @avsm)
+* Hook in an introduction ocamldoc page to the `conduit` odoc (#284 by @avsm)
 
 ## v1.3.0 (2018-10-19)
 

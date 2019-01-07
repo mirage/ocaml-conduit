@@ -1,4 +1,4 @@
-.PHONY: build clean test
+.PHONY: build clean test doc
 
 build:
 	dune build
@@ -8,3 +8,6 @@ test:
 
 clean:
 	dune clean
+
+doc:
+	dune build @doc

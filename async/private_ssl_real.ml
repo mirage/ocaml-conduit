@@ -8,6 +8,23 @@ let verify_certificate connection =
   | Some (Error _) -> return false
   | Some (Ok _) -> return true
 
+(* One needs to be careful around Async Readers and Writers that share the same underyling
+   file descriptor, which is something that happens when they're used for sockets.
+
+   Closing the Reader before the Writer will cause the Writer to throw and complain about
+   its underlying file descriptor being closed. This is why instead of using Reader.pipe
+   directly below, we write out an equivalent version which will first close the Writer
+   before closing the Reader once the input pipe is fully consumed. *)
+let reader_writer_pipe r w =
+  let reader_pipe_r, reader_pipe_w = Pipe.create () in
+  upon (Reader.transfer r reader_pipe_w) (fun () ->
+    Writer.close w
+    >>> fun () ->
+    Reader.close r
+    >>> fun () ->
+    Pipe.close reader_pipe_w);
+  reader_pipe_r, Writer.pipe w
+
 module V1 = struct
   module Ssl = struct
     module Config = struct
@@ -28,8 +45,7 @@ module V1 = struct
 
     let connect cfg r w =
       let {Config.version; name; ca_file; ca_path; session; verify} = cfg in
-      let net_to_ssl = Reader.pipe r in
-      let ssl_to_net = Writer.pipe w in
+      let net_to_ssl, ssl_to_net = reader_writer_pipe r w in
       let app_to_ssl, app_wr = Pipe.create () in
       let app_rd, ssl_to_app = Pipe.create () in
       let verify_connection = match verify with
@@ -70,8 +86,7 @@ module V1 = struct
         (app_reader, app_writer)
 
     let listen ?(version=Ssl.Version.Tlsv1_2) ?ca_file ?ca_path ~crt_file ~key_file r w =
-      let net_to_ssl = Reader.pipe r in
-      let ssl_to_net = Writer.pipe w in
+      let net_to_ssl, ssl_to_net = reader_writer_pipe r w in
       let app_to_ssl, app_wr = Pipe.create () in
       let app_rd, ssl_to_app = Pipe.create () in
       Ssl.server
@@ -143,8 +158,7 @@ module V2 = struct
       let { Config.version; options; name; hostname;
             allowed_ciphers; ca_file; ca_path;
             crt_file; key_file; session; verify_modes; verify } = cfg in
-      let net_to_ssl = Reader.pipe r in
-      let ssl_to_net = Writer.pipe w in
+      let net_to_ssl, ssl_to_net = reader_writer_pipe r w in
       let app_to_ssl, app_wr = Pipe.create () in
       let app_rd, ssl_to_app = Pipe.create () in
       let verify_connection = match verify with
@@ -198,8 +212,7 @@ module V2 = struct
         | Some crt_file, Some key_file -> crt_file, key_file
         | _ -> invalid_arg "Conduit_async_ssl.ssl_listen: crt_file and \
                             key_file must be specified in cfg." in
-      let net_to_ssl = Reader.pipe r in
-      let ssl_to_net = Writer.pipe w in
+      let net_to_ssl, ssl_to_net = reader_writer_pipe r w in
       let app_to_ssl, app_wr = Pipe.create () in
       let app_rd, ssl_to_app = Pipe.create () in
       Ssl.server

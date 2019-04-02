@@ -15,7 +15,6 @@ depends: [
   "sexplib"
   "astring"
   "uri"
-  "result"
   "logs" {>= "0.5.0"}
   "ipaddr" {>= "3.0.0"}
 ]

@@ -21,5 +21,5 @@ let activate fn name =
   Lwt_launchd.activate_socket name
   >>= fun sockets ->
   match (Launchd.error_to_msg sockets) with
-  | Result.Ok sockets -> Lwt_list.iter_p fn sockets
-  | Result.Error (`Msg m) -> Lwt.fail_with m
+  | Ok sockets -> Lwt_list.iter_p fn sockets
+  | Error (`Msg m) -> Lwt.fail_with m

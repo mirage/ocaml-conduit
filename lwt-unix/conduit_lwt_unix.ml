@@ -160,6 +160,13 @@ let init ?src ?(tls_server_key=`None) () =
     | {ai_addr;_}::_ -> Lwt.return { src=Some ai_addr; tls_server_key }
     | [] -> Lwt.fail_with "Invalid conduit source address specified"
 
+let safe_close fd =
+  Lwt.catch
+    (fun () -> Lwt_unix.close fd)
+    (function
+      | Unix.Unix_error (EBADF, _, _) -> Lwt.return_unit
+      | exn -> Lwt.fail exn)
+
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
@@ -168,8 +175,10 @@ module Sockaddr_client = struct
          | None -> Lwt.return_unit
          | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
-        let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
-        let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
+        let ic = Lwt_io.of_fd
+            ~close:(fun () -> safe_close fd) ~mode:Lwt_io.input fd in
+        let oc = Lwt_io.of_fd
+            ~close:(fun () -> safe_close fd) ~mode:Lwt_io.output fd in
         Lwt.return (fd, ic, oc)
       )
 end
@@ -181,8 +190,10 @@ module Sockaddr_server = struct
      with
      (* This is expected for Unix domain sockets *)
      | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
-    let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
-    let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
+    let ic = Lwt_io.of_fd
+        ~close:(fun () -> safe_close client) ~mode:Lwt_io.input client in
+    let oc = Lwt_io.of_fd
+        ~close:(fun () -> safe_close client) ~mode:Lwt_io.output client in
     let c = callback (flow_of_fd client peeraddr) ic oc in
     let events = match timeout with
       |None -> [c]

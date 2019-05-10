@@ -167,9 +167,7 @@ module Sockaddr_client = struct
         (match src with
          | None -> Lwt.return_unit
          | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
-        Lwt_unix.connect fd sa >>= fun () ->
-        let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
-        let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
+        Lwt_io.open_connection ~fd sa >>= fun (ic, oc) ->
         Lwt.return (fd, ic, oc)
       )
 end
@@ -181,8 +179,7 @@ module Sockaddr_server = struct
      with
      (* This is expected for Unix domain sockets *)
      | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
-    let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
-    let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
+    Lwt_io.open_connection ~fd:client peeraddr >>= fun (ic, oc) ->
     let c = callback (flow_of_fd client peeraddr) ic oc in
     let events = match timeout with
       |None -> [c]

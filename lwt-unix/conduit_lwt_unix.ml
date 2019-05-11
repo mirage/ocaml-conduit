@@ -173,17 +173,33 @@ module Sockaddr_client = struct
 end
 
 module Sockaddr_server = struct
+
+  let shutdown_no_exn fd mode =
+    try Lwt_unix.shutdown fd mode
+    with Unix.Unix_error (Unix.ENOTCONN, _, _) -> ()
+
+  let set_sockopts_no_exn fd =
+    try Lwt_unix.setsockopt fd Lwt_unix.TCP_NODELAY true
+    with (* This is expected for Unix domain sockets *)
+    | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ()
+
   let process_accept ?timeout callback (client,peeraddr) =
-    (try
-       Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
-     with
-     (* This is expected for Unix domain sockets *)
-     | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
-    (* We only want to close the client fd once *)
-    let close_fd = lazy (Lwt_unix.close client) in
-    let close () = Lazy.force close_fd in
-    let ic = Lwt_io.of_fd ~close ~mode:Lwt_io.input client in
-    let oc = Lwt_io.of_fd ~close ~mode:Lwt_io.output client in
+    set_sockopts_no_exn client;
+    let fd_state = ref `Open in
+    let close_in () =
+      match !fd_state with
+      | `Open -> fd_state := `In_closed; shutdown_no_exn client Unix.SHUTDOWN_RECEIVE; Lwt.return_unit
+      | `Out_closed -> fd_state := `Closed; Lwt_unix.close client
+      | `In_closed (* repeating on a closed channel is a noop in Lwt_io *)
+      | `Closed -> Lwt.return_unit  in
+     let close_out () =
+      match !fd_state with
+      | `Open -> fd_state := `Out_closed; shutdown_no_exn client Unix.SHUTDOWN_SEND; Lwt.return_unit
+      | `In_closed -> fd_state := `Closed; Lwt_unix.close client
+      | `Out_closed (* repeating on a closed channel is a noop in Lwt_io *)
+      | `Closed -> Lwt.return_unit  in
+    let ic = Lwt_io.of_fd ~close:close_in  ~mode:Lwt_io.input client in
+    let oc = Lwt_io.of_fd ~close:close_out ~mode:Lwt_io.output client in
     let c = callback (flow_of_fd client peeraddr) ic oc in
     let events = match timeout with
       |None -> [c]

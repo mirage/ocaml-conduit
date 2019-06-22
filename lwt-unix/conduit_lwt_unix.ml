@@ -401,6 +401,7 @@ let endp_to_client ~ctx:_ (endp:Conduit.endp) : client Lwt.t =
                        host (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp)))
     end
   | `Unknown err -> Lwt.fail_with ("resolution failed: " ^ err)
+  | _ -> assert false
 
 let endp_to_server ~ctx (endp:Conduit.endp) =
   match endp with
@@ -417,3 +418,4 @@ let endp_to_server ~ctx (endp:Conduit.endp) =
   | `Vchan_domain_socket _ as mode -> Lwt.return mode
   | `TLS (_host, _) -> Lwt.fail_with "TLS to non-TCP currently unsupported"
   | `Unknown err -> Lwt.fail_with ("resolution failed: " ^ err)
+  | _ -> assert false

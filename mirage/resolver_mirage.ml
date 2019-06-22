@@ -100,7 +100,12 @@ module Make_with_stack (R: Mirage_random.S) (T : Mirage_time.S) (C: Mirage_clock
            | Error (`Msg msg) -> Lwt.return (Error (`Msg msg))
            | Ok host -> DNS.gethostbyname dns host) >|= function
       | Error (`Msg err) -> `Unknown ("name resolution failed: " ^ err)
-      | Ok addr -> `TCP (Ipaddr.V4 addr, port)
+      | Ok addr ->
+        match service.Resolver.name with
+        | "ssh" ->
+          let user = Uri.user uri in
+          `SSH (Ipaddr.V4 addr, port, user)
+        | _ -> `TCP (Ipaddr.V4 addr, port)
 
     let register ?ns ?(ns_port = 53) ?stack res =
       begin match stack with

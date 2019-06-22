@@ -25,6 +25,7 @@ depends: [
   "tls-mirage" {>= "0.11.0"}
   "ipaddr" {>= "3.0.0"}
   "ipaddr-sexp"
+  "awa-mirage"
 ]
 conflicts: [
   "mirage-conduit"

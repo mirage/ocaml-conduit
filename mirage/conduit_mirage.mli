@@ -79,18 +79,21 @@ type xs
 val vchan: (module VCHAN) -> vchan
 val xs: (module XS) -> xs
 
+type ssh_client = [ `SSH of Ipaddr_sexp.t * int * string * string ]
+type ssh_server = [ `SSH of unit ]
+
 (** {2 TLS} *)
 
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
 
-type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
+type client = [ tcp_client | vchan_client | client tls_client | ssh_client ] [@@deriving sexp]
 (** The type for client configuration values. *)
 
-type server = [ tcp_server | vchan_server | server tls_server ] [@@deriving sexp]
+type server = [ tcp_server | vchan_server | server tls_server | ssh_server ] [@@deriving sexp]
 (** The type for server configuration values. *)
 
-val client: Conduit.endp -> client Lwt.t
+val client: ?config:string -> Conduit.endp -> client Lwt.t
 (** Resolve a conduit endpoint into a client configuration. *)
 
 val server: Conduit.endp -> server Lwt.t
@@ -116,6 +119,9 @@ module type S = sig
 
   val with_tls: t -> t Lwt.t
   (** Extend a conduit with an implementation for TLS. *)
+
+  val with_ssh: t -> (module Mirage_clock.MCLOCK) -> t Lwt.t
+  (** Extend a conduit with an implementation for SSH. *)
 
   val with_vchan: t -> xs -> vchan -> string -> t Lwt.t
   (** Extend a conduit with an implementation for VCHAN. *)

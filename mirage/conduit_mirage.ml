@@ -24,6 +24,7 @@ let (>|=) = Lwt.(>|=)
 let fail fmt = Fmt.kstrf (fun s -> Lwt.fail (Failure s)) fmt
 let err_tcp_not_supported = fail "%s: TCP is not supported"
 let err_tls_not_supported = fail "%s: TLS is not supported"
+let err_ssh_not_supported = fail "%s: SSH is not supported"
 let err_domain_sockets_not_supported =
   fail "%s: Unix domain sockets are not supported inside Unikernels"
 let err_vchan_not_supported = fail "%s: VCHAN is not supported"
@@ -97,8 +98,11 @@ let xs x = x
 type 'a tls_client = [ `TLS of Tls.Config.client * 'a ] [@@deriving sexp]
 type 'a tls_server = [ `TLS of Tls.Config.server * 'a ] [@@deriving sexp]
 
-type client = [ tcp_client | vchan_client | client tls_client ] [@@deriving sexp]
-type server = [ tcp_server | vchan_server | server tls_server ] [@@deriving sexp]
+type ssh_client = [ `SSH of Ipaddr_sexp.t * int * string * string ] [@@deriving sexp]
+type ssh_server = [ `SSH of unit ] [@@deriving sexp]
+
+type client = [ tcp_client | vchan_client | client tls_client | ssh_client ] [@@deriving sexp]
+type server = [ tcp_server | vchan_server | server tls_server | ssh_server  ] [@@deriving sexp]
 
 type tls_client' = client tls_client [@@deriving sexp]
 type tls_server' = server tls_server [@@deriving sexp]
@@ -113,10 +117,11 @@ let tcp_server _ p = Lwt.return (`TCP p)
 type t = {
   tcp  : (tcp_client  , tcp_server  ) handler option;
   tls  : (tls_client' , tls_server' ) handler option;
+  ssh  : (ssh_client  , ssh_server  ) handler option;
   vchan: (vchan_client, vchan_server) handler option;
 }
 
-let empty = { tcp = None; tls = None; vchan = None }
+let empty = { tcp = None; tls = None; ssh = None; vchan = None }
 
 let connect t (c:client) = match c with
   | `TCP _ as x ->
@@ -132,6 +137,11 @@ let connect t (c:client) = match c with
   | `TLS _ as x ->
     begin match t.tls with
       | None -> err_tls_not_supported "connect"
+      | Some (S ((module S), t)) -> S.connect t x
+    end
+  | `SSH _ as x ->
+    begin match t.ssh with
+      | None -> err_ssh_not_supported "connect"
       | Some (S ((module S), t)) -> S.connect t x
     end
 
@@ -151,6 +161,7 @@ let listen t (s:server) f = match s with
       | None -> err_tls_not_supported "listen"
       | Some (S ((module S), t)) -> S.listen t x f
     end
+  | `SSH _ -> err_ssh_not_supported "listen"
 
 (******************************************************************************)
 (*                         Implementation of handlers                         *)
@@ -253,6 +264,50 @@ let mk_vchan (module X: XS) (module V: VCHAN) t =
 
 let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
+(* SSH *)
+
+module SSH (M : Mirage_clock.MCLOCK) = struct
+  module SSH = Awa_mirage.Make(Flow)(M)
+  let err_flow m e = fail "%s: %a" m SSH.pp_error e
+  type client = ssh_client [@@deriving sexp]
+  type server = ssh_server [@@deriving sexp]
+
+  type x = t
+  type t = x
+
+  let listen _ _ = assert false
+
+  let connect (t : t) (`SSH (ip, port, user, cfg) : client) =
+    match Astring.String.cuts ~sep:":" cfg with
+    | cmd :: seed :: rt ->
+      let key = Awa.Keys.of_seed seed
+      and req = Awa.Ssh.Exec cmd
+      and authenticator =
+        let data = Astring.String.concat ~sep:":" rt in
+        match Awa.Keys.authenticator_of_string data with
+        | Ok k -> k
+        | Error str -> invalid_arg ("hostkey " ^ str)
+      in
+      connect t (`TCP (ip, port)) >>= fun flow ->
+      (SSH.client_of_flow ~authenticator ~user key req flow >>= function
+        | Error e -> err_flow "connect" e
+        | Ok flow -> Lwt.return (Flow.create (module SSH) flow))
+    | _  -> Lwt.fail_with "invalid ssh configuration"
+end
+
+
+let mk_ssh (module M: Mirage_clock.MCLOCK) t =
+  let module SSH = SSH(M) in
+  S ((module SSH), t)
+
+let with_ssh t x = let x= mk_ssh x t in Lwt.return { t with ssh = Some x }
+
+let ssh_client ?config i p u =
+  match config, u with
+  | None, _ | _, None -> Lwt.fail_with "no ssh config"
+  | Some cfg, Some u ->
+    Lwt.return (`SSH (i, p, u, cfg))
+
 (* TLS *)
 
 let client_of_bytes _ =
@@ -262,7 +317,7 @@ let client_of_bytes _ =
 
 let server_of_bytes str = Tls.Config.server_of_sexp (Sexplib.Sexp.of_string str)
 
-let tls_client c x = Lwt.return (`TLS (client_of_bytes c, x))
+let tls_client ?config _host x = Lwt.return (`TLS (client_of_bytes config, x))
 let tls_server s x = Lwt.return (`TLS (server_of_bytes s, x))
 
 module TLS = struct
@@ -305,17 +360,19 @@ module type S = sig
   end
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
   val with_tls: t -> t Lwt.t
+  val with_ssh: t -> (module Mirage_clock.MCLOCK) -> t Lwt.t
   val with_vchan: t -> xs -> vchan -> string -> t Lwt.t
   val connect: t -> client -> Flow.flow Lwt.t
   val listen: t -> server -> callback -> unit Lwt.t
 end
 
-let rec client (e:Conduit.endp): client Lwt.t = match e with
+let rec client ?config (e:Conduit.endp): client Lwt.t = match e with
   | `TCP (x, y) -> tcp_client x y
   | `Unix_domain_socket _ -> err_domain_sockets_not_supported "client"
   | `Vchan_direct _
   | `Vchan_domain_socket _ as x -> vchan_client x
-  | `TLS (x, y) -> client y >>= fun c -> tls_client x c
+  | `TLS (x, y) -> client y >>= fun c -> tls_client ?config x c
+  | `SSH (x, y, z) -> ssh_client ?config x y z
   | `Unknown s -> err_unknown s
 
 let rec server (e:Conduit.endp): server Lwt.t = match e with
@@ -324,10 +381,10 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `Vchan_direct _
   | `Vchan_domain_socket _ as x -> vchan_server x
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s
+  | `SSH _ -> err_unknown "ssh server"
   | `Unknown s -> err_unknown s
 
 module Context (R: Mirage_random.S) (T : Mirage_time.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4) = struct
-
   type t = Resolver_lwt.t * conduit
 
   module RES = Resolver_mirage.Make_with_stack(R)(T)(C)(S)
@@ -339,6 +396,7 @@ module Context (R: Mirage_random.S) (T : Mirage_time.S) (C: Mirage_clock.MCLOCK)
     let res = Resolver_lwt.init () in
     RES.R.register ~stack res;
     with_tcp conduit stackv4 stack >>= fun conduit ->
+    with_ssh conduit (module C : Mirage_clock.MCLOCK) >>= fun conduit ->
     if tls then
       with_tls conduit >|= fun conduit ->
       res, conduit

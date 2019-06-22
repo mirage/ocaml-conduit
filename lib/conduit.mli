@@ -55,6 +55,7 @@ type endp = [
   | `Vchan_direct of int * string  (** domain id, port *)
   | `Vchan_domain_socket of string * string (** Vchan Xen domain socket *)
   | `TLS of string * endp          (** Wrap in a TLS channel, [hostname,endp] *)
+  | `SSH of Ipaddr.t * int * string option
   | `Unknown of string             (** Failed resolution *)
 ] [@@deriving sexp]
 

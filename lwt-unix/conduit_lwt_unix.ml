@@ -160,6 +160,33 @@ let init ?src ?(tls_server_key=`None) () =
     | {ai_addr;_}::_ -> Lwt.return { src=Some ai_addr; tls_server_key }
     | [] -> Lwt.fail_with "Invalid conduit source address specified"
 
+module Sockaddr_io = struct
+  let shutdown_no_exn fd mode =
+    try Lwt_unix.shutdown fd mode
+    with Unix.Unix_error (Unix.ENOTCONN, _, _) -> ()
+
+  let make_fd_state () =
+    ref `Open
+
+  let make fd =
+    let fd_state = make_fd_state () in
+    let close_in () =
+      match !fd_state with
+      | `Open -> fd_state := `In_closed; shutdown_no_exn fd Unix.SHUTDOWN_RECEIVE; Lwt.return_unit
+      | `Out_closed -> fd_state := `Closed; Lwt_unix.close fd
+      | `In_closed (* repeating on a closed channel is a noop in Lwt_io *)
+      | `Closed -> Lwt.return_unit  in
+    let close_out () =
+      match !fd_state with
+      | `Open -> fd_state := `Out_closed; shutdown_no_exn fd Unix.SHUTDOWN_SEND; Lwt.return_unit
+      | `In_closed -> fd_state := `Closed; Lwt_unix.close fd
+      | `Out_closed (* repeating on a closed channel is a noop in Lwt_io *)
+      | `Closed -> Lwt.return_unit  in
+    let ic = Lwt_io.of_fd ~close:close_in  ~mode:Lwt_io.input fd in
+    let oc = Lwt_io.of_fd ~close:close_out ~mode:Lwt_io.output fd in
+    (ic, oc)
+end
+
 (* Vanilla sockaddr connection *)
 module Sockaddr_client = struct
   let connect ?src sa =
@@ -168,21 +195,21 @@ module Sockaddr_client = struct
          | None -> Lwt.return_unit
          | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
         Lwt_unix.connect fd sa >>= fun () ->
-        let ic = Lwt_io.of_fd ~mode:Lwt_io.input fd in
-        let oc = Lwt_io.of_fd ~mode:Lwt_io.output fd in
+        let ic, oc = Sockaddr_io.make fd in
         Lwt.return (fd, ic, oc)
       )
 end
 
 module Sockaddr_server = struct
+
+  let set_sockopts_no_exn fd =
+    try Lwt_unix.setsockopt fd Lwt_unix.TCP_NODELAY true
+    with (* This is expected for Unix domain sockets *)
+    | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ()
+
   let process_accept ?timeout callback (client,peeraddr) =
-    (try
-       Lwt_unix.setsockopt client Lwt_unix.TCP_NODELAY true
-     with
-     (* This is expected for Unix domain sockets *)
-     | Unix.Unix_error(Unix.EOPNOTSUPP, _, _) -> ());
-    let ic = Lwt_io.of_fd ~mode:Lwt_io.input client in
-    let oc = Lwt_io.of_fd ~mode:Lwt_io.output client in
+    set_sockopts_no_exn client;
+    let ic, oc = Sockaddr_io.make client in
     let c = callback (flow_of_fd client peeraddr) ic oc in
     let events = match timeout with
       |None -> [c]

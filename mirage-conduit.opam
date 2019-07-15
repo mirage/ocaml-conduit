@@ -28,3 +28,8 @@ build: [
   ["dune" "runtest" "-p" name] {with-test}
 ]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
+synopsis: "MirageOS interface to network connections"
+description: """
+The `conduit` library takes care of establishing and listening for 
+TCP and SSL/TLS connections for MirageOS unikernels.
+"""

@@ -95,7 +95,6 @@ type server = [
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string
-  | `Listening_socket of Lwt_unix.file_descr sexp_opaque
 ] [@@deriving sexp]
 
 type tls_server_key = [
@@ -331,7 +330,7 @@ let serve ?backlog ?timeout ?stop
     let sockaddr, _ = sockaddr_on_tcp_port ctx port in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
   | `TCP (`Socket s) ->
-    Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
+    Sockaddr_server.init ~on:(`Socket s) ?backlog ?timeout ?stop callback
   | `Unix_domain_socket (`File path) ->
     let sockaddr = Unix.ADDR_UNIX path in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
@@ -349,8 +348,6 @@ let serve ?backlog ?timeout ?stop
   |`Vchan_direct _ -> Lwt.fail_with "Vchan_direct not implemented"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
-  | `Listening_socket s ->
-    Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
   | `Launchd name ->
     let fn s = Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback in
     Conduit_lwt_launchd.activate fn name

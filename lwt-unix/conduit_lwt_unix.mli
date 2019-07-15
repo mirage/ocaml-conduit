@@ -100,7 +100,6 @@ type server = [
   | `TLS_native of server_tls_config
   | `TCP of tcp_config
   | `Unix_domain_socket of [ `File of string ]
-  | `Listening_socket of Lwt_unix.file_descr
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string

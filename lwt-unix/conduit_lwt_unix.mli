@@ -80,6 +80,7 @@ type server_tls_config =
    - [`Unix_domain_socket (`File path)]: Use UNIX domain sockets to listen on the path.
    - [`Vchan_direct (domid, port)]: Listen for the remote VM on the [domid], [port] tuple.
    - [`Vchan_domain_socket (domain, port_name)]: Use the Vchan name resolution to listen
+   - [`Listening_socket fd]: Use the socket given, useful for inherited systemd sockets.
    - [`Launchd name]: uses MacOS X launchd to start the service, via the name
      of the [Sockets] element within the service description plist file.  See the
      {{:http://mirage.github.io/ocaml-launchd/launchd/}ocaml-launchd} documentation for more.
@@ -90,6 +91,7 @@ type server = [
   | `TLS_native of server_tls_config
   | `TCP of [ `Port of int ]
   | `Unix_domain_socket of [ `File of string ]
+  | `Listening_socket of Lwt_unix.file_descr
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string

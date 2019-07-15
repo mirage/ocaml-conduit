@@ -79,12 +79,18 @@ type server_tls_config =
   [ `Port of int ]
 [@@deriving sexp]
 
+(** Set of ways to create TCP servers *)
+type tcp_config = [
+  | `Port of int
+  | `Socket of Lwt_unix.file_descr sexp_opaque
+] [@@deriving sexp]
+
 (** Set of supported listening mechanisms that are supported by this module. *)
 type server = [
   | `TLS of server_tls_config
   | `OpenSSL of server_tls_config
   | `TLS_native of server_tls_config
-  | `TCP of [ `Port of int ]
+  | `TCP of tcp_config
   | `Unix_domain_socket of [ `File of string ]
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
@@ -324,6 +330,8 @@ let serve ?backlog ?timeout ?stop
   | `TCP (`Port port) ->
     let sockaddr, _ = sockaddr_on_tcp_port ctx port in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback
+  | `TCP (`Socket s) ->
+    Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
   | `Unix_domain_socket (`File path) ->
     let sockaddr = Unix.ADDR_UNIX path in
     Sockaddr_server.init ~on:(`Sockaddr sockaddr) ?backlog ?timeout ?stop callback

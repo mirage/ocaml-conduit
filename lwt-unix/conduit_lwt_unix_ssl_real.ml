@@ -30,7 +30,12 @@ let chans_of_fd sock =
 module Client = struct
   (* SSL TCP connection *)
   let default_ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context
-  let () = Ssl.disable_protocols default_ctx [Ssl.SSLv23]
+  let () =
+    Ssl.disable_protocols default_ctx [Ssl.SSLv23];
+    (* Use default CA certificates *)
+    ignore (Ssl.set_default_verify_paths default_ctx);
+    (* Enable peer verification *)
+    Ssl.set_verify default_ctx [Ssl.Verify_peer] None
 
   let connect ?(ctx=default_ctx) ?src ?hostname sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
@@ -42,8 +47,11 @@ module Client = struct
         begin match hostname with
           | Some host ->
             let s = Lwt_ssl.embed_uninitialized_socket fd ctx in
-            Ssl.set_client_SNI_hostname
-              (Lwt_ssl.ssl_socket_of_uninitialized_socket s) host;
+            let ssl = Lwt_ssl.ssl_socket_of_uninitialized_socket s in
+            Ssl.set_client_SNI_hostname ssl host;
+            (* Enable hostname verification *)
+            Ssl.set_hostflags ssl [Ssl.No_partial_wildcards];
+            Ssl.set_host ssl host;
             Lwt_ssl.ssl_perform_handshake s
           | None ->
             Lwt_ssl.ssl_connect fd ctx

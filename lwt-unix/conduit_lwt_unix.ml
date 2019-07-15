@@ -89,6 +89,7 @@ type server = [
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string
+  | `Listening_socket of Lwt_unix.file_descr sexp_opaque
 ] [@@deriving sexp]
 
 type tls_server_key = [
@@ -214,7 +215,9 @@ module Sockaddr_server = struct
     let events = match timeout with
       |None -> [c]
       |Some t -> [c; (Lwt_unix.sleep (float_of_int t)) ] in
-    Lwt.pick events >>= (fun () -> Conduit_lwt_server.close (ic,oc))
+    Lwt.finalize
+      (fun () -> Lwt.pick events)
+      (fun () -> Conduit_lwt_server.close (ic,oc))
 
   let init ~on ?stop ?backlog ?timeout callback =
     (match on with
@@ -338,6 +341,8 @@ let serve ?backlog ?timeout ?stop
   |`Vchan_direct _ -> Lwt.fail_with "Vchan_direct not implemented"
   | `Vchan_domain_socket _uuid ->
     Lwt.fail_with "Vchan_domain_socket not implemented"
+  | `Listening_socket s ->
+    Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback
   | `Launchd name ->
     let fn s = Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback in
     Conduit_lwt_launchd.activate fn name

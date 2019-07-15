@@ -1,4 +1,17 @@
-## dev
+## v1.5.0
+
+* lwt-unix: Do not close file descriptors more than once, which led to a lot of
+  log spam due to EBADF (#294 @hcarty @avsm)
+* lwt-unix: Always close channels after handling an event (#283 @hcarty)
+* Allow TCP to be established from existing file descriptors
+  (for example, an inherited systemd socket) (#144 @SGrondin #282 @timbertson)
+* async: add `Conduit_async.V3` which provides convenience functions for
+  resolving URIs to addresses (#287 @vbmithr)
+* `Lwt_ssl`: Enable certification validation (#291 @vouillon)
+* `Async_ssl`: fix exception raised when other side disconnects
+  due to sharing underlying fd (#295 @bogdan2412)
+
+## v1.4.0
 
 * Use Ipaddr 3.0.0+ interfaces (#284 by @avsm).
 * Update opam metadata files to the opam 2.0 format (#284 by @avsm)

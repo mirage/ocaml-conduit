@@ -71,6 +71,15 @@ type server_tls_config =
   [ `Port of int ]
 [@@deriving sexp]
 
+(** Set of ways to create TCP servers
+   - [`Port port]: Create a socket listening to provided port.
+   - [`Socket file_descr]: Use the provided file descriptor to create a server.
+*)
+type tcp_config = [
+  | `Port of int
+  | `Socket of Lwt_unix.file_descr sexp_opaque
+] [@@deriving sexp]
+
 (** Set of supported listening mechanisms that are supported by this module. 
    - [`TLS server_tls_config]: Use OCaml-TLS or OpenSSL (depending on CONDUIT_TLS) to connect
      to the given [host], [ip], [port] tuple via TCP.
@@ -89,9 +98,8 @@ type server = [
   | `TLS of server_tls_config
   | `OpenSSL of server_tls_config
   | `TLS_native of server_tls_config
-  | `TCP of [ `Port of int ]
+  | `TCP of tcp_config
   | `Unix_domain_socket of [ `File of string ]
-  | `Listening_socket of Lwt_unix.file_descr
   | `Vchan_direct of int * string
   | `Vchan_domain_socket of string  * string
   | `Launchd of string

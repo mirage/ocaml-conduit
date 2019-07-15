@@ -1,4 +1,4 @@
-## dev
+## v1.5.0
 
 * lwt-unix: Do not close file descriptors more than once, which led to a lot of
   log spam due to EBADF (#294 @hcarty @avsm)

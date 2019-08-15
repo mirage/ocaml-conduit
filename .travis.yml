@@ -9,6 +9,7 @@ env:
    - PINS="conduit:. mirage-conduit:. conduit-async:. conduit-lwt:. conduit-lwt-unix:."
    - TESTS=true
  matrix:
+   - OCAML_VERSION=4.07 PACKAGE=mirage-conduit   DISTRO=alpine
    - OCAML_VERSION=4.07 PACKAGE=conduit-lwt-unix DISTRO=debian-stable   DEPOPTS="ssl tls"
    - OCAML_VERSION=4.06 PACKAGE=conduit-lwt-unix DISTRO=debian-unstable DEPOPTS="ssl tls"
    - OCAML_VERSION=4.05 PACKAGE=conduit-async    DISTRO=debian-unstable DEPOPTS=async_ssl

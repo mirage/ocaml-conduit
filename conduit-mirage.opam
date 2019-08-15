@@ -28,6 +28,10 @@ depends: [
   "mirage-clock" {>= "2.0.0"}
   "ptime"
 ]
+conflicts: [
+  "mirage-conduit"
+]
+
 build: [
   ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]

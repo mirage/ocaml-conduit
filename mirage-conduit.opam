@@ -28,3 +28,4 @@ build: [
   ["dune" "runtest" "-p" name] {with-test}
 ]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
+synopsis: "A network connection establishment library for MirageOS"

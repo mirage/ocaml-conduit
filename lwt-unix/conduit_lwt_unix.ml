@@ -247,7 +247,7 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
    | `TLS (_, _, `Password _) ->
       Lwt.fail_with "OCaml-TLS cannot handle encrypted pem files"
    | `TLS (`Crt_file_path cert, `Key_file_path priv_key, `No_password) ->
-      X509_lwt.private_of_pems ~cert ~priv_key >|= fun certificate ->
+      Conduit_lwt_tls.X509.private_of_pems ~cert ~priv_key >|= fun certificate ->
       Some (`Single certificate)
   ) >>= fun certificates ->
   Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates hostname sa

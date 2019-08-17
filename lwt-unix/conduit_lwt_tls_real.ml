@@ -19,6 +19,11 @@ open Lwt.Infix
 
 let _ = Nocrypto_entropy_lwt.initialize ()
 
+module X509 = struct
+  let private_of_pems ~cert ~priv_key =
+    X509_lwt.private_of_pems ~cert ~priv_key
+end
+
 module Client = struct
   let connect ?src ?certificates host sa =
     Conduit_lwt_server.with_socket sa (fun fd ->

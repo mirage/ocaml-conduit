@@ -1,3 +1,9 @@
+## dev
+
+* lwt-unix: replace the dune/ocaml file with a `(select)` build form.
+  This avoids invoking `ocamlfind` from the build, and fits in with the
+  rest of dune builds much more naturally (@avsm).
+
 ## v1.5.0
 
 * lwt-unix: Do not close file descriptors more than once, which led to a lot of

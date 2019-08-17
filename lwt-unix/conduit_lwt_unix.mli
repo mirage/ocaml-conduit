@@ -139,13 +139,17 @@ type flow = private
 [@@deriving sexp_of]
 
 (** Type describing where to locate a PEM key in the filesystem *)
-type tls_server_key = [
+type tls_own_key = [
  | `None
  | `TLS of
     [ `Crt_file_path of string ] *
     [ `Key_file_path of string ] *
     [ `Password of bool -> string | `No_password ]
 ] [@@deriving sexp]
+
+(**/**)
+type tls_server_key = tls_own_key [@@deriving sexp]
+(**/**)
 
 (** State handler for an active conduit *)
 type ctx [@@deriving sexp_of]
@@ -156,11 +160,15 @@ type ctx [@@deriving sexp_of]
     no TLS certificate associated with the Conduit *)
 val default_ctx : ctx
 
-(** [init ?src ?tls_server_key ()] will initialize a Unix conduit
+(** [init ?src ?tls_own_key ()] will initialize a Unix conduit
     that binds to the [src] interface if specified.  If TLS server
     connections are used, then [tls_server_key] must contain a
     valid certificate to be used to advertise a TLS connection *)
-val init : ?src:string -> ?tls_server_key:tls_server_key -> unit -> ctx io
+val init :
+  ?src:string ->
+  ?tls_own_key:tls_own_key ->
+  ?tls_server_key:tls_own_key (* Deprecated, use tls_own_key. *) ->
+  unit -> ctx io
 
 (** [connect ~ctx client] establishes an outgoing connection
     via the [ctx] context to the endpoint described by [client] *)

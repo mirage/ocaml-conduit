@@ -47,7 +47,8 @@ module Server : sig
     -> ?stop:(unit Lwt.t)
     -> ?timeout:int
     -> Lwt_unix.sockaddr
-    -> (Lwt_unix.file_descr
+    -> (Lwt_unix.sockaddr
+        -> Lwt_unix.file_descr
         -> Lwt_io.input_channel
         -> Lwt_io.output_channel
         -> unit Lwt.t)

@@ -1,7 +1,7 @@
-## v2.0.1
+## v2.0.1 (2019-08-19)
 
 * lwt-unix: fix compilation with `lwt_ssl` and fix tests to correctly exercise this
-  part of the codepath (@avsm).
+  part of the codepath (#304 @avsm).
 
 ## v2.0.0 (2019-08-17)
 

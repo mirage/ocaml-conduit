@@ -1,3 +1,8 @@
+## v2.0.1
+
+* lwt-unix: fix compilation with `lwt_ssl` and fix tests to correctly exercise this
+  part of the codepath (@avsm).
+
 ## v2.0.0 (2019-08-17)
 
 * lwt-unix: obtain client IP correctly when using TLS connections (#277 @victorgomes)

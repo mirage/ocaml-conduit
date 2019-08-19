@@ -32,10 +32,9 @@ module Client = struct
     let ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context in
     Ssl.disable_protocols ctx [Ssl.SSLv23];
     (* Use default CA certificates *)
-    ignore (Ssl.set_default_verify_paths default_ctx);
+    ignore (Ssl.set_default_verify_paths ctx);
     (* Enable peer verification *)
-    Ssl.set_verify default_ctx [Ssl.Verify_peer] None
-    ignore (Ssl.set_default_verify_paths default_ctx);
+    Ssl.set_verify ctx [Ssl.Verify_peer] None;
     (match certfile, keyfile with
      | Some certfile, Some keyfile -> Ssl.use_certificate ctx certfile keyfile
      | None, _ | _, None -> ());

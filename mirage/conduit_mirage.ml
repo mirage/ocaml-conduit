@@ -31,8 +31,6 @@ let err_unknown = fail "%s: unknown endpoint type"
 let err_ipv6 = fail "%s: IPv6 is not supported"
 
 module Flow = struct
-  type 'a io = 'a Lwt.t
-  type buffer = Cstruct.t
   type error = [`Msg of string]
   type write_error = [ Mirage_flow.write_error | error ]
 
@@ -42,11 +40,11 @@ module Flow = struct
     | #Mirage_flow.write_error as e -> Mirage_flow.pp_write_error ppf e
     | #error as e                   -> pp_error ppf e
 
-  open Mirage_flow_lwt
+  open Mirage_flow_combinators
 
   type flow = Flow: (module CONCRETE with type flow = 'a) * 'a -> flow
 
-  let create (type a) (module M: S with type flow = a) t =
+  let create (type a) (module M: Mirage_flow.S with type flow = a) t =
     let m = (module Concrete(M): CONCRETE with type flow = a) in
     Flow (m , t)
 
@@ -70,7 +68,7 @@ end
 type tcp_client = [ `TCP of Ipaddr_sexp.t * int ] [@@deriving sexp]
 type tcp_server = [ `TCP of int ] [@@deriving sexp]
 
-type 'a stackv4 = (module Mirage_stack_lwt.V4 with type t = 'a)
+type 'a stackv4 = (module Mirage_stack.V4 with type t = 'a)
 let stackv4 x = x
 
 module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
@@ -160,7 +158,7 @@ let listen t (s:server) f = match s with
 
 (* TCP *)
 
-module TCP (S: Mirage_stack_lwt.V4) = struct
+module TCP (S: Mirage_stack.V4) = struct
 
   type t = S.t
   type client = tcp_client [@@deriving sexp]
@@ -188,13 +186,13 @@ module TCP (S: Mirage_stack_lwt.V4) = struct
 
 end
 
-module With_tcp(S : Mirage_stack_lwt.V4) = struct
+module With_tcp(S : Mirage_stack.V4) = struct
   module M = TCP(S)
   let handler stack = Lwt.return (S ((module M),stack))
   let connect stack t = handler stack >|= fun x -> { t with tcp = Some x }
 end
 
-let with_tcp (type t) t (module S: Mirage_stack_lwt.V4 with type t = t) stack =
+let with_tcp (type t) t (module S: Mirage_stack.V4 with type t = t) stack =
   let module M = With_tcp(S) in
   M.connect stack t
 
@@ -301,7 +299,7 @@ type conduit = t
 module type S = sig
   type t = conduit
   val empty: t
-  module With_tcp (S:Mirage_stack_lwt.V4) : sig
+  module With_tcp (S:Mirage_stack.V4) : sig
     val connect : S.t -> t -> t Lwt.t
   end
   val with_tcp: t -> 'a stackv4 -> 'a -> t Lwt.t
@@ -327,14 +325,14 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s
   | `Unknown s -> err_unknown s
 
-module Context (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_stack_lwt.V4) = struct
+module Context (R: Mirage_random.S) (T: Mirage_time.S) (S: Mirage_stack.V4) = struct
 
   type t = Resolver_lwt.t * conduit
 
   module RES = Resolver_mirage.Make_with_stack(R)(T)(S)
 
   let conduit = empty
-  let stackv4 = stackv4 (module S: Mirage_stack_lwt.V4 with type t = S.t)
+  let stackv4 = stackv4 (module S: Mirage_stack.V4 with type t = S.t)
 
   let create ?(tls=false) stack =
     let res = Resolver_lwt.init () in

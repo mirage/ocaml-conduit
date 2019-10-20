@@ -63,7 +63,7 @@ let localhost =
               (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
-module Make_with_stack (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_stack_lwt.V4) = struct
+module Make_with_stack (R: Mirage_random.S) (T: Mirage_time.S) (S: Mirage_stack.V4) = struct
   include Resolver_lwt
 
   module R = struct

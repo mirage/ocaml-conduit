@@ -93,8 +93,12 @@ module Make_with_stack (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_st
       (match Ipaddr.V4.of_string hostn with
        | Ok addr -> Lwt.return (Ok addr)
        | Error _ ->
-         let hostname = Domain_name.(host_exn (of_string_exn hostn)) in
-         DNS.gethostbyname dns hostname) >|= function
+         match Domain_name.of_string hostn with
+         | Error (`Msg msg) -> Lwt.return (Error (`Msg msg))
+         | Ok domain ->
+           match Domain_name.host domain with
+           | Error (`Msg msg) -> Lwt.return (Error (`Msg msg))
+           | Ok host -> DNS.gethostbyname dns host) >|= function
       | Error (`Msg err) -> `Unknown ("name resolution failed: " ^ err)
       | Ok addr -> `TCP (Ipaddr.V4 addr, port)
 

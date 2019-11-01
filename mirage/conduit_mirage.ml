@@ -325,11 +325,11 @@ let rec server (e:Conduit.endp): server Lwt.t = match e with
   | `TLS (x, y) -> server y >>= fun s -> tls_server x s
   | `Unknown s -> err_unknown s
 
-module Context (R: Mirage_random.S) (T: Mirage_time.S) (S: Mirage_stack.V4) = struct
+module Context (R: Mirage_random.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4) = struct
 
   type t = Resolver_lwt.t * conduit
 
-  module RES = Resolver_mirage.Make_with_stack(R)(T)(S)
+  module RES = Resolver_mirage.Make_with_stack(R)(C)(S)
 
   let conduit = empty
   let stackv4 = stackv4 (module S: Mirage_stack.V4 with type t = S.t)

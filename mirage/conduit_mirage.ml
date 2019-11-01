@@ -202,8 +202,8 @@ let err_vchan_port = fail "%s: invalid Vchan port"
 
 let port p =
   match Vchan.Port.of_string p with
-  | `Error s -> err_vchan_port s
-  | `Ok p    -> Lwt.return p
+  | Error (`Msg s) -> err_vchan_port s
+  | Ok p -> Lwt.return p
 
 let vchan_client = function
   | `Vchan_direct (i, p) -> port p >|= fun p -> `Vchan (`Direct (i, p))

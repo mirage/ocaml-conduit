@@ -18,7 +18,7 @@ depends: [
   "mirage-random" {>= "2.0.0"}
   "dns-client" {>= "4.1.0"}
   "conduit-lwt"
-  "vchan" {>= "3.0.0"}
+  "vchan" {>= "5.0.0"}
   "xenstore"
   "tls" {>= "0.8.0"}
   "ipaddr" {>= "3.0.0"}

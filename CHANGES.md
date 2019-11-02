@@ -1,3 +1,10 @@
+## v2.0.2 (2019-11-02)
+
+* mirage: do not raise exceptions in DNS lookup (#305 @hannesm)
+* mirage: adapt to mirage-stack/mirage-time/mirage-flow/mirage-random 2.0.0 interfaces (#306 #hannesm)
+* mirage: adapt to dns 4.1.0 changes (#306 @hannesm)
+* mirage: adapt to vchan 5.0.0 changes (#306 @hannesm)
+
 ## v2.0.1 (2019-08-19)
 
 * lwt-unix: fix compilation with `lwt_ssl` and fix tests to correctly exercise this

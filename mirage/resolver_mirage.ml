@@ -63,7 +63,7 @@ let localhost =
               (fun ~port -> `TCP (Ipaddr.(V4 V4.localhost), port));
   static hosts
 
-module Make_with_stack (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_stack_lwt.V4) = struct
+module Make_with_stack (R: Mirage_random.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4) = struct
   include Resolver_lwt
 
   module R = struct
@@ -85,7 +85,7 @@ module Make_with_stack (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_st
           (Uri.to_string uri) remote_name;
         Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 
-    module DNS = Dns_client_mirage.Make(R)(S)
+    module DNS = Dns_client_mirage.Make(R)(C)(S)
 
     let dns_stub_resolver dns service uri : Conduit.endp Lwt.t =
       let hostn = get_host uri in

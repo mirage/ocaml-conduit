@@ -4,6 +4,6 @@
   (preprocess  (pps ppx_sexp_conv))
   (modules     conduit_mirage resolver_mirage conduit_xenstore)
   (wrapped     false)
-  (libraries   conduit conduit-lwt mirage-stack-lwt mirage-time-lwt
-               mirage-random mirage-flow-lwt dns-client.mirage ipaddr-sexp
+  (libraries   conduit conduit-lwt mirage-stack mirage-clock mirage-random
+               mirage-flow mirage-flow-combinators dns-client.mirage ipaddr-sexp
                vchan tls tls.mirage xenstore.client uri.services))

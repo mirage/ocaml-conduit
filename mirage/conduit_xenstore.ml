@@ -71,8 +71,8 @@ module Make (Xs: Xs_client_lwt.S) = struct
       let remote_domid = int_of_string remote_domid in
       Xs.rm h ("/conduit" / name / remote_name) >>= fun () ->
       match Vchan.Port.of_string port with
-      | `Error e -> err_port e
-      | `Ok port -> Lwt.return (`Direct (remote_domid, port))
+      | Error (`Msg e) -> err_port e
+      | Ok port -> Lwt.return (`Direct (remote_domid, port))
     in
     Xs.wait xs waitfn
 

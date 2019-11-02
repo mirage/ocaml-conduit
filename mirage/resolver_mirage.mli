@@ -29,7 +29,7 @@ val localhost : Resolver_lwt.t
 (** Provides a DNS-enabled {!Resolver_lwt} given a network stack.
     See {!Make}.
 *)
-module Make_with_stack (R: Mirage_random.C) (T: Mirage_time_lwt.S) (S: Mirage_stack_lwt.V4) : sig
+module Make_with_stack (R: Mirage_random.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4) : sig
   include Resolver_lwt.S with type t = Resolver_lwt.t
 
   module R : sig

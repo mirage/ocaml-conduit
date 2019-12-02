@@ -38,7 +38,7 @@
 * `Async_ssl`: fix exception raised when other side disconnects
   due to sharing underlying fd (#295 @bogdan2412)
 
-## v1.4.0
+## v1.4.0
 
 * Use Ipaddr 3.0.0+ interfaces (#284 by @avsm).
 * Update opam metadata files to the opam 2.0 format (#284 by @avsm)

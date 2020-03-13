@@ -17,7 +17,7 @@
 
 open Lwt.Infix
 
-let _ = Nocrypto_entropy_lwt.initialize ()
+let () = Mirage_crypto_rng_unix.initialize ()
 
 module X509 = struct
   let private_of_pems ~cert ~priv_key =
@@ -30,7 +30,7 @@ module Client = struct
         (match src with
          | None -> Lwt.return_unit
          | Some src_sa -> Lwt_unix.bind fd src_sa) >>= fun () ->
-        X509_lwt.authenticator `No_authentication_I'M_STUPID >>= fun authenticator ->
+        let authenticator ~host:_ _ = Ok None in
         let config = Tls.Config.client ~authenticator ?certificates () in
         Lwt_unix.connect fd sa >>= fun () ->
         Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->

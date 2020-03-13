@@ -257,7 +257,8 @@ let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 let client_of_bytes _ =
   (* an https:// request doesn't need client-side authentication *)
-  Tls.Config.client ~authenticator:X509.Authenticator.null ()
+  let authenticator ~host:_ _ = Ok None in
+  Tls.Config.client ~authenticator ()
 
 let server_of_bytes str = Tls.Config.server_of_sexp (Sexplib.Sexp.of_string str)
 

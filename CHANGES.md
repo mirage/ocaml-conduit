@@ -1,3 +1,8 @@
+## v2.1.0
+* port to tls.0.11.0 interfaces which also uses mirage-crypto (#309 @hannesm)
+* do not use deprecated ppx sexplib declarations (#309 @avsm)
+* replace Appveyor CI with GitHub Actions (#309 @avsm)
+
 ## v2.0.2 (2019-11-02)
 
 * mirage: do not raise exceptions in DNS lookup (#305 @hannesm)

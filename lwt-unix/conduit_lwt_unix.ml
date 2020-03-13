@@ -82,7 +82,7 @@ type server_tls_config =
 (** Set of ways to create TCP servers *)
 type tcp_config = [
   | `Port of int
-  | `Socket of Lwt_unix.file_descr sexp_opaque
+  | `Socket of (Lwt_unix.file_descr [@sexp.opaque])
 ] [@@deriving sexp]
 
 (** Set of supported listening mechanisms that are supported by this module. *)
@@ -128,13 +128,13 @@ let sexp_of_ctx ctx =
      ctx.tls_own_key)
 
 type tcp_flow = {
-  fd: Lwt_unix.file_descr sexp_opaque;
+  fd: (Lwt_unix.file_descr [@sexp.opaque]);
   ip: Ipaddr_sexp.t;
   port: int;
 } [@@deriving sexp]
 
 type domain_flow = {
-  fd: Lwt_unix.file_descr sexp_opaque;
+  fd: (Lwt_unix.file_descr [@sexp.opaque]);
   path: string;
 } [@@deriving sexp]
 

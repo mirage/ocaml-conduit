@@ -1,0 +1,24 @@
+name: Conduit
+on: [push, pull_request]
+jobs:
+  tests:
+    name: Tests
+    runs-on: ${{ matrix.operating-system }}
+    strategy:
+      matrix:
+        ocaml-version: [ '4.08.1', '4.09.0', '4.10.0' ]
+        operating-system: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+    - uses: actions/checkout@master
+    - uses: avsm/setup-ocaml@master
+      with:
+        ocaml-version: ${{ matrix.ocaml-version }}
+    - name: Deps
+      run: |
+        for i in "" -lwt -lwt-unix -async -mirage; do opam pin add -n $i; done
+        for i in "" -lwt -lwt-unix -async -mirage; do opam depext -y $i; done
+        opam install --deps-only .
+    - name: Build
+      run: opam exec -- dune build
+    - name: Test
+      run: opam exec -- dune runtest

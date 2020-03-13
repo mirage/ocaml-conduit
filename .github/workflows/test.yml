@@ -15,8 +15,12 @@ jobs:
         ocaml-version: ${{ matrix.ocaml-version }}
     - name: Deps
       run: |
-        for i in "" "-lwt" "-lwt-unix" "-async" "-mirage"; do opam pin add -n conduit$i .; done
-        for i in "" "-lwt" "-lwt-unix" "-async" "-mirage"; do opam depext -y conduit$i; done
+        opam pin add -n conduit.dev .
+        opam pin add -n conduit-lwt.dev .
+        opam pin add -n conduit-lwt-unix.dev .
+        opam pin add -n conduit-async.dev .
+        opam pin add -n conduit-mirage.dev .
+        opam depext -y conduit conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
         opam install --deps-only .
     - name: Build
       run: opam exec -- dune build

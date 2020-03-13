@@ -19,8 +19,6 @@
 (** Connection establishment using the
     {{:http://ocsigen.org/lwt/api/Lwt_unix}Lwt_unix} library *)
 
-open Sexplib.Conv
-
 (** {2 Core types} *)
 
 (** Configuration fragment for a TLS client connecting to a remote endpoint *)
@@ -77,7 +75,7 @@ type server_tls_config =
 *)
 type tcp_config = [
   | `Port of int
-  | `Socket of Lwt_unix.file_descr sexp_opaque
+  | `Socket of Lwt_unix.file_descr [@sexp.opaque]
 ] [@@deriving sexp]
 
 (** Set of supported listening mechanisms that are supported by this module.
@@ -111,7 +109,7 @@ type oc = Lwt_io.output_channel
 
 (** [tcp_flow] contains the state of a single TCP connection. *)
 type tcp_flow = private {
-  fd: Lwt_unix.file_descr sexp_opaque;
+  fd: Lwt_unix.file_descr [@sexp.opaque];
   ip: Ipaddr.t;
   port: int;
 } [@@deriving sexp_of]
@@ -119,7 +117,7 @@ type tcp_flow = private {
 (** [domain_flow] contains the state of a single Unix domain socket
     connection. *)
 type domain_flow = private {
-  fd: Lwt_unix.file_descr sexp_opaque;
+  fd: Lwt_unix.file_descr [@sexp.opaque];
   path: string;
 } [@@deriving sexp_of]
 

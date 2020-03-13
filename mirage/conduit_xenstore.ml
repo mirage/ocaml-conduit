@@ -31,7 +31,7 @@ let err_port = fail "%s: invalid port"
 
 module Make (Xs: Xs_client_lwt.S) = struct
 
-  type t = { xs: Xs.client sexp_opaque; name: string } [@@deriving sexp_of]
+  type t = { xs: (Xs.client [@sexp.opaque]); name: string } [@@deriving sexp_of]
 
   let get_my_id xs = Xs.(immediate xs (fun h -> read h "domid"))
 

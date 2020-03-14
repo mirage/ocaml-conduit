@@ -1,4 +1,5 @@
-## v2.1.0
+## v2.1.0 (2020-03-14)
+
 * port to tls.0.11.0 interfaces which also uses mirage-crypto (#309 @hannesm)
 * do not use deprecated ppx sexplib declarations (#309 @avsm)
 * replace Appveyor CI with GitHub Actions (#309 @avsm)

@@ -9,8 +9,8 @@ jobs:
         ocaml-version: [ '4.08.1', '4.09.0', '4.10.0' ]
         operating-system: [macos-latest, ubuntu-latest, windows-latest]
     steps:
-    - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@master
+    - uses: actions/checkout@v2
+    - uses: avsm/setup-ocaml@v1
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
     - name: Deps

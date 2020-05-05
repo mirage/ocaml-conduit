@@ -1,0 +1,52 @@
+(executable
+ (name ping_pong)
+ (modules ping_pong)
+ (libraries bigstringaf ke fmt rresult fmt.tty logs.fmt
+   mirage-crypto-rng.unix conduit-lwt-unix.tcp conduit-lwt-unix.tls
+   conduit-lwt-unix.ssl))
+
+(executable
+ (name with_async)
+ (modules with_async)
+ (libraries stdlib-shims bigstringaf ke fmt rresult fmt.tty logs.fmt
+   mirage-crypto-rng.unix conduit-async.tcp conduit-async.tls
+   conduit-async.ssl))
+
+(executable
+ (name test_lwt)
+ (modules test_lwt)
+ (libraries unix))
+
+(rule
+ (alias runtest)
+ (package conduit-lwt-unix)
+ (deps
+  (:test test_lwt.exe)
+  ping_pong.exe
+  server.pem
+  server.key
+  client0
+  client1
+  client2)
+ (action
+  (run %{test})))
+
+(executable
+ (name test_async)
+ (modules test_async)
+ (libraries unix))
+
+(rule
+ (alias runtest)
+ (package conduit-async)
+ (deps
+  (:test test_async.exe)
+  ping_pong.exe
+  with_async.exe
+  server.pem
+  server.key
+  client0
+  client1
+  client2)
+ (action
+  (run %{test})))

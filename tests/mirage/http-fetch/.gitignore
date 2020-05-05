@@ -1,8 +1,0 @@
-Makefile
-*.xe
-*.xl
-_build
-main.ml
-mir-conduit-client
-log
-*.xen

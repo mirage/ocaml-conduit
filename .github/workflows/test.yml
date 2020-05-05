@@ -13,16 +13,36 @@ jobs:
     - uses: avsm/setup-ocaml@master
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
+    - name: Install pkg-config
+      if: runner.os == 'macOS'
+      run: brew install pkg-config
     - name: Deps
+      if: runner.os != 'Windows'
       run: |
         opam pin add -n conduit.dev .
         opam pin add -n conduit-lwt.dev .
         opam pin add -n conduit-lwt-unix.dev .
         opam pin add -n conduit-async.dev .
         opam pin add -n conduit-mirage.dev .
-        opam depext -y conduit conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
-        opam install --deps-only .
+        opam pin add -n conduit-tls.dev .
+        opam depext  -y conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
+    - name: Deps (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        opam pin add -n conduit.dev .
+        opam pin add -n conduit-lwt.dev .
+        opam pin add -n conduit-lwt-unix.dev .
+        opam pin add -n conduit-mirage.dev .
+        opam pin add -n conduit-tls.dev .
+        opam depext  -y conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-mirage
+    - name: Build (Windows)
+      if: runner.os == 'Windows'
+      run: opam exec -- dune build -p conduit,conduit-tls,conduit-lwt,conduit-lwt-unix,conduit-mirage
     - name: Build
+      if: runner.os != 'Windows'
       run: opam exec -- dune build
     - name: Test
-      run: opam exec -- dune runtest
+      if: runner.os != 'Windows'
+      run: opam exec -- dune runtest --no-buffer --verbose -j 1

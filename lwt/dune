@@ -1,7 +1,11 @@
 (library
-  (name        conduit_lwt)
-  (public_name conduit-lwt)
-  (preprocess  (pps ppx_sexp_conv))
-  (wrapped     false)
-  (modules     resolver_lwt)
-  (libraries   conduit lwt))
+ (name conduit_lwt)
+ (public_name conduit-lwt)
+ (modules conduit_lwt)
+ (libraries cstruct lwt conduit))
+
+(library
+ (name conduit_lwt_flow)
+ (public_name conduit-lwt.flow)
+ (modules conduit_lwt_flow)
+ (libraries conduit-lwt mirage-flow))

@@ -1,3 +1,7 @@
+## v2.2.0 (2020-05-12)
+
+* conduit-mirage adapt to dns-client 4.5.0 (#314 @hannesm)
+
 ## v2.1.0 (2020-03-14)
 
 * port to tls.0.11.0 interfaces which also uses mirage-crypto (#309 @hannesm)

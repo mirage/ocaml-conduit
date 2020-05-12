@@ -131,7 +131,7 @@ end
 include S
 
 (** {2 Context for MirageOS conduit resolvers} *)
-module Context (R: Mirage_random.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4): sig
+module Context (R: Mirage_random.S) (T : Mirage_time.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4): sig
 
   type t = Resolver_lwt.t * conduit
   (** The type for contexts of conduit resolvers. *)

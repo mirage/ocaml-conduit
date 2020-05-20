@@ -1,3 +1,7 @@
+## v2.2.1 (2020-05-20)
+
+* conduit-mirage requires mirage-time (fix opam and dune) (#315 @hannesm)
+
 ## v2.2.0 (2020-05-12)
 
 * conduit-mirage adapt to dns-client 4.5.0 (#314 @hannesm)

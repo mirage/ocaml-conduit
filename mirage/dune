@@ -21,3 +21,9 @@
  (public_name conduit-mirage.tcp)
  (modules conduit_mirage_tcp)
  (libraries logs mirage-stack bigstringaf ke tcpip.tcp conduit-mirage))
+
+(library
+ (name conduit_mirage_dns)
+ (public_name conduit-mirage.dns)
+ (modules conduit_mirage_dns)
+ (libraries conduit-mirage dns-client.mirage))

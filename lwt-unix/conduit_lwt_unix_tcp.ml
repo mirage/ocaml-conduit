@@ -60,11 +60,13 @@ module Protocol = struct
     | `Transport_endpoint_is_not_connected ->
         pf ppf "Transport endpoint is not connected"
 
+  let io_buffer_size = 65536
+
   let flow sockaddr =
     let socket =
       Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
     in
-    let linger = Bytes.create 0x1000 in
+    let linger = Bytes.create io_buffer_size in
     let rec go () =
       let process () =
         Lwt_unix.connect socket sockaddr >>= fun () ->
@@ -97,33 +99,27 @@ module Protocol = struct
       (* | EINPROGRESS: TODO *) in
     go ()
 
-  let ( >>? ) x f =
-    x >>= function Ok x -> f x | Error _ as err -> Lwt.return err
-
   (* XXX(dinosaure): [recv] wants to fill [raw] as much as possible until
      it has reached [`End_of_file]. *)
   let rec recv ({ socket; closed; _ } as t) raw =
     if closed
     then Lwt.return_ok `End_of_input
     else
-      let process () =
+      let rec process filled raw =
         let max = Cstruct.len raw in
         Lwt_unix.read socket t.linger 0 (min max (Bytes.length t.linger))
         >>= fun len ->
         if len = 0
-        then Lwt.return_ok `End_of_input
+        then Lwt.return_ok (if filled = 0 then `End_of_input else `Input filled)
         else (
           Cstruct.blit_from_bytes t.linger 0 raw 0 len ;
           if len = Bytes.length t.linger && max > Bytes.length t.linger
-          then
+          then (
             if Lwt_unix.readable t.socket
-            then
-              recv t (Cstruct.shift raw len) >>? function
-              | `End_of_input -> Lwt.return_ok (`Input len)
-              | `Input rest -> Lwt.return_ok (`Input (len + rest))
-            else Lwt.return_ok (`Input len)
-          else Lwt.return_ok (`Input len)) in
-      Lwt.catch process @@ function
+            then process (filled + len) (Cstruct.shift raw len)
+            else Lwt.return_ok (if filled + len = 0 then `End_of_input else `Input (filled + len)) )
+          else Lwt.return_ok (if filled + len = 0 then `End_of_input else `Input (filled + len)) ) in
+      Lwt.catch (fun () -> process 0 raw) @@ function
       | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw
       | Unix.(Unix_error (EINTR, _, _)) -> recv t raw
       | Unix.(Unix_error (EFAULT, _, _)) -> Lwt.return_error `Bad_address

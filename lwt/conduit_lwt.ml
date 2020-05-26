@@ -54,13 +54,18 @@ let serve_with_handler :
 
 module type CONDUIT = sig
   type endpoint
+
   type flow
+
   type configuration
+
   type master
 
   val endpoint : endpoint key
+
   val protocol : flow Witness.protocol
 
   val configuration : configuration key
+
   val service : (master * flow) Witness.service
 end

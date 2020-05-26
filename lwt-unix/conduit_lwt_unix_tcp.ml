@@ -114,11 +114,19 @@ module Protocol = struct
         else (
           Cstruct.blit_from_bytes t.linger 0 raw 0 len ;
           if len = Bytes.length t.linger && max > Bytes.length t.linger
-          then (
+          then
             if Lwt_unix.readable t.socket
             then process (filled + len) (Cstruct.shift raw len)
-            else Lwt.return_ok (if filled + len = 0 then `End_of_input else `Input (filled + len)) )
-          else Lwt.return_ok (if filled + len = 0 then `End_of_input else `Input (filled + len)) ) in
+            else
+              Lwt.return_ok
+                (if filled + len = 0
+                then `End_of_input
+                else `Input (filled + len))
+          else
+            Lwt.return_ok
+              (if filled + len = 0
+              then `End_of_input
+              else `Input (filled + len))) in
       Lwt.catch (fun () -> process 0 raw) @@ function
       | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw
       | Unix.(Unix_error (EINTR, _, _)) -> recv t raw

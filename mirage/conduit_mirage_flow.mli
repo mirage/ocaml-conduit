@@ -15,4 +15,4 @@
     the POSIX interface and let the end-user to allocate by himself the input
     buffer. *)
 
-include Mirage_flow.S with type flow = Conduit_mirage.flow
+include Mirage_flow.S with type flow = Conduit_mirage.Client.flow

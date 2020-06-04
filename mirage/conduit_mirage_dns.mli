@@ -11,5 +11,5 @@ module Make
     t ->
     ?nameserver:Transport.ns_addr ->
     port:int ->
-    (Ipaddr.V4.t * int) resolver
+    (Ipaddr.V4.t * int) Client.resolver
 end

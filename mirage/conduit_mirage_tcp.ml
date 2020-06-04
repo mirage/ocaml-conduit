@@ -75,7 +75,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     type nonrec endpoint = endpoint
 
-    let flow { stack; keepalive; nodelay; ip; port } =
+    let connect { stack; keepalive; nodelay; ip; port } =
       let tcpv4 = StackV4.tcpv4 stack in
       StackV4.TCPV4.create_connection tcpv4 ?keepalive (ip, port)
       >|= R.reword_error error
@@ -199,10 +199,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         StackV4.TCPV4.close t.flow >>= fun () -> Lwt.return_ok ())
   end
 
-  let endpoint : endpoint Conduit_mirage.key = Conduit_mirage.key "tcp-mirage"
-
-  let protocol =
-    Conduit_mirage.register_protocol ~key:endpoint ~protocol:(module Protocol)
+  let protocol = Conduit_mirage.Client.register ~protocol:(module Protocol)
 
   type nonrec configuration = StackV4.t configuration
 
@@ -215,7 +212,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
     mutable closed : bool;
   }
 
-  module Service = struct
+  module Server = struct
     type +'a s = 'a Conduit_mirage.s
 
     type error = Connection_aborted
@@ -226,7 +223,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     type flow = protocol
 
-    type endpoint = configuration
+    type nonrec configuration = configuration
 
     type t = service
 
@@ -272,11 +269,6 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let configuration : configuration Conduit_mirage.key =
-    Conduit_mirage.key "tcp-mirage"
-
   let service =
-    Conduit_mirage.register_service ~key:configuration
-      ~service:(module Service)
-      ~protocol
+    Conduit_mirage.Service.register ~service:(module Server) ~protocol
 end

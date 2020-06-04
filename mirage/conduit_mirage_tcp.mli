@@ -18,15 +18,11 @@ type 'stack configuration = {
 module Make (StackV4 : Mirage_stack.V4) : sig
   type protocol
 
-  val endpoint : (StackV4.t, Ipaddr.V4.t) endpoint key
-
-  val protocol : protocol Witness.protocol
+  val protocol : ((StackV4.t, Ipaddr.V4.t) endpoint, protocol) Client.protocol
 
   val dst : protocol -> Ipaddr.V4.t * int
 
   type service
 
-  val configuration : StackV4.t configuration key
-
-  val service : (service * protocol) Witness.service
+  val service : (StackV4.t configuration, service * protocol) Service.service
 end

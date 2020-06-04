@@ -44,7 +44,7 @@ let getline queue flow =
     match getline queue with
     | Some line -> Lwt.return_ok (`Line line)
     | None -> (
-        Conduit_lwt.recv flow tmp >>? function
+        Conduit_lwt_unix.Client.recv flow tmp >>? function
         | `End_of_input -> Lwt.return_ok `Close
         | `Input len ->
             Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
@@ -59,49 +59,50 @@ let transmission flow =
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go () =
     getline queue flow >>= function
-    | Ok `Close | Error _ -> Conduit_lwt.close flow
+    | Ok `Close | Error _ -> Conduit_lwt.Client.close flow
     | Ok (`Line "ping") ->
         Fmt.epr "[!] received ping.\n%!" ;
-        Conduit_lwt.send flow pong >>? fun _ -> go ()
+        Conduit_lwt.Client.send flow pong >>? fun _ -> go ()
     | Ok (`Line "pong") ->
         Fmt.epr "[!] received pong.\n%!" ;
-        Conduit_lwt.send flow ping >>? fun _ -> go ()
+        Conduit_lwt.Client.send flow ping >>? fun _ -> go ()
     | Ok (`Line line) ->
         Fmt.epr "[!] received %S.\n%!" line ;
-        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
-        Conduit_lwt.close flow in
+        Conduit_lwt.Client.send flow (Cstruct.of_string (line ^ "\n"))
+        >>? fun _ -> Conduit_lwt.Client.close flow in
   go () >>= function
-  | Error err -> failwith "%a" Conduit_lwt.pp_error err
+  | Error err -> failwith "%a" Conduit_lwt.Client.pp_error err
   | Ok () -> Lwt.return ()
 
 let server :
     type cfg master flow.
-    key:cfg Conduit_lwt.key ->
     cfg ->
-    service:(master * flow) Conduit_lwt.Witness.service ->
+    service:(cfg, master * flow) Conduit_lwt.Service.service ->
     unit Lwt_condition.t * unit Lwt.t =
- fun ~key cfg ~service ->
+ fun cfg ~service ->
   Conduit_lwt_unix.serve_with_handler
     ~handler:(fun protocol flow ->
-      transmission (Conduit_lwt_unix.abstract protocol flow))
-    ~key ~service cfg
+      let (Conduit_lwt_unix.Service.Protocol protocol) = protocol in
+      transmission (Conduit_lwt.Client.abstract protocol flow))
+    ~service cfg
 
 (* Client part *)
 
-let client ?key ~resolvers domain_name responses =
-  Conduit_lwt.flow ?key resolvers domain_name >>? fun flow ->
+let client ~resolvers domain_name responses =
+  Conduit_lwt.Client.connect resolvers domain_name >>? fun flow ->
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go = function
-    | [] -> Conduit_lwt.close flow
+    | [] -> Conduit_lwt.Client.close flow
     | line :: rest -> (
-        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
+        Conduit_lwt.Client.send flow (Cstruct.of_string (line ^ "\n"))
+        >>? fun _ ->
         getline queue flow >>? function
-        | `Close -> Conduit_lwt.close flow
+        | `Close -> Conduit_lwt.Client.close flow
         | `Line "pong" -> go rest
-        | `Line _ -> Conduit_lwt.close flow) in
+        | `Line _ -> Conduit_lwt.Client.close flow) in
   go responses
 
-let client ?key ~resolvers filename =
+let client ~resolvers filename =
   let rec go acc ic =
     match input_line ic with
     | line -> go (line :: acc) ic
@@ -109,22 +110,22 @@ let client ?key ~resolvers filename =
   let ic = open_in filename in
   let responses = go [] ic in
   close_in ic ;
-  client ?key ~resolvers localhost responses >>= function
+  client ~resolvers localhost responses >>= function
   | Ok () -> Lwt.return_unit
   | Error `Closed_by_peer -> Lwt.return_unit
-  | Error (#Conduit_lwt.error as err) ->
-      Fmt.epr "client: %a.\n%!" Conduit_lwt.pp_error err ;
+  | Error (#Conduit_lwt.Client.error as err) ->
+      Fmt.epr "client: %a.\n%!" Conduit_lwt.Client.pp_error err ;
       Lwt.return_unit
 
 (* Composition *)
 
-let tls_endpoint, tls_protocol, tls_configuration, tls_service =
+let tls_protocol, tls_service =
   let open Conduit_lwt_unix_tls.TCP in
-  (endpoint, protocol, configuration, service)
+  (protocol, service)
 
-let ssl_endpoint, ssl_protocol, ssl_configuration, ssl_service =
+let ssl_protocol, ssl_service =
   let open Conduit_lwt_unix_ssl.TCP in
-  (endpoint, protocol, configuration, service)
+  (protocol, service)
 
 (* Resolution *)
 
@@ -141,12 +142,10 @@ let resolve_ssl_ping_pong =
 
 let resolvers =
   Conduit.empty
-  |> Conduit_lwt.register_resolver ~priority:20
-       ~key:Conduit_lwt_unix_tcp.endpoint resolve_ping_pong
-  |> Conduit_lwt.register_resolver ~priority:10 ~key:tls_endpoint
-       resolve_tls_ping_pong
-  |> Conduit_lwt.register_resolver ~priority:10 ~key:ssl_endpoint
-       resolve_ssl_ping_pong
+  |> Conduit_lwt.Client.add ~priority:20 Conduit_lwt_unix_tcp.protocol
+       resolve_ping_pong
+  |> Conduit_lwt.Client.add ~priority:10 tls_protocol resolve_tls_ping_pong
+  |> Conduit_lwt.Client.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
 
 (* Run *)
 
@@ -169,16 +168,14 @@ let config cert key =
   | _ -> Fmt.failwith "Invalid key or certificate"
 
 let run_with :
-    type edn cfg master flow.
-    ?key_edn:edn Conduit_lwt.key ->
-    key_cfg:cfg Conduit_lwt.key ->
+    type cfg master flow.
     cfg ->
-    service:(master * flow) Conduit_lwt.Witness.service ->
+    service:(cfg, master * flow) Conduit_lwt.Service.service ->
     string list ->
     unit =
- fun ?key_edn ~key_cfg cfg ~service clients ->
-  let stop, server = server ~key:key_cfg cfg ~service in
-  let clients = List.map (client ?key:key_edn ~resolvers) clients in
+ fun cfg ~service clients ->
+  let stop, server = server cfg ~service in
+  let clients = List.map (client ~resolvers) clients in
   let clients =
     Lwt.join clients >>= fun () ->
     Lwt_condition.broadcast stop () ;
@@ -186,7 +183,7 @@ let run_with :
   Lwt_main.run (Lwt.join [ server; clients ])
 
 let run_with_tcp clients =
-  run_with ~key_cfg:Conduit_lwt_unix_tcp.configuration
+  run_with
     {
       Conduit_lwt_unix_tcp.sockaddr =
         Unix.ADDR_INET (Unix.inet_addr_loopback, 4000);
@@ -197,7 +194,7 @@ let run_with_tcp clients =
 let run_with_ssl cert key clients =
   let ctx = Ssl.create_context Ssl.TLSv1_2 Ssl.Server_context in
   Ssl.use_certificate ctx cert key ;
-  run_with ~key_cfg:ssl_configuration
+  run_with
     ( ctx,
       {
         Conduit_lwt_unix_tcp.sockaddr =
@@ -208,7 +205,7 @@ let run_with_ssl cert key clients =
 
 let run_with_tls cert key clients =
   let ctx = config cert key in
-  run_with ~key_edn:tls_endpoint ~key_cfg:tls_configuration
+  run_with
     ( {
         Conduit_lwt_unix_tcp.sockaddr =
           Unix.ADDR_INET (Unix.inet_addr_loopback, 8000);

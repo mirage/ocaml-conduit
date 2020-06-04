@@ -161,7 +161,7 @@ struct
 
   let recv { reader; _ } raw =
     Reader.read_bigsubstring reader (of_cstruct raw) >>= function
-    | `Eof -> Async.return (Ok `End_of_input)
+    | `Eof -> Async.return (Ok `End_of_flow)
     | `Ok n -> Async.return (Ok (`Input n))
 
   let send { writer; _ } raw =

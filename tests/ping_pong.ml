@@ -45,7 +45,7 @@ let getline queue flow =
     | Some line -> Lwt.return_ok (`Line line)
     | None -> (
         Conduit_lwt_unix.Client.recv flow tmp >>? function
-        | `End_of_input -> Lwt.return_ok `Close
+        | `End_of_flow -> Lwt.return_ok `Close
         | `Input len ->
             Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
             go ()) in

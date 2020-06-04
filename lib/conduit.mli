@@ -44,7 +44,7 @@ module type S = sig
     val pp_error : error Fmt.t
 
     val recv :
-      flow -> input -> ([ `Input of int | `End_of_input ], [> error ]) result s
+      flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result s
 
     val send : flow -> output -> (int, [> error ]) result s
 

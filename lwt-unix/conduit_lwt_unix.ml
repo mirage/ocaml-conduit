@@ -22,7 +22,7 @@ let io_of_flow flow =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     Client.recv flow raw >>= function
     | Ok (`Input len) -> Lwt.return len
-    | Ok `End_of_input -> Lwt.return 0
+    | Ok `End_of_flow -> Lwt.return 0
     | Error err -> failf "%a" Client.pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input recv in
   let send buf off len =

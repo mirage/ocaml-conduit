@@ -52,7 +52,7 @@ module Protocol (Flow : Conduit_lwt_unix.Client.PROTOCOL) = struct
   let recv socket raw =
     let { Cstruct.buffer; off; len } = raw in
     Lwt_ssl.read_bytes socket buffer off len >>= function
-    | 0 -> Lwt.return_ok `End_of_input
+    | 0 -> Lwt.return_ok `End_of_flow
     | len -> Lwt.return_ok (`Input len)
 
   let send socket raw =

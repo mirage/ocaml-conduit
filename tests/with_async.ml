@@ -50,7 +50,7 @@ let getline queue flow =
     | Some line -> Async.return (Ok (`Line line))
     | None -> (
         Conduit_async.Client.recv flow tmp >>? function
-        | `End_of_input -> Async.return (Ok `Close)
+        | `End_of_flow -> Async.return (Ok `Close)
         | `Input len ->
             Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
             go ()) in

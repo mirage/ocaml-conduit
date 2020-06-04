@@ -159,7 +159,7 @@ struct
                 then (
                   Log.debug (fun m -> m "<- Read the TLS flow") ;
                   Flow.recv flow raw0 >>| reword_error flow_error >>? function
-                  | `End_of_input ->
+                  | `End_of_flow ->
                       Log.warn (fun m ->
                           m
                             "Got EOF from underlying connection while \
@@ -219,15 +219,15 @@ struct
           match t.tls with
           | None ->
               Log.debug (fun m -> m "<~ Connection is close.") ;
-              return (Ok `End_of_input)
+              return (Ok `End_of_flow)
           | Some tls -> (
               Log.debug (fun m -> m "<- Read the TLS flow.") ;
               Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
-              | `End_of_input ->
+              | `End_of_flow ->
                   Log.warn (fun m ->
                       m "<- Connection closed by underlying protocol.") ;
                   t.tls <- None ;
-                  return (Ok `End_of_input)
+                  return (Ok `End_of_flow)
               | `Input len ->
                   let handle =
                     if Tls.Engine.handshake_in_progress tls
@@ -264,7 +264,7 @@ struct
           | None -> return (Ok (Cstruct.lenv raw)))
       | Some tls -> (
           Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
-          | `End_of_input ->
+          | `End_of_flow ->
               Log.warn (fun m -> m "[-] Underlying flow already closed.") ;
               t.tls <- None ;
               return (Error `Closed_by_peer)

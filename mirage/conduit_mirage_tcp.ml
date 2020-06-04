@@ -112,7 +112,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
             | Ok `Eof ->
                 t.closed <- true ;
                 Log.debug (fun m -> m "<- End of input.") ;
-                Lwt.return (Ok `End_of_input)
+                Lwt.return (Ok `End_of_flow)
             | Ok (`Data buf) ->
                 Log.debug (fun m -> m "<- Got %d byte(s)." (Cstruct.len buf)) ;
                 (* XXX(dinosaure): [telnet] send '\004' (End Of Transmission) to ask
@@ -122,7 +122,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                 then (
                   StackV4.TCPV4.close t.flow >>= fun () ->
                   Log.debug (fun m -> m "<- End of input (end of transmission)") ;
-                  Lwt.return (Ok `End_of_input))
+                  Lwt.return (Ok `End_of_flow))
                 else
                   let max_buf = Cstruct.len buf in
                   let max_raw = Cstruct.len raw in
@@ -140,7 +140,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                     if len = max_buf - max_raw
                     then Lwt.return (Ok (`Input max_raw))
                     else Lwt.return (Error Input_too_large)))
-          else Lwt.return_ok `End_of_input
+          else Lwt.return_ok `End_of_flow
       | lst ->
           let rec go consumed raw = function
             | [] ->

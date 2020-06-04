@@ -54,7 +54,7 @@ let reader_and_writer_of_flow flow =
       Client.recv flow tmp >>= function
       | Ok (`Input len) ->
           Pipe.write writer (Cstruct.to_string (Cstruct.sub tmp 0 len)) >>= loop
-      | Ok `End_of_input ->
+      | Ok `End_of_flow ->
           Pipe.close writer ;
           Async.return ()
       | Error err -> failwith "%a" Client.pp_error err in

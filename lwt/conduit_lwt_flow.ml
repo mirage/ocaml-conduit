@@ -15,7 +15,7 @@ let pp_write_error ppf = function
 let read flow =
   let raw = Cstruct.create 0x1000 in
   Conduit_lwt.Client.recv flow raw >>= function
-  | Ok `End_of_input -> Lwt.return_ok `Eof
+  | Ok `End_of_flow -> Lwt.return_ok `Eof
   | Ok (`Input len) -> Lwt.return_ok (`Data (Cstruct.sub raw 0 len))
   | Error _ as err -> Lwt.return err
 

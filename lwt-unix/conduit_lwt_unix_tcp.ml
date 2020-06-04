@@ -103,14 +103,14 @@ module Protocol = struct
      it has reached [`End_of_file]. *)
   let rec recv ({ socket; closed; _ } as t) raw =
     if closed
-    then Lwt.return_ok `End_of_input
+    then Lwt.return_ok `End_of_flow
     else
       let rec process filled raw =
         let max = Cstruct.len raw in
         Lwt_unix.read socket t.linger 0 (min max (Bytes.length t.linger))
         >>= fun len ->
         if len = 0
-        then Lwt.return_ok (if filled = 0 then `End_of_input else `Input filled)
+        then Lwt.return_ok (if filled = 0 then `End_of_flow else `Input filled)
         else (
           Cstruct.blit_from_bytes t.linger 0 raw 0 len ;
           if len = Bytes.length t.linger && max > Bytes.length t.linger
@@ -120,12 +120,12 @@ module Protocol = struct
             else
               Lwt.return_ok
                 (if filled + len = 0
-                then `End_of_input
+                then `End_of_flow
                 else `Input (filled + len))
           else
             Lwt.return_ok
               (if filled + len = 0
-              then `End_of_input
+              then `End_of_flow
               else `Input (filled + len))) in
       Lwt.catch (fun () -> process 0 raw) @@ function
       | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw

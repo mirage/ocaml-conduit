@@ -65,7 +65,7 @@ module Protocol = struct
     | Ok (`Ok n) -> Async.return (Ok (`Input n))
     | Ok `Eof -> (
         Fd.ready_to (Socket.fd socket) `Read >>= function
-        | `Bad_fd | `Closed -> Async.return (Ok `End_of_input)
+        | `Bad_fd | `Closed -> Async.return (Ok `End_of_flow)
         | `Ready -> Scheduler.yield () >>= fun () -> recv flow raw)
 
   let send (Socket { writer; _ }) raw =

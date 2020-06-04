@@ -2,7 +2,7 @@ type kind = UDP | TCP
 
 type description = { name : string; port : int; kind : kind }
 
-type 'x or_end_of_input = [ `End_of_input | `Input of 'x ]
+type 'x or_end_of_flow = [ `End_of_flow | `Input of 'x ]
 
 module type FUNCTOR = sig
   type 'a t
@@ -62,7 +62,7 @@ module type FLOW = sig
 
   val pp_error : error Fmt.t
 
-  val recv : flow -> input -> (int or_end_of_input, error) result s
+  val recv : flow -> input -> (int or_end_of_flow, error) result s
 
   val send : flow -> output -> (int, error) result s
 

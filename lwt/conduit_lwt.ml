@@ -14,8 +14,8 @@ let ( >>? ) = Lwt_result.bind
 
 let serve_with_handler :
     type cfg master flow.
-    handler:(flow Service.protocol -> flow -> unit Lwt.t) ->
-    service:(cfg, master * flow) Service.service ->
+    handler:(flow -> unit Lwt.t) ->
+    service:(cfg, master, flow) Service.service ->
     cfg ->
     unit Lwt_condition.t * unit Lwt.t =
  fun ~handler ~service cfg ->
@@ -25,7 +25,7 @@ let serve_with_handler :
   let main =
     Service.serve cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
-    | Ok (master, protocol) -> (
+    | Ok master -> (
         let rec loop () =
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
@@ -33,7 +33,7 @@ let serve_with_handler :
 
           Lwt.pick [ stop; accept ] >>= function
           | Ok (`Flow flow) ->
-              Lwt.async (fun () -> handler protocol flow) ;
+              Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
           | Ok `Stop -> Svc.close master
           | Error err0 -> (
@@ -56,5 +56,5 @@ module type CONDUIT = sig
 
   val protocol : (endpoint, flow) Client.protocol
 
-  val service : (configuration, master * flow) Service.service
+  val service : (configuration, master, flow) Service.service
 end

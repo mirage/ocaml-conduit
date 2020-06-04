@@ -77,12 +77,12 @@ let transmission flow =
 let server :
     type cfg master flow.
     cfg ->
-    service:(cfg, master * flow) Conduit_lwt.Service.service ->
+    protocol:(_, flow) Conduit_lwt.Client.protocol ->
+    service:(cfg, master, flow) Conduit_lwt.Service.service ->
     unit Lwt_condition.t * unit Lwt.t =
- fun cfg ~service ->
+ fun cfg ~protocol ~service ->
   Conduit_lwt_unix.serve_with_handler
-    ~handler:(fun protocol flow ->
-      let (Conduit_lwt_unix.Service.Protocol protocol) = protocol in
+    ~handler:(fun flow ->
       transmission (Conduit_lwt.Client.abstract protocol flow))
     ~service cfg
 
@@ -170,11 +170,12 @@ let config cert key =
 let run_with :
     type cfg master flow.
     cfg ->
-    service:(cfg, master * flow) Conduit_lwt.Service.service ->
+    protocol:(_, flow) Conduit_lwt.Client.protocol ->
+    service:(cfg, master, flow) Conduit_lwt.Service.service ->
     string list ->
     unit =
- fun cfg ~service clients ->
-  let stop, server = server cfg ~service in
+ fun cfg ~protocol ~service clients ->
+  let stop, server = server cfg ~protocol ~service in
   let clients = List.map (client ~resolvers) clients in
   let clients =
     Lwt.join clients >>= fun () ->
@@ -189,6 +190,7 @@ let run_with_tcp clients =
         Unix.ADDR_INET (Unix.inet_addr_loopback, 4000);
       capacity = 40;
     }
+    ~protocol:Conduit_lwt_unix_tcp.protocol
     ~service:Conduit_lwt_unix_tcp.service clients
 
 let run_with_ssl cert key clients =
@@ -201,6 +203,7 @@ let run_with_ssl cert key clients =
           Unix.ADDR_INET (Unix.inet_addr_loopback, 6000);
         capacity = 40;
       } )
+    ~protocol:ssl_protocol
     ~service:ssl_service clients
 
 let run_with_tls cert key clients =
@@ -212,6 +215,7 @@ let run_with_tls cert key clients =
         capacity = 40;
       },
       ctx )
+    ~protocol:tls_protocol
     ~service:tls_service clients
 
 let () =

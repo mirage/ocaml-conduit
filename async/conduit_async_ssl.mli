@@ -48,11 +48,11 @@ val protocol_with_ssl :
   (context * 'edn, 'flow with_ssl) Client.protocol
 
 val service_with_ssl :
-  ('cfg, 't * 'flow) Service.service ->
+  ('cfg, 't, 'flow) Service.service ->
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
   ('edn, 'flow with_ssl) Client.protocol ->
-  (context * 'cfg, (context * 't) * 'flow with_ssl) Service.service
+  (context * 'cfg, (context * 't), 'flow with_ssl) Service.service
 
 module TCP : sig
   open Conduit_async_tcp
@@ -61,7 +61,7 @@ module TCP : sig
 
   val service :
     ( context * Server.configuration,
-      (context * Server.t) * Protocol.flow with_ssl )
+      (context * Server.t), Protocol.flow with_ssl )
     Service.service
 
   val resolv_conf :

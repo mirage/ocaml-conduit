@@ -86,14 +86,14 @@ let server :
     launched:unit Async.Condition.t ->
     stop:unit Async.Condition.t ->
     cfg ->
-    service:(cfg, master * flow) Conduit_async.Service.service ->
+    protocol:(_, flow) Conduit_async.Client.protocol ->
+    service:(cfg, master, flow) Conduit_async.Service.service ->
     unit Async.Deferred.t =
- fun ~launched ~stop cfg ~service ->
+ fun ~launched ~stop cfg ~protocol ~service ->
   let module Server = (val Conduit_async.Service.impl service) in
   let main () =
     let reword_error = R.reword_error (R.msgf "%a" Server.pp_error) in
-    Conduit_async.Service.serve cfg ~service >>? fun (master, protocol) ->
-    let (Conduit_async.Service.Protocol protocol) = protocol in
+    Conduit_async.Service.serve cfg ~service >>? fun master ->
     Condition.signal launched () ;
 
     let rec go () =
@@ -166,13 +166,14 @@ let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 let run_with :
     type cfg master flow.
     cfg ->
-    service:(cfg, master * flow) Conduit_async.Service.service ->
+    protocol:(_, flow) Conduit_async.Client.protocol ->
+    service:(cfg, master, flow) Conduit_async.Service.service ->
     string list ->
     unit =
- fun cfg ~service clients ->
+ fun cfg ~protocol ~service clients ->
   let launched = Condition.create () in
   let stop = Condition.create () in
-  let server () = server ~launched ~stop cfg ~service in
+  let server () = server ~launched ~stop cfg ~protocol ~service in
   let clients =
     Condition.wait launched >>= fun () ->
     let clients = List.map (client ~resolvers localhost) clients in
@@ -186,12 +187,14 @@ let run_with :
 let run_with_tcp clients =
   run_with
     (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 5000))
+    ~protocol:tcp_protocol
     ~service:tcp_service clients
 
 let run_with_ssl cert key clients =
   let ctx = Conduit_async_ssl.context ~crt_file:cert ~key_file:key () in
   run_with
     (ctx, Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 7000))
+    ~protocol:ssl_protocol
     ~service:ssl_service clients
 
 let load_file filename =
@@ -217,6 +220,7 @@ let run_with_tls cert key clients =
   let ctx = config cert key in
   run_with
     (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 9000), ctx)
+    ~protocol:tls_protocol
     ~service:tls_service clients
 
 let () =

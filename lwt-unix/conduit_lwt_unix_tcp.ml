@@ -307,7 +307,7 @@ let protocol = Conduit_lwt.Client.register ~protocol:(module Protocol)
 
 include (val Conduit_lwt.Client.repr protocol)
 
-let service = Conduit_lwt.Service.register ~service:(module Server) ~protocol
+let service = Conduit_lwt.Service.register ~service:(module Server)
 
 let resolv_conf ~port domain_name =
   Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function

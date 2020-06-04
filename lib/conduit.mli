@@ -95,15 +95,11 @@ module type S = sig
           and type t = 't
           and type flow = 'flow)
 
-    type 'flow protocol =
-      | Protocol : (_, 'flow) Client.protocol -> 'flow protocol
-
-    type ('cfg, 'v) service
+    type ('cfg, 't, 'flow) service
 
     val register :
       service:('cfg, 't, 'flow) impl ->
-      protocol:(_, 'flow) Client.protocol ->
-      ('cfg, 't * 'flow) service
+      ('cfg, 't, 'flow) service
 
     type error = [ `Msg of string ]
 
@@ -111,11 +107,11 @@ module type S = sig
 
     val serve :
       'cfg ->
-      service:('cfg, 't * 'flow) service ->
-      ('t * 'flow protocol, [> error ]) result s
+      service:('cfg, 't, 'flow) service ->
+      ('t, [> error ]) result s
 
     val impl :
-      ('cfg, 't * 'flow) service ->
+      ('cfg, 't, 'flow) service ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't

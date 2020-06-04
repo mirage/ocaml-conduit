@@ -8,13 +8,13 @@ include
      and type scheduler = Conduit_lwt.scheduler
      and type ('edn, 'flow) Client.protocol =
           ('edn, 'flow) Conduit_lwt.Client.protocol
-     and type ('cfg, 'v) Service.service =
-          ('cfg, 'v) Conduit_lwt.Service.service
+     and type ('cfg, 't, 'flow) Service.service =
+          ('cfg, 't, 'flow) Conduit_lwt.Service.service
      and type Client.flow = Conduit_lwt.Client.flow
 
 val serve_with_handler :
-  handler:('flow Service.protocol -> 'flow -> unit Lwt.t) ->
-  service:('cfg, 'master * 'flow) Service.service ->
+  handler:('flow -> unit Lwt.t) ->
+  service:('cfg, 'master, 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
 

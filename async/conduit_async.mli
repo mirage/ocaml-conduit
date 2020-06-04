@@ -10,8 +10,8 @@ include
      and type +'a s = 'a Async.Deferred.t
 
 val serve_with_handler :
-  handler:('flow Service.protocol -> 'flow -> unit Async.Deferred.t) ->
-  service:('cfg, 'master * 'flow) Service.service ->
+  handler:('flow -> unit Async.Deferred.t) ->
+  service:('cfg, 'master, 'flow) Service.service ->
   'cfg ->
   unit Async.Condition.t * unit Async.Deferred.t
 

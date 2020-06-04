@@ -147,7 +147,7 @@ module Server = struct
     Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
 end
 
-let service = Conduit_async.Service.register ~service:(module Server) ~protocol
+let service = Conduit_async.Service.register ~service:(module Server)
 
 let resolv_conf ~port domain_name =
   Monitor.try_with (fun () ->

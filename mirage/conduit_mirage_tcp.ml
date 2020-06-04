@@ -270,5 +270,5 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   end
 
   let service =
-    Conduit_mirage.Service.register ~service:(module Server) ~protocol
+    Conduit_mirage.Service.register ~service:(module Server)
 end

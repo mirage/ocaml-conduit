@@ -279,13 +279,13 @@ end
 
 let service_with_ssl :
     type cfg edn t flow.
-    (cfg, t * flow) Conduit_async.Service.service ->
+    (cfg, t, flow) Conduit_async.Service.service ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
     (edn, flow with_ssl) Conduit_async.Client.protocol ->
-    (context * cfg, (context * t) * flow with_ssl) Conduit_async.Service.service
+    (context * cfg, (context * t), flow with_ssl) Conduit_async.Service.service
     =
- fun service ~reader ~writer protocol ->
+ fun service ~reader ~writer _ ->
   let module S = (val Conduit_async.Service.impl service) in
   let module Service = struct
     include S
@@ -295,7 +295,7 @@ let service_with_ssl :
     let writer = writer
   end in
   let module M = Make (Service) in
-  Conduit_async.Service.register ~service:(module M) ~protocol
+  Conduit_async.Service.register ~service:(module M)
 
 module TCP = struct
   open Conduit_async_tcp

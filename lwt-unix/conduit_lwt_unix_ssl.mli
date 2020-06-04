@@ -64,10 +64,10 @@ type 't master
 (** Type of the {i master} socket. *)
 
 val service_with_ssl :
-  ('cfg, 't * 'flow) Service.service ->
+  ('cfg, 't, 'flow) Service.service ->
   file_descr:('flow -> Lwt_unix.file_descr) ->
   ('edn, Lwt_ssl.socket) Client.protocol ->
-  (Ssl.context * 'cfg, 't master * Lwt_ssl.socket) Service.service
+  (Ssl.context * 'cfg, 't master, Lwt_ssl.socket) Service.service
 (** [service_with_ssl ~key service ~file_descr ssl_protocol] returns a
     representation of the given service with SSL. The service deliver an SSL
     flow which must be described by a [Lwt_ssl.socket Witness.protocol] (eg.
@@ -86,7 +86,7 @@ module TCP : sig
 
   val service :
     ( Ssl.context * configuration,
-      Server.t master * Lwt_ssl.socket )
+      Server.t master, Lwt_ssl.socket )
     Service.service
 
   type verify =

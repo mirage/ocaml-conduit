@@ -112,20 +112,20 @@ end
 
 let service_with_ssl :
     type cfg edn t flow.
-    (cfg, t * flow) Conduit_lwt_unix.Service.service ->
+    (cfg, t, flow) Conduit_lwt_unix.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
     (edn, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol ->
     ( Ssl.context * cfg,
-      t master * Lwt_ssl.socket )
+      t master, Lwt_ssl.socket )
     Conduit_lwt_unix.Service.service =
- fun service ~file_descr protocol ->
+ fun service ~file_descr _ ->
   let module S = (val Conduit_lwt_unix.Service.impl service) in
   let module M = Server (struct
     include S
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt_unix.Service.register ~service:(module M) ~protocol
+  Conduit_lwt_unix.Service.register ~service:(module M)
 
 module TCP = struct
   let resolv_conf ~port ~context ?verify domain_name =

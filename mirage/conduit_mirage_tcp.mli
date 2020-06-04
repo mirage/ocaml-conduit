@@ -24,5 +24,5 @@ module Make (StackV4 : Mirage_stack.V4) : sig
 
   type service
 
-  val service : (StackV4.t configuration, service * protocol) Service.service
+  val service : (StackV4.t configuration, service, protocol) Service.service
 end

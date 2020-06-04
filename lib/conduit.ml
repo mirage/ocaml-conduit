@@ -15,6 +15,7 @@ type _ resolver =
       -> ('edn * 's) resolver
 
 type ('a, 'b) value = Value : 'b -> ('a, 'b) value
+type ('a, 'b, 'c) thd = Thd : 'b -> ('a, 'b, 'c) thd [@@warning "-37"]
 
 let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
 
@@ -120,15 +121,11 @@ module type S = sig
           and type t = 't
           and type flow = 'flow)
 
-    type 'flow protocol =
-      | Protocol : ('edn, 'flow) Client.protocol -> 'flow protocol
-
-    type ('cfg, 'v) service
+    type ('cfg, 't, 'flow) service
 
     val register :
       service:('cfg, 't, 'flow) impl ->
-      protocol:('edn, 'flow) Client.protocol ->
-      ('cfg, 't * 'flow) service
+      ('cfg, 't, 'flow) service
 
     type error = [ `Msg of string ]
 
@@ -136,11 +133,11 @@ module type S = sig
 
     val serve :
       'cfg ->
-      service:('cfg, 't * 'flow) service ->
-      ('t * 'flow protocol, [> error ]) result s
+      service:('cfg, 't, 'flow) service ->
+      ('t, [> error ]) result s
 
     val impl :
-      ('cfg, 't * 'flow) service ->
+      ('cfg, 't, 'flow) service ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't
@@ -395,28 +392,24 @@ module Make
           and type t = 't
           and type flow = 'flow)
 
-    type 'flow protocol =
-      | Protocol : ('edn, 'flow) Client.protocol -> 'flow protocol
-
     module F = struct
       type 't t =
         | Service :
-            'cfg key * ('cfg, 't, 'flow) impl * 'flow protocol
-            -> ('cfg, 't * 'flow) value t
+            'cfg key * ('cfg, 't, 'flow) impl
+            -> ('cfg, 't, 'flow) thd t
     end
 
     module Svc = E0.Make (F)
 
-    type ('cfg, 'v) service = ('cfg, 'v) value Svc.s
+    type ('cfg, 't, 'flow) service = ('cfg, 't, 'flow) thd Svc.s
 
     let register :
-        type edn cfg t flow.
+        type cfg t flow.
         service:(cfg, t, flow) impl ->
-        protocol:(edn, flow) Client.protocol ->
-        (cfg, t * flow) service =
-     fun ~service ~protocol ->
+        (cfg, t, flow) service =
+     fun ~service ->
       let cfg = Map.Key.create "" in
-      Svc.inj (Service (cfg, service, Protocol protocol))
+      Svc.inj (Service (cfg, service))
 
     type error = [ `Msg of string ]
 
@@ -425,23 +418,23 @@ module Make
     let serve :
         type cfg t flow.
         cfg ->
-        service:(cfg, t * flow) service ->
-        (t * flow protocol, [> error ]) result s =
+        service:(cfg, t, flow) service ->
+        (t, [> error ]) result s =
      fun edn ~service:(module Witness) ->
-      let (Service (_, (module Service), protocol)) = Witness.witness in
+      let (Service (_, (module Service))) = Witness.witness in
       Service.make edn >>= function
-      | Ok t -> return (Ok (t, protocol))
+      | Ok t -> return (Ok t)
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let impl :
         type cfg t flow.
-        (cfg, t * flow) service ->
+        (cfg, t, flow) service ->
         (module SERVICE
            with type configuration = cfg
             and type t = t
             and type flow = flow) =
      fun (module S) ->
-      let (Service (_, (module Service), _)) = S.witness in
+      let (Service (_, (module Service))) = S.witness in
       (module Service)
   end
 end

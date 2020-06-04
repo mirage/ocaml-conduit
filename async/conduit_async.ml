@@ -14,8 +14,8 @@ let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
 let serve_with_handler :
     type cfg master flow.
-    handler:(flow Service.protocol -> flow -> unit Async.Deferred.t) ->
-    service:(cfg, master * flow) Service.service ->
+    handler:(flow -> unit Async.Deferred.t) ->
+    service:(cfg, master, flow) Service.service ->
     cfg ->
     unit Async.Condition.t * unit Async.Deferred.t =
  fun ~handler ~service cfg ->
@@ -25,7 +25,7 @@ let serve_with_handler :
   let main =
     Service.serve cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
-    | Ok (master, protocol) -> (
+    | Ok master -> (
         let rec loop () =
           let close = Async.Condition.wait stop >>| fun () -> Ok `Stop in
           let accept =
@@ -34,7 +34,7 @@ let serve_with_handler :
 
           Async.Deferred.any [ close; accept ] >>= function
           | Ok (`Flow flow) ->
-              Async.don't_wait_for (handler protocol flow) ;
+              Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
           | Ok `Stop -> Svc.close master
           | Error err0 -> (

@@ -19,6 +19,6 @@ type configuration = Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
 module Server : Service.SERVICE with type configuration = configuration
 
-val service : (configuration, Server.t * Protocol.flow) Service.service
+val service : (configuration, Server.t, Protocol.flow) Service.service
 
 val resolv_conf : port:int -> endpoint Client.resolver

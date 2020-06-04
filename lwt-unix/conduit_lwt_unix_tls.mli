@@ -25,10 +25,10 @@ val protocol_with_tls :
 type 'service service_with_tls
 
 val service_with_tls :
-  ('cfg, 't * 'flow) Service.service ->
+  ('cfg, 't, 'flow) Service.service ->
   ('edn, 'flow protocol_with_tls) Client.protocol ->
   ( 'cfg * Tls.Config.server,
-    't service_with_tls * 'flow protocol_with_tls )
+    't service_with_tls, 'flow protocol_with_tls )
   Service.service
 
 module TCP : sig
@@ -44,7 +44,7 @@ module TCP : sig
 
   val service :
     ( configuration * Tls.Config.server,
-      Server.t service_with_tls * Protocol.flow protocol_with_tls )
+      Server.t service_with_tls, Protocol.flow protocol_with_tls )
     Service.service
 
   val resolv_conf :

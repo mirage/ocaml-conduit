@@ -187,15 +187,13 @@ let run_with :
 let run_with_tcp clients =
   run_with
     (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 5000))
-    ~protocol:tcp_protocol
-    ~service:tcp_service clients
+    ~protocol:tcp_protocol ~service:tcp_service clients
 
 let run_with_ssl cert key clients =
   let ctx = Conduit_async_ssl.context ~crt_file:cert ~key_file:key () in
   run_with
     (ctx, Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 7000))
-    ~protocol:ssl_protocol
-    ~service:ssl_service clients
+    ~protocol:ssl_protocol ~service:ssl_service clients
 
 let load_file filename =
   let open Stdlib in
@@ -220,8 +218,7 @@ let run_with_tls cert key clients =
   let ctx = config cert key in
   run_with
     (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 9000), ctx)
-    ~protocol:tls_protocol
-    ~service:tls_service clients
+    ~protocol:tls_protocol ~service:tls_service clients
 
 let () =
   match Array.to_list Stdlib.Sys.argv with

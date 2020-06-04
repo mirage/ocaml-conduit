@@ -203,8 +203,7 @@ let run_with_ssl cert key clients =
           Unix.ADDR_INET (Unix.inet_addr_loopback, 6000);
         capacity = 40;
       } )
-    ~protocol:ssl_protocol
-    ~service:ssl_service clients
+    ~protocol:ssl_protocol ~service:ssl_service clients
 
 let run_with_tls cert key clients =
   let ctx = config cert key in
@@ -215,8 +214,7 @@ let run_with_tls cert key clients =
         capacity = 40;
       },
       ctx )
-    ~protocol:tls_protocol
-    ~service:tls_service clients
+    ~protocol:tls_protocol ~service:tls_service clients
 
 let () =
   match Array.to_list Sys.argv with

@@ -97,18 +97,14 @@ module type S = sig
 
     type ('cfg, 't, 'flow) service
 
-    val register :
-      service:('cfg, 't, 'flow) impl ->
-      ('cfg, 't, 'flow) service
+    val register : service:('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) service
 
     type error = [ `Msg of string ]
 
     val pp_error : error Fmt.t
 
     val serve :
-      'cfg ->
-      service:('cfg, 't, 'flow) service ->
-      ('t, [> error ]) result s
+      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
 
     val impl :
       ('cfg, 't, 'flow) service ->

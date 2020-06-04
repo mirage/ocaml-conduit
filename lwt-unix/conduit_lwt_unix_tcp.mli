@@ -69,6 +69,7 @@ module Server :
 val protocol : (Lwt_unix.sockaddr, Protocol.flow) Client.protocol
 
 type t = (Lwt_unix.sockaddr, Protocol.flow) Conduit.value
+
 type Conduit_lwt.Client.flow += T of t
 
 val service : (configuration, Server.t, Protocol.flow) Service.service

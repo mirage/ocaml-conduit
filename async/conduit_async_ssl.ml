@@ -283,8 +283,7 @@ let service_with_ssl :
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
     (edn, flow with_ssl) Conduit_async.Client.protocol ->
-    (context * cfg, (context * t), flow with_ssl) Conduit_async.Service.service
-    =
+    (context * cfg, context * t, flow with_ssl) Conduit_async.Service.service =
  fun service ~reader ~writer _ ->
   let module S = (val Conduit_async.Service.impl service) in
   let module Service = struct

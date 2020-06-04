@@ -116,7 +116,8 @@ let service_with_ssl :
     file_descr:(flow -> Lwt_unix.file_descr) ->
     (edn, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol ->
     ( Ssl.context * cfg,
-      t master, Lwt_ssl.socket )
+      t master,
+      Lwt_ssl.socket )
     Conduit_lwt_unix.Service.service =
  fun service ~file_descr _ ->
   let module S = (val Conduit_lwt_unix.Service.impl service) in

@@ -269,6 +269,5 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let service =
-    Conduit_mirage.Service.register ~service:(module Server)
+  let service = Conduit_mirage.Service.register ~service:(module Server)
 end

@@ -16,5 +16,6 @@ val service_with_tls :
   ('cfg, 't, 'flow) Service.service ->
   ('edn, 'flow protocol_with_tls) Client.protocol ->
   ( 'cfg * Tls.Config.server,
-    't service_with_tls, 'flow protocol_with_tls )
+    't service_with_tls,
+    'flow protocol_with_tls )
   Service.service

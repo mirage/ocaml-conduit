@@ -193,8 +193,8 @@ struct
       in
       go tls raw0
 
-    let flow (edn, config) =
-      Flow.flow edn >>| reword_error flow_error >>? fun flow ->
+    let connect (edn, config) =
+      Flow.connect edn >>| reword_error flow_error >>? fun flow ->
       let raw = Cstruct.create 0x1000 in
       let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
       let tls, buf = Tls.Engine.client config in
@@ -305,18 +305,13 @@ struct
 
   let protocol_with_tls :
       type edn flow.
-      key:edn Conduit.key ->
-      flow Conduit.Witness.protocol ->
-      (edn * Tls.Config.client) Conduit.key
-      * flow protocol_with_tls Conduit.Witness.protocol =
-   fun ~key protocol ->
-    match Conduit.impl_of_protocol ~key protocol with
-    | Ok (module Flow) ->
-        let module M = Make_protocol (Flow) in
-        let k = Conduit.key (Fmt.strf "%s + tls" (Conduit.name_of_key key)) in
-        let p = Conduit.register_protocol ~key:k ~protocol:(module M) in
-        (k, p)
-    | Error _ -> assert false
+      (edn, flow) Conduit.Client.protocol ->
+      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.Client.protocol
+      =
+   fun protocol ->
+    let module Protocol = (val Conduit.Client.impl_of_protocol protocol) in
+    let module M = Make_protocol (Protocol) in
+    Conduit.Client.register ~protocol:(module M)
 
   type 'service service_with_tls = {
     service : 'service;
@@ -327,7 +322,7 @@ struct
   struct
     type +'a s = 'a Conduit.s
 
-    type endpoint = Service.endpoint * Tls.Config.server
+    type configuration = Service.configuration * Tls.Config.server
 
     type flow = Service.flow protocol_with_tls
 
@@ -358,18 +353,14 @@ struct
   end
 
   let service_with_tls :
-      type edn t flow.
-      key:edn Conduit.key ->
-      (t * flow) Conduit.Witness.service ->
-      flow protocol_with_tls Conduit.Witness.protocol ->
-      (edn * Tls.Config.server) Conduit.key
-      * (t service_with_tls * flow protocol_with_tls) Conduit.Witness.service =
-   fun ~key service protocol ->
-    match Conduit.impl_of_service ~key service with
-    | Ok (module Service) ->
-        let module M = Make_server (Service) in
-        let k = Conduit.key (Fmt.strf "%s + tls" (Conduit.name_of_key key)) in
-        let s = Conduit.register_service ~key:k ~service:(module M) ~protocol in
-        (k, s)
-    | _ -> assert false
+      type cfg edn t flow.
+      (cfg, t * flow) Conduit.Service.service ->
+      (edn, flow protocol_with_tls) Conduit.Client.protocol ->
+      ( cfg * Tls.Config.server,
+        t service_with_tls * flow protocol_with_tls )
+      Conduit.Service.service =
+   fun service protocol ->
+    let module Service = (val Conduit.Service.impl service) in
+    let module M = Make_server (Service) in
+    Conduit.Service.register ~service:(module M) ~protocol
 end

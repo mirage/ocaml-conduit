@@ -133,6 +133,12 @@ module type S = sig
     val serve :
       'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
 
+    val accept :
+      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result s
+
+    val close :
+      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result s
+
     val impl :
       ('cfg, 't, 'flow) service ->
       (module SERVICE
@@ -415,6 +421,24 @@ module Make
       let (Service (_, (module Service))) = Witness.witness in
       Service.make edn >>= function
       | Ok t -> return (Ok t)
+      | Error err -> return (error_msgf "%a" Service.pp_error err)
+
+    let accept :
+        type cfg t flow.
+        service:(cfg, t, flow) service -> t -> (flow, [> error ]) result s =
+     fun ~service:(module Witness) t ->
+      let (Service (_, (module Service))) = Witness.witness in
+      Service.accept t >>= function
+      | Ok flow -> return (Ok flow)
+      | Error err -> return (error_msgf "%a" Service.pp_error err)
+
+    let close :
+        type cfg t flow.
+        service:(cfg, t, flow) service -> t -> (unit, [> error ]) result s =
+     fun ~service:(module Witness) t ->
+      let (Service (_, (module Service))) = Witness.witness in
+      Service.close t >>= function
+      | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let impl :

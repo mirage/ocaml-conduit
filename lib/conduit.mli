@@ -106,6 +106,12 @@ module type S = sig
     val serve :
       'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
 
+    val accept :
+      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result s
+
+    val close :
+      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result s
+
     val impl :
       ('cfg, 't, 'flow) service ->
       (module SERVICE

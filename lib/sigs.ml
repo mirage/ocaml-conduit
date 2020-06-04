@@ -74,7 +74,7 @@ module type PROTOCOL = sig
 
   type endpoint
 
-  val flow : endpoint -> (flow, error) result s
+  val connect : endpoint -> (flow, error) result s
 end
 
 module type SERVICE = sig
@@ -86,9 +86,9 @@ module type SERVICE = sig
 
   type error
 
-  type endpoint
+  type configuration
 
-  val make : endpoint -> (t, error) result s
+  val make : configuration -> (t, error) result s
 
   val pp_error : error Fmt.t
 

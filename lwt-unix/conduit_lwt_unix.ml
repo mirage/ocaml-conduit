@@ -8,9 +8,9 @@ let io_of_flow flow =
   let close () =
     if !ic_closed && !oc_closed
     then
-      close flow >>= function
+      Client.close flow >>= function
       | Ok () -> Lwt.return_unit
-      | Error err -> failf "%a" pp_error err
+      | Error err -> failf "%a" Client.pp_error err
     else Lwt.return_unit in
   let ic_close () =
     ic_closed := true ;
@@ -20,15 +20,15 @@ let io_of_flow flow =
     close () in
   let recv buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
-    recv flow raw >>= function
+    Client.recv flow raw >>= function
     | Ok (`Input len) -> Lwt.return len
     | Ok `End_of_input -> Lwt.return 0
-    | Error err -> failf "%a" pp_error err in
+    | Error err -> failf "%a" Client.pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input recv in
   let send buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
-    send flow raw >>= function
+    Client.send flow raw >>= function
     | Ok len -> Lwt.return len
-    | Error err -> failf "%a" pp_error err in
+    | Error err -> failf "%a" Client.pp_error err in
   let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output send in
   (ic, oc)

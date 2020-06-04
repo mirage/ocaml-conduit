@@ -62,7 +62,7 @@ module Protocol = struct
 
   let io_buffer_size = 65536
 
-  let flow sockaddr =
+  let connect sockaddr =
     let socket =
       Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
     in
@@ -197,10 +197,10 @@ end
 
 type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
-module Service = struct
+module Server = struct
   type +'a s = 'a Lwt.t
 
-  type endpoint = configuration = {
+  type nonrec configuration = configuration = {
     sockaddr : Lwt_unix.sockaddr;
     capacity : int;
   }
@@ -303,17 +303,11 @@ module Service = struct
     Lwt.return_ok ()
 end
 
-let endpoint = Conduit_lwt.key "tcp-endpoint"
+let protocol = Conduit_lwt.Client.register ~protocol:(module Protocol)
 
-let protocol =
-  Conduit_lwt.register_protocol ~key:endpoint ~protocol:(module Protocol)
+include (val Conduit_lwt.Client.repr protocol)
 
-let configuration = Conduit_lwt.key "tcp-configuration"
-
-let service =
-  Conduit_lwt.register_service ~key:configuration
-    ~service:(module Service)
-    ~protocol
+let service = Conduit_lwt.Service.register ~service:(module Server) ~protocol
 
 let resolv_conf ~port domain_name =
   Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function

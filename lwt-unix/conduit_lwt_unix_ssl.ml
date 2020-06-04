@@ -5,8 +5,6 @@ let ( >>? ) x f =
 
 let reword_error f = function Ok _ as v -> v | Error err -> Error (f err)
 
-let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
-
 type ('edn, 'flow) endpoint = {
   context : Ssl.context;
   endpoint : 'edn;
@@ -27,7 +25,7 @@ let endpoint ~file_descr ~context ?verify endpoint =
 
 let pf = Format.fprintf
 
-module Protocol (Flow : Conduit_lwt_unix.PROTOCOL) = struct
+module Protocol (Flow : Conduit_lwt_unix.Client.PROTOCOL) = struct
   type input = Cstruct.t
 
   type output = Cstruct.t
@@ -44,8 +42,9 @@ module Protocol (Flow : Conduit_lwt_unix.PROTOCOL) = struct
 
   type nonrec endpoint = (Flow.endpoint, Flow.flow) endpoint
 
-  let flow { context; endpoint; verify } =
-    Flow.flow endpoint >|= reword_error (fun err -> `Flow err) >>? fun flow ->
+  let connect { context; endpoint; verify } =
+    Flow.connect endpoint >|= reword_error (fun err -> `Flow err)
+    >>? fun flow ->
     verify context flow >>= function
     | Ok _ as v -> Lwt.return v
     | Error (`Verify _ as err) -> Lwt.return (Error err)
@@ -67,34 +66,24 @@ end
 
 let protocol_with_ssl :
     type edn flow.
-    key:edn Conduit_lwt_unix.key ->
-    flow Conduit_lwt_unix.Witness.protocol ->
-    (edn, flow) endpoint Conduit_lwt_unix.key
-    * Lwt_ssl.socket Conduit_lwt_unix.Witness.protocol =
- fun ~key protocol ->
-  match Conduit_lwt_unix.impl_of_protocol ~key protocol with
-  | Ok (module Flow) ->
-      let module M = Protocol (Flow) in
-      let k =
-        Conduit_lwt_unix.key
-          (Fmt.strf "%s + ssl" (Conduit_lwt_unix.name_of_key key)) in
-      let p = Conduit_lwt_unix.register_protocol ~key:k ~protocol:(module M) in
-      (k, p)
-  | Error _ ->
-      failwith "Invalid key %s with given protocol"
-        (Conduit_lwt_unix.name_of_key key)
+    (edn, flow) Conduit_lwt_unix.Client.protocol ->
+    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol =
+ fun protocol ->
+  let module Flow = (val Conduit_lwt_unix.Client.impl_of_protocol protocol) in
+  let module M = Protocol (Flow) in
+  Conduit_lwt_unix.Client.register ~protocol:(module M)
 
 type 't master = { master : 't; context : Ssl.context }
 
-module Service (Service : sig
-  include Conduit_lwt_unix.SERVICE
+module Server (Service : sig
+  include Conduit_lwt_unix.Service.SERVICE
 
   val file_descr : flow -> Lwt_unix.file_descr
 end) =
 struct
   type +'a s = 'a Lwt.t
 
-  type endpoint = Ssl.context * Service.endpoint
+  type configuration = Ssl.context * Service.configuration
 
   type t = Service.t master
 
@@ -122,31 +111,21 @@ struct
 end
 
 let service_with_ssl :
-    type edn t flow.
-    key:edn Conduit_lwt_unix.key ->
-    (t * flow) Conduit_lwt_unix.Witness.service ->
+    type cfg edn t flow.
+    (cfg, t * flow) Conduit_lwt_unix.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
-    Lwt_ssl.socket Conduit_lwt_unix.Witness.protocol ->
-    (Ssl.context * edn) Conduit_lwt_unix.key
-    * (t master * Lwt_ssl.socket) Conduit_lwt_unix.Witness.service =
- fun ~key service ~file_descr protocol ->
-  match Conduit_lwt_unix.impl_of_service ~key service with
-  | Ok (module S) ->
-      let module M = Service (struct
-        include S
+    (edn, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol ->
+    ( Ssl.context * cfg,
+      t master * Lwt_ssl.socket )
+    Conduit_lwt_unix.Service.service =
+ fun service ~file_descr protocol ->
+  let module S = (val Conduit_lwt_unix.Service.impl service) in
+  let module M = Server (struct
+    include S
 
-        let file_descr = file_descr
-      end) in
-      let k =
-        Conduit_lwt_unix.key
-          (Fmt.strf "%s + ssl" (Conduit_lwt_unix.name_of_key key)) in
-      let s =
-        Conduit_lwt_unix.register_service ~key:k ~service:(module M) ~protocol
-      in
-      (k, s)
-  | Error _ ->
-      failwith "Invalid key %s with given service"
-        (Conduit_lwt_unix.name_of_key key)
+    let file_descr = file_descr
+  end) in
+  Conduit_lwt_unix.Service.register ~service:(module M) ~protocol
 
 module TCP = struct
   let resolv_conf ~port ~context ?verify domain_name =
@@ -162,9 +141,8 @@ module TCP = struct
     Protocol.flow ->
     (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t
 
-  let endpoint, protocol = protocol_with_ssl ~key:endpoint protocol
+  let protocol = protocol_with_ssl protocol
 
-  let configuration, service =
-    service_with_ssl ~key:configuration service ~file_descr:Protocol.file_descr
-      protocol
+  let service =
+    service_with_ssl service ~file_descr:Protocol.file_descr protocol
 end

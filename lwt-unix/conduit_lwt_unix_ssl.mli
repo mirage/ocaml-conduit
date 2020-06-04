@@ -55,9 +55,8 @@ val endpoint :
     hostname} with your peer. *)
 
 val protocol_with_ssl :
-  key:'edn key ->
-  'flow Witness.protocol ->
-  ('edn, 'flow) endpoint key * Lwt_ssl.socket Witness.protocol
+  ('edn, 'flow) Client.protocol ->
+  (('edn, 'flow) endpoint, Lwt_ssl.socket) Client.protocol
 (** [protocol_with_ssl ~key protocol] returns a representation of the given
     protocol with SSL. *)
 
@@ -65,11 +64,10 @@ type 't master
 (** Type of the {i master} socket. *)
 
 val service_with_ssl :
-  key:'edn key ->
-  ('t * 'flow) Witness.service ->
+  ('cfg, 't * 'flow) Service.service ->
   file_descr:('flow -> Lwt_unix.file_descr) ->
-  Lwt_ssl.socket Witness.protocol ->
-  (Ssl.context * 'edn) key * ('t master * Lwt_ssl.socket) Witness.service
+  ('edn, Lwt_ssl.socket) Client.protocol ->
+  (Ssl.context * 'cfg, 't master * Lwt_ssl.socket) Service.service
 (** [service_with_ssl ~key service ~file_descr ssl_protocol] returns a
     representation of the given service with SSL. The service deliver an SSL
     flow which must be described by a [Lwt_ssl.socket Witness.protocol] (eg.
@@ -81,13 +79,15 @@ val service_with_ssl :
 module TCP : sig
   open Conduit_lwt_unix_tcp
 
-  val endpoint : (Lwt_unix.sockaddr, Protocol.flow) endpoint key
+  val protocol :
+    ( (Lwt_unix.sockaddr, Protocol.flow) endpoint,
+      Lwt_ssl.socket )
+    Client.protocol
 
-  val protocol : Lwt_ssl.socket Witness.protocol
-
-  val configuration : (Ssl.context * configuration) key
-
-  val service : (Service.t master * Lwt_ssl.socket) Witness.service
+  val service :
+    ( Ssl.context * configuration,
+      Server.t master * Lwt_ssl.socket )
+    Service.service
 
   type verify =
     Ssl.context ->
@@ -98,5 +98,5 @@ module TCP : sig
     port:int ->
     context:Ssl.context ->
     ?verify:verify ->
-    (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
+    (Lwt_unix.sockaddr, Protocol.flow) endpoint Client.resolver
 end

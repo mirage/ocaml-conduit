@@ -3,10 +3,11 @@ include Conduit_tls.Make (Conduit_lwt.Lwt_scheduler) (Conduit_lwt)
 module TCP = struct
   open Conduit_lwt_unix_tcp
 
-  let endpoint, protocol = protocol_with_tls ~key:endpoint protocol
+  let protocol = protocol_with_tls protocol
 
-  let configuration, service =
-    service_with_tls ~key:configuration service protocol
+  include (val Conduit_lwt.Client.repr protocol)
+
+  let service = service_with_tls service protocol
 
   let resolv_conf ~port ~config domain_name =
     let open Lwt.Infix in

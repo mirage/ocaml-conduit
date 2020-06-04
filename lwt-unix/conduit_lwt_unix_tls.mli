@@ -19,34 +19,36 @@ val handshake : 'flow protocol_with_tls -> bool
     it returns [false]. *)
 
 val protocol_with_tls :
-  key:'edn key ->
-  'flow Witness.protocol ->
-  ('edn * Tls.Config.client) key * 'flow protocol_with_tls Witness.protocol
+  ('edn, 'flow) Client.protocol ->
+  ('edn * Tls.Config.client, 'flow protocol_with_tls) Client.protocol
 
 type 'service service_with_tls
 
 val service_with_tls :
-  key:'edn key ->
-  ('t * 'flow) Witness.service ->
-  'flow protocol_with_tls Witness.protocol ->
-  ('edn * Tls.Config.server) key
-  * ('t service_with_tls * 'flow protocol_with_tls) Witness.service
+  ('cfg, 't * 'flow) Service.service ->
+  ('edn, 'flow protocol_with_tls) Client.protocol ->
+  ( 'cfg * Tls.Config.server,
+    't service_with_tls * 'flow protocol_with_tls )
+  Service.service
 
 module TCP : sig
   open Conduit_lwt_unix_tcp
 
-  val endpoint : (Lwt_unix.sockaddr * Tls.Config.client) key
+  val protocol :
+    ( Lwt_unix.sockaddr * Tls.Config.client,
+      Protocol.flow protocol_with_tls )
+    Client.protocol
 
-  val protocol : Protocol.flow protocol_with_tls Witness.protocol
-
-  val configuration : (configuration * Tls.Config.server) key
+  type t = (Lwt_unix.sockaddr * Tls.Config.client, Protocol.flow protocol_with_tls) Conduit.value
+  type Conduit_lwt.Client.flow += T of t
 
   val service :
-    (Service.t service_with_tls * Protocol.flow protocol_with_tls)
-    Witness.service
+    ( configuration * Tls.Config.server,
+      Server.t service_with_tls * Protocol.flow protocol_with_tls )
+    Service.service
 
   val resolv_conf :
     port:int ->
     config:Tls.Config.client ->
-    (Lwt_unix.sockaddr * Tls.Config.client) resolver
+    (Lwt_unix.sockaddr * Tls.Config.client) Client.resolver
 end

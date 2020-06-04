@@ -19,7 +19,7 @@ open Conduit_lwt_unix
 
 module Protocol : sig
   include
-    PROTOCOL
+    Client.PROTOCOL
       with type endpoint = Lwt_unix.sockaddr
        and type error =
             [ `Closed_by_peer
@@ -47,9 +47,9 @@ end
 
 type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
-module Service :
-  SERVICE
-    with type endpoint = configuration
+module Server :
+  Service.SERVICE
+    with type configuration = configuration
      and type t = Lwt_unix.file_descr
      and type flow = Protocol.flow
      and type error =
@@ -66,12 +66,11 @@ module Service :
           | `Protocol_error
           | `Firewall_rules_forbid_connection ]
 
-val endpoint : Lwt_unix.sockaddr key
+val protocol : (Lwt_unix.sockaddr, Protocol.flow) Client.protocol
 
-val protocol : Protocol.flow Witness.protocol
+type t = (Lwt_unix.sockaddr, Protocol.flow) Conduit.value
+type Conduit_lwt.Client.flow += T of t
 
-val configuration : configuration key
+val service : (configuration, Server.t * Protocol.flow) Service.service
 
-val service : (Service.t * Protocol.flow) Witness.service
-
-val resolv_conf : port:int -> Lwt_unix.sockaddr resolver
+val resolv_conf : port:int -> Lwt_unix.sockaddr Client.resolver

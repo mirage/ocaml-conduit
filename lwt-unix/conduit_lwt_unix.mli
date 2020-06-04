@@ -6,17 +6,17 @@ include
      and type output = Cstruct.t
      and type +'a s = 'a Lwt.t
      and type scheduler = Conduit_lwt.scheduler
-     and type 'a key = ('a * Conduit_lwt.scheduler) Conduit.key
-     and type 'a Witness.protocol = 'a Conduit_lwt.Witness.protocol
-     and type 'a Witness.service = 'a Conduit_lwt.Witness.service
-     and type flow = Conduit_lwt.flow
+     and type ('edn, 'flow) Client.protocol =
+          ('edn, 'flow) Conduit_lwt.Client.protocol
+     and type ('cfg, 'v) Service.service =
+          ('cfg, 'v) Conduit_lwt.Service.service
+     and type Client.flow = Conduit_lwt.Client.flow
 
 val serve_with_handler :
-  handler:('flow Witness.protocol -> 'flow -> unit Lwt.t) ->
-  key:'cfg key ->
-  service:('master * 'flow) Witness.service ->
+  handler:('flow Service.protocol -> 'flow -> unit Lwt.t) ->
+  service:('cfg, 'master * 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
 
 val io_of_flow :
-  flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel
+  Client.flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel

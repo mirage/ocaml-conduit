@@ -9,9 +9,8 @@ include
      and type +'a s = 'a Lwt.t
 
 val serve_with_handler :
-  handler:('flow Witness.protocol -> 'flow -> unit Lwt.t) ->
-  key:'cfg key ->
-  service:('master * 'flow) Witness.service ->
+  handler:('flow Service.protocol -> 'flow -> unit Lwt.t) ->
+  service:('cfg, 'master * 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
 
@@ -36,13 +35,14 @@ val serve_with_handler :
 
 module type CONDUIT = sig
   type endpoint
+
   type flow
+
   type configuration
+
   type master
 
-  val endpoint : endpoint key
-  val protocol : flow Witness.protocol
+  val protocol : (endpoint, flow) Client.protocol
 
-  val configuration : configuration key
-  val service : (master * flow) Witness.service
+  val service : (configuration, master * flow) Service.service
 end

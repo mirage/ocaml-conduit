@@ -34,7 +34,7 @@ module Protocol = struct
 
   let pp_error = Core.Error.pp
 
-  let flow edn =
+  let connect edn =
     let connect = function
       | Inet address ->
           Tcp.connect (Tcp.Where_to_connect.of_inet_address address)
@@ -84,14 +84,11 @@ module Protocol = struct
       Writer.close writer >>= fun () -> Async.return (Ok ()))
 end
 
-let endpoint = Conduit_async.key "tcp-endpoint"
-
-let protocol =
-  Conduit_async.register_protocol ~key:endpoint ~protocol:(module Protocol)
+let protocol = Conduit_async.Client.register ~protocol:(module Protocol)
 
 type configuration = Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
-module Service = struct
+module Server = struct
   type +'a s = 'a Async.Deferred.t
 
   type flow = Protocol.flow
@@ -107,8 +104,7 @@ module Service = struct
           (Printexc.to_string exn)
     | Socket_closed -> Format.fprintf ppf "Socket closed"
 
-  type endpoint = configuration =
-    | Listen : ('a, 'b) Tcp.Where_to_listen.t -> endpoint
+  type nonrec configuration = configuration
 
   type t =
     | Master : ([ `Passive ], ([< Socket.Address.t ] as 'a)) Socket.t * 'a -> t
@@ -151,12 +147,7 @@ module Service = struct
     Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
 end
 
-let configuration = Conduit_async.key "tcp-configuration"
-
-let service =
-  Conduit_async.register_service ~key:configuration
-    ~service:(module Service)
-    ~protocol
+let service = Conduit_async.Service.register ~service:(module Server) ~protocol
 
 let resolv_conf ~port domain_name =
   Monitor.try_with (fun () ->

@@ -10,11 +10,10 @@ include
      and type +'a s = 'a Async.Deferred.t
 
 val serve_with_handler :
-  handler:('flow Witness.protocol -> 'flow -> unit Async.Deferred.t) ->
-  key:'cfg key ->
-  service:('master * 'flow) Witness.service ->
+  handler:('flow Service.protocol -> 'flow -> unit Async.Deferred.t) ->
+  service:('cfg, 'master * 'flow) Service.service ->
   'cfg ->
   unit Async.Condition.t * unit Async.Deferred.t
 
 val reader_and_writer_of_flow :
-  flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t
+  Client.flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t

@@ -78,7 +78,7 @@ type 'flow with_ssl = {
 }
 
 module Protocol (Protocol : sig
-  include Conduit_async.PROTOCOL
+  include Conduit_async.Client.PROTOCOL
 
   val reader : flow -> Reader.t
 
@@ -103,7 +103,7 @@ struct
     | Core err -> Core.Error.pp ppf err
     | Protocol err -> Protocol.pp_error ppf err
 
-  let flow
+  let connect
       ( {
           version;
           options;
@@ -119,7 +119,7 @@ struct
           verify;
         },
         edn ) =
-    Protocol.flow edn >>| reword_error (fun err -> Protocol err)
+    Protocol.connect edn >>| reword_error (fun err -> Protocol err)
     >>? fun underlying ->
     let reader = Protocol.reader underlying in
     let writer = Protocol.writer underlying in
@@ -175,32 +175,24 @@ end
 
 let protocol_with_ssl :
     type edn flow.
-    key:edn Conduit_async.key ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
-    flow Conduit_async.Witness.protocol ->
-    (context * edn) Conduit_async.key
-    * flow with_ssl Conduit_async.Witness.protocol =
- fun ~key ~reader ~writer protocol ->
-  match Conduit_async.impl_of_protocol ~key protocol with
-  | Ok (module F) ->
-      let module Flow = struct
-        include F
+    (edn, flow) Conduit_async.Client.protocol ->
+    (context * edn, flow with_ssl) Conduit_async.Client.protocol =
+ fun ~reader ~writer protocol ->
+  let module F = (val Conduit_async.Client.impl_of_protocol protocol) in
+  let module Flow = struct
+    include F
 
-        let reader = reader
+    let reader = reader
 
-        let writer = writer
-      end in
-      let module M = Protocol (Flow) in
-      let k =
-        Conduit_async.key
-          (Format.asprintf "%s + ssl" (Conduit_async.name_of_key key)) in
-      let p = Conduit_async.register_protocol ~key:k ~protocol:(module M) in
-      (k, p)
-  | _ -> invalid_arg "Invalid key"
+    let writer = writer
+  end in
+  let module M = Protocol (Flow) in
+  Conduit_async.Client.register ~protocol:(module M)
 
 module Make (Service : sig
-  include Conduit_async.SERVICE
+  include Conduit_async.Service.SERVICE
 
   val reader : flow -> Reader.t
 
@@ -220,7 +212,7 @@ struct
     | Missing_crt_or_key ->
         Format.fprintf ppf "Missing crt of key values into context"
 
-  type endpoint = context * Service.endpoint
+  type configuration = context * Service.configuration
 
   type t = context * Service.t
 
@@ -286,44 +278,34 @@ struct
 end
 
 let service_with_ssl :
-    type edn t flow.
-    key:edn Conduit_async.key ->
-    (t * flow) Conduit_async.Witness.service ->
+    type cfg edn t flow.
+    (cfg, t * flow) Conduit_async.Service.service ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
-    flow with_ssl Conduit_async.Witness.protocol ->
-    (context * edn) Conduit_async.key
-    * ((context * t) * flow with_ssl) Conduit_async.Witness.service =
- fun ~key service ~reader ~writer protocol ->
-  match Conduit_async.impl_of_service ~key service with
-  | Ok (module S) ->
-      let module Service = struct
-        include S
+    (edn, flow with_ssl) Conduit_async.Client.protocol ->
+    (context * cfg, (context * t) * flow with_ssl) Conduit_async.Service.service
+    =
+ fun service ~reader ~writer protocol ->
+  let module S = (val Conduit_async.Service.impl service) in
+  let module Service = struct
+    include S
 
-        let reader = reader
+    let reader = reader
 
-        let writer = writer
-      end in
-      let module M = Make (Service) in
-      let k =
-        Conduit_async.key
-          (Format.asprintf "%s + ssl" (Conduit_async.name_of_key key)) in
-      let s =
-        Conduit_async.register_service ~key:k ~service:(module M) ~protocol
-      in
-      (k, s)
-  | _ -> invalid_arg "Invalid key"
+    let writer = writer
+  end in
+  let module M = Make (Service) in
+  Conduit_async.Service.register ~service:(module M) ~protocol
 
 module TCP = struct
   open Conduit_async_tcp
 
-  let endpoint, protocol =
-    protocol_with_ssl ~key:endpoint ~reader:Protocol.reader
-      ~writer:Protocol.writer protocol
+  let protocol =
+    protocol_with_ssl ~reader:Protocol.reader ~writer:Protocol.writer protocol
 
-  let configuration, service =
-    service_with_ssl ~key:configuration service ~reader:Protocol.reader
-      ~writer:Protocol.writer protocol
+  let service =
+    service_with_ssl service ~reader:Protocol.reader ~writer:Protocol.writer
+      protocol
 
   let resolv_conf ~port ~context domain_name =
     resolv_conf ~port domain_name >>| function

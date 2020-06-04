@@ -42,32 +42,28 @@ val context :
   context
 
 val protocol_with_ssl :
-  key:'edn Conduit_async.key ->
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
-  'flow Conduit_async.Witness.protocol ->
-  (context * 'edn) Conduit_async.key
-  * 'flow with_ssl Conduit_async.Witness.protocol
+  ('edn, 'flow) Client.protocol ->
+  (context * 'edn, 'flow with_ssl) Client.protocol
 
 val service_with_ssl :
-  key:'edn Conduit_async.key ->
-  ('t * 'flow) Conduit_async.Witness.service ->
+  ('cfg, 't * 'flow) Service.service ->
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
-  'flow with_ssl Conduit_async.Witness.protocol ->
-  (context * 'edn) Conduit_async.key
-  * ((context * 't) * 'flow with_ssl) Conduit_async.Witness.service
+  ('edn, 'flow with_ssl) Client.protocol ->
+  (context * 'cfg, (context * 't) * 'flow with_ssl) Service.service
 
 module TCP : sig
   open Conduit_async_tcp
 
-  val endpoint : (context * endpoint) key
+  val protocol : (context * endpoint, Protocol.flow with_ssl) Client.protocol
 
-  val protocol : Protocol.flow with_ssl Witness.protocol
+  val service :
+    ( context * Server.configuration,
+      (context * Server.t) * Protocol.flow with_ssl )
+    Service.service
 
-  val configuration : (context * Conduit_async_tcp.configuration) key
-
-  val service : ((context * Service.t) * Protocol.flow with_ssl) Witness.service
-
-  val resolv_conf : port:int -> context:context -> (context * endpoint) resolver
+  val resolv_conf :
+    port:int -> context:context -> (context * endpoint) Client.resolver
 end

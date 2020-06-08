@@ -16,7 +16,13 @@ type _ resolver =
 
 type ('a, 'b) value = Value : 'b -> ('a, 'b) value
 
-type ('a, 'b, 'c) thd = Thd : 'b -> ('a, 'b, 'c) thd [@@warning "-37"]
+[@@@warning "-37"]
+type ('a, 'b, 'c) thd = Thd : 'b -> ('a, 'b, 'c) thd
+(** XXX(dinosaure): we must define [(_, _, _) thd] to be able to keep some
+   existential types (eg. ['cfg] and ['flow] when we use [('cfg, 't, 'flow)
+   service]) but still to use only on (eg. ['t]).
+
+    We add [warning "-37"] to be able to compile the project. *)
 
 let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
 

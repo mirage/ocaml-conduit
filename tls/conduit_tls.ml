@@ -306,8 +306,7 @@ struct
   let protocol_with_tls :
       type edn flow.
       (edn, flow) Conduit.protocol ->
-      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol
-      =
+      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
    fun protocol ->
     let module Protocol = (val Conduit.impl protocol) in
     let module M = Make_protocol (Protocol) in

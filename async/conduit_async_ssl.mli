@@ -65,6 +65,5 @@ module TCP : sig
       Protocol.flow with_ssl )
     Service.service
 
-  val resolv_conf :
-    port:int -> context:context -> (context * endpoint) resolver
+  val resolv_conf : port:int -> context:context -> (context * endpoint) resolver
 end

@@ -6,8 +6,7 @@ include
      and type output = Cstruct.t
      and type +'a s = 'a Lwt.t
      and type scheduler = Conduit_lwt.scheduler
-     and type ('edn, 'flow) protocol =
-          ('edn, 'flow) Conduit_lwt.protocol
+     and type ('edn, 'flow) protocol = ('edn, 'flow) Conduit_lwt.protocol
      and type ('cfg, 't, 'flow) Service.service =
           ('cfg, 't, 'flow) Conduit_lwt.Service.service
      and type flow = Conduit_lwt.flow

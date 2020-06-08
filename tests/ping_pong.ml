@@ -68,8 +68,8 @@ let transmission flow =
         Conduit_lwt.send flow ping >>? fun _ -> go ()
     | Ok (`Line line) ->
         Fmt.epr "[!] received %S.\n%!" line ;
-        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ -> Conduit_lwt.close flow in
+        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
+        Conduit_lwt.close flow in
   go () >>= function
   | Error err -> failwith "%a" Conduit_lwt.pp_error err
   | Ok () -> Lwt.return ()
@@ -82,8 +82,7 @@ let server :
     unit Lwt_condition.t * unit Lwt.t =
  fun cfg ~protocol ~service ->
   Conduit_lwt_unix.serve_with_handler
-    ~handler:(fun flow ->
-      transmission (Conduit_lwt.abstract protocol flow))
+    ~handler:(fun flow -> transmission (Conduit_lwt.abstract protocol flow))
     ~service cfg
 
 (* part *)
@@ -94,8 +93,7 @@ let client ~resolvers domain_name responses =
   let rec go = function
     | [] -> Conduit_lwt.close flow
     | line :: rest -> (
-        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ ->
+        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
         getline queue flow >>? function
         | `Close -> Conduit_lwt.close flow
         | `Line "pong" -> go rest

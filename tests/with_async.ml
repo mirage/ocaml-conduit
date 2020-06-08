@@ -75,8 +75,8 @@ let transmission ~stop flow =
         Conduit_async.send flow ping >>? fun _ -> go ()
     | Ok (`Line line) ->
         Format.eprintf "[!] received %S.\n%!" line ;
-        Conduit_async.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ -> Conduit_async.close flow in
+        Conduit_async.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
+        Conduit_async.close flow in
   go () >>= function
   | Error err -> failwith "%a" Conduit_async.pp_error err
   | Ok () -> Async.return ()
@@ -121,8 +121,7 @@ let client ~resolvers domain_name responses =
   let rec go = function
     | [] -> Conduit_async.close flow
     | line :: rest -> (
-        Conduit_async.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ ->
+        Conduit_async.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
         getline queue flow >>? function
         | `Close -> Conduit_async.close flow
         | `Line "pong" -> go rest

@@ -55,8 +55,7 @@ val endpoint :
     hostname} with your peer. *)
 
 val protocol_with_ssl :
-  ('edn, 'flow) protocol ->
-  (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
+  ('edn, 'flow) protocol -> (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
 (** [protocol_with_ssl ~key protocol] returns a representation of the given
     protocol with SSL. *)
 
@@ -80,9 +79,7 @@ module TCP : sig
   open Conduit_lwt_unix_tcp
 
   val protocol :
-    ( (Lwt_unix.sockaddr, Protocol.flow) endpoint,
-      Lwt_ssl.socket )
-    protocol
+    ((Lwt_unix.sockaddr, Protocol.flow) endpoint, Lwt_ssl.socket) protocol
 
   val service :
     ( Ssl.context * configuration,

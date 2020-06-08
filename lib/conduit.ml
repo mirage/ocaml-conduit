@@ -42,26 +42,7 @@ module type S = sig
 
   type scheduler
 
-  module type PROTOCOL =
-    Sigs.PROTOCOL
-      with type input = input
-       and type output = output
-       and type +'a s = 'a s
-
-  module type FLOW =
-    Sigs.FLOW
-      with type input = input
-       and type output = output
-       and type +'a s = 'a s
-
-  type ('edn, 'flow) impl =
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
-
   type flow = private ..
-
-  type ('edn, 'flow) protocol
 
   type error = [ `Msg of string | `Not_found ]
 
@@ -74,6 +55,23 @@ module type S = sig
 
   val close : flow -> (unit, [> error ]) result s
 
+  module type FLOW =
+    Sigs.FLOW
+      with type input = input
+       and type output = output
+       and type +'a s = 'a s
+
+  module type PROTOCOL =
+    Sigs.PROTOCOL
+      with type input = input
+       and type output = output
+       and type +'a s = 'a s
+
+  type ('edn, 'flow) impl =
+    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
+
+  type ('edn, 'flow) protocol
+
   val register : protocol:('edn, 'flow) impl -> ('edn, 'flow) protocol
 
   module type REPR = sig
@@ -82,8 +80,17 @@ module type S = sig
     type flow += T of t
   end
 
-  val repr :
-    ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
+  val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
+
+  val abstract : ('edn, 'v) protocol -> 'v -> flow
+
+  val impl :
+    ('edn, 'flow) protocol ->
+    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
+
+  val is : flow -> ('edn, 'flow) protocol -> 'flow option
+
+  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
 
   val add :
     ('edn, 'flow) protocol ->
@@ -92,19 +99,11 @@ module type S = sig
     resolvers ->
     resolvers
 
-  val abstract : ('edn, 'v) protocol -> 'v -> flow
-
   val connect :
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
     [ `host ] Domain_name.t ->
     (flow, [> error ]) result s
-
-  val impl :
-    ('edn, 'flow) protocol ->
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  val is : flow -> ('edn, 'flow) protocol -> 'flow option
 
   module Service : sig
     module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
@@ -269,8 +268,8 @@ module Make
     | `Msg err -> pf ppf "%s" err
     | `Not_found -> pf ppf "Not found"
 
-  let flow_of_endpoint :
-      type edn. edn key -> edn -> (flow, [> error ]) result s =
+  let flow_of_endpoint : type edn. edn key -> edn -> (flow, [> error ]) result s
+      =
    fun key edn ->
     let rec go = function
       | [] -> return (Error `Not_found)
@@ -284,8 +283,8 @@ module Make
     go (Ptr.bindings ())
 
   let flow_of_protocol :
-      type edn flow.
-      (edn, flow) protocol -> edn -> (flow, [> error ]) result s =
+      type edn flow. (edn, flow) protocol -> edn -> (flow, [> error ]) result s
+      =
    fun (module Witness) edn ->
     let (Protocol (_, (module Protocol))) = Witness.witness in
     Protocol.connect edn >>= function

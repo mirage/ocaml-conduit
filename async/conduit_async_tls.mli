@@ -24,9 +24,7 @@ module TCP : sig
   open Conduit_async_tcp
 
   val protocol :
-    ( endpoint * Tls.Config.client,
-      Protocol.flow protocol_with_tls )
-    protocol
+    (endpoint * Tls.Config.client, Protocol.flow protocol_with_tls) protocol
 
   val service :
     ( configuration * Tls.Config.server,

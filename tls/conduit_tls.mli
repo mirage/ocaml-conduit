@@ -52,8 +52,8 @@ module Make
   (** [handshake flow] returns [true] if {i handshake} is processing. *)
 
   val protocol_with_tls :
-    ('edn, 'flow) Conduit.Client.protocol ->
-    ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.Client.protocol
+    ('edn, 'flow) Conduit.protocol ->
+    ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol
   (** From a given protocol [witness], it creates a new {i witness} of the
       protocol layered with TLS. *)
 
@@ -61,7 +61,7 @@ module Make
 
   val service_with_tls :
     ('cfg, 't, 'flow) Conduit.Service.service ->
-    ('edn, 'flow protocol_with_tls) Conduit.Client.protocol ->
+    ('edn, 'flow protocol_with_tls) Conduit.protocol ->
     ( 'cfg * Tls.Config.server,
       't service_with_tls,
       'flow protocol_with_tls )

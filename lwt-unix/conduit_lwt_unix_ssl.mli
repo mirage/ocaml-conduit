@@ -55,8 +55,8 @@ val endpoint :
     hostname} with your peer. *)
 
 val protocol_with_ssl :
-  ('edn, 'flow) Client.protocol ->
-  (('edn, 'flow) endpoint, Lwt_ssl.socket) Client.protocol
+  ('edn, 'flow) protocol ->
+  (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
 (** [protocol_with_ssl ~key protocol] returns a representation of the given
     protocol with SSL. *)
 
@@ -66,7 +66,7 @@ type 't master
 val service_with_ssl :
   ('cfg, 't, 'flow) Service.service ->
   file_descr:('flow -> Lwt_unix.file_descr) ->
-  ('edn, Lwt_ssl.socket) Client.protocol ->
+  ('edn, Lwt_ssl.socket) protocol ->
   (Ssl.context * 'cfg, 't master, Lwt_ssl.socket) Service.service
 (** [service_with_ssl ~key service ~file_descr ssl_protocol] returns a
     representation of the given service with SSL. The service deliver an SSL
@@ -82,7 +82,7 @@ module TCP : sig
   val protocol :
     ( (Lwt_unix.sockaddr, Protocol.flow) endpoint,
       Lwt_ssl.socket )
-    Client.protocol
+    protocol
 
   val service :
     ( Ssl.context * configuration,
@@ -99,5 +99,5 @@ module TCP : sig
     port:int ->
     context:Ssl.context ->
     ?verify:verify ->
-    (Lwt_unix.sockaddr, Protocol.flow) endpoint Client.resolver
+    (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
 end

@@ -44,7 +44,7 @@ let getline queue flow =
     match getline queue with
     | Some line -> Lwt.return_ok (`Line line)
     | None -> (
-        Conduit_lwt_unix.Client.recv flow tmp >>? function
+        Conduit_lwt_unix.recv flow tmp >>? function
         | `End_of_flow -> Lwt.return_ok `Close
         | `Input len ->
             Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
@@ -59,47 +59,47 @@ let transmission flow =
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go () =
     getline queue flow >>= function
-    | Ok `Close | Error _ -> Conduit_lwt.Client.close flow
+    | Ok `Close | Error _ -> Conduit_lwt.close flow
     | Ok (`Line "ping") ->
         Fmt.epr "[!] received ping.\n%!" ;
-        Conduit_lwt.Client.send flow pong >>? fun _ -> go ()
+        Conduit_lwt.send flow pong >>? fun _ -> go ()
     | Ok (`Line "pong") ->
         Fmt.epr "[!] received pong.\n%!" ;
-        Conduit_lwt.Client.send flow ping >>? fun _ -> go ()
+        Conduit_lwt.send flow ping >>? fun _ -> go ()
     | Ok (`Line line) ->
         Fmt.epr "[!] received %S.\n%!" line ;
-        Conduit_lwt.Client.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ -> Conduit_lwt.Client.close flow in
+        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n"))
+        >>? fun _ -> Conduit_lwt.close flow in
   go () >>= function
-  | Error err -> failwith "%a" Conduit_lwt.Client.pp_error err
+  | Error err -> failwith "%a" Conduit_lwt.pp_error err
   | Ok () -> Lwt.return ()
 
 let server :
     type cfg master flow.
     cfg ->
-    protocol:(_, flow) Conduit_lwt.Client.protocol ->
+    protocol:(_, flow) Conduit_lwt.protocol ->
     service:(cfg, master, flow) Conduit_lwt.Service.service ->
     unit Lwt_condition.t * unit Lwt.t =
  fun cfg ~protocol ~service ->
   Conduit_lwt_unix.serve_with_handler
     ~handler:(fun flow ->
-      transmission (Conduit_lwt.Client.abstract protocol flow))
+      transmission (Conduit_lwt.abstract protocol flow))
     ~service cfg
 
-(* Client part *)
+(* part *)
 
 let client ~resolvers domain_name responses =
-  Conduit_lwt.Client.connect resolvers domain_name >>? fun flow ->
+  Conduit_lwt.connect resolvers domain_name >>? fun flow ->
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go = function
-    | [] -> Conduit_lwt.Client.close flow
+    | [] -> Conduit_lwt.close flow
     | line :: rest -> (
-        Conduit_lwt.Client.send flow (Cstruct.of_string (line ^ "\n"))
+        Conduit_lwt.send flow (Cstruct.of_string (line ^ "\n"))
         >>? fun _ ->
         getline queue flow >>? function
-        | `Close -> Conduit_lwt.Client.close flow
+        | `Close -> Conduit_lwt.close flow
         | `Line "pong" -> go rest
-        | `Line _ -> Conduit_lwt.Client.close flow) in
+        | `Line _ -> Conduit_lwt.close flow) in
   go responses
 
 let client ~resolvers filename =
@@ -113,8 +113,8 @@ let client ~resolvers filename =
   client ~resolvers localhost responses >>= function
   | Ok () -> Lwt.return_unit
   | Error `Closed_by_peer -> Lwt.return_unit
-  | Error (#Conduit_lwt.Client.error as err) ->
-      Fmt.epr "client: %a.\n%!" Conduit_lwt.Client.pp_error err ;
+  | Error (#Conduit_lwt.error as err) ->
+      Fmt.epr "client: %a.\n%!" Conduit_lwt.pp_error err ;
       Lwt.return_unit
 
 (* Composition *)
@@ -142,10 +142,10 @@ let resolve_ssl_ping_pong =
 
 let resolvers =
   Conduit.empty
-  |> Conduit_lwt.Client.add ~priority:20 Conduit_lwt_unix_tcp.protocol
+  |> Conduit_lwt.add ~priority:20 Conduit_lwt_unix_tcp.protocol
        resolve_ping_pong
-  |> Conduit_lwt.Client.add ~priority:10 tls_protocol resolve_tls_ping_pong
-  |> Conduit_lwt.Client.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
+  |> Conduit_lwt.add ~priority:10 tls_protocol resolve_tls_ping_pong
+  |> Conduit_lwt.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
 
 (* Run *)
 
@@ -170,7 +170,7 @@ let config cert key =
 let run_with :
     type cfg master flow.
     cfg ->
-    protocol:(_, flow) Conduit_lwt.Client.protocol ->
+    protocol:(_, flow) Conduit_lwt.protocol ->
     service:(cfg, master, flow) Conduit_lwt.Service.service ->
     string list ->
     unit =

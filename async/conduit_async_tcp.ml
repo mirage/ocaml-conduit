@@ -84,7 +84,7 @@ module Protocol = struct
       Writer.close writer >>= fun () -> Async.return (Ok ()))
 end
 
-let protocol = Conduit_async.Client.register ~protocol:(module Protocol)
+let protocol = Conduit_async.register ~protocol:(module Protocol)
 
 type configuration = Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 

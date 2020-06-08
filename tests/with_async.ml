@@ -49,7 +49,7 @@ let getline queue flow =
     match getline queue with
     | Some line -> Async.return (Ok (`Line line))
     | None -> (
-        Conduit_async.Client.recv flow tmp >>? function
+        Conduit_async.recv flow tmp >>? function
         | `End_of_flow -> Async.return (Ok `Close)
         | `Input len ->
             Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
@@ -66,19 +66,19 @@ let transmission ~stop flow =
     let finish = Condition.wait stop >>= fun () -> Async.return (Ok `Done) in
     let getline = getline queue flow in
     Async.Deferred.any [ finish; getline ] >>= function
-    | Ok (`Done | `Close) | Error _ -> Conduit_async.Client.close flow
+    | Ok (`Done | `Close) | Error _ -> Conduit_async.close flow
     | Ok (`Line "ping") ->
         Format.eprintf "[!] received ping.\n%!" ;
-        Conduit_async.Client.send flow pong >>? fun _ -> go ()
+        Conduit_async.send flow pong >>? fun _ -> go ()
     | Ok (`Line "pong") ->
         Format.eprintf "[!] received pong.\n%!" ;
-        Conduit_async.Client.send flow ping >>? fun _ -> go ()
+        Conduit_async.send flow ping >>? fun _ -> go ()
     | Ok (`Line line) ->
         Format.eprintf "[!] received %S.\n%!" line ;
-        Conduit_async.Client.send flow (Cstruct.of_string (line ^ "\n"))
-        >>? fun _ -> Conduit_async.Client.close flow in
+        Conduit_async.send flow (Cstruct.of_string (line ^ "\n"))
+        >>? fun _ -> Conduit_async.close flow in
   go () >>= function
-  | Error err -> failwith "%a" Conduit_async.Client.pp_error err
+  | Error err -> failwith "%a" Conduit_async.pp_error err
   | Ok () -> Async.return ()
 
 let server :
@@ -86,7 +86,7 @@ let server :
     launched:unit Async.Condition.t ->
     stop:unit Async.Condition.t ->
     cfg ->
-    protocol:(_, flow) Conduit_async.Client.protocol ->
+    protocol:(_, flow) Conduit_async.protocol ->
     service:(cfg, master, flow) Conduit_async.Service.service ->
     unit Async.Deferred.t =
  fun ~launched ~stop cfg ~protocol ~service ->
@@ -105,7 +105,7 @@ let server :
       Async.Deferred.any [ close; accept ] >>= function
       | Ok (`Flow flow) ->
           Async.don't_wait_for
-            (transmission ~stop (Conduit_async.Client.abstract protocol flow)) ;
+            (transmission ~stop (Conduit_async.abstract protocol flow)) ;
           Async.Scheduler.yield () >>= go
       | Ok `Closed -> Server.close master
       | Error _ as err -> Server.close master >>= fun _ -> Async.return err
@@ -116,17 +116,17 @@ let server :
   | Error err -> failwith "%a" Conduit_async.Service.pp_error err
 
 let client ~resolvers domain_name responses =
-  Conduit_async.Client.connect resolvers domain_name >>? fun flow ->
+  Conduit_async.connect resolvers domain_name >>? fun flow ->
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go = function
-    | [] -> Conduit_async.Client.close flow
+    | [] -> Conduit_async.close flow
     | line :: rest -> (
-        Conduit_async.Client.send flow (Cstruct.of_string (line ^ "\n"))
+        Conduit_async.send flow (Cstruct.of_string (line ^ "\n"))
         >>? fun _ ->
         getline queue flow >>? function
-        | `Close -> Conduit_async.Client.close flow
+        | `Close -> Conduit_async.close flow
         | `Line "pong" -> go rest
-        | `Line _ -> Conduit_async.Client.close flow) in
+        | `Line _ -> Conduit_async.close flow) in
   go responses
 
 let client ~resolvers domain_name filename =
@@ -139,8 +139,8 @@ let client ~resolvers domain_name filename =
   Stdlib.close_in ic ;
   client ~resolvers domain_name responses >>= function
   | Ok () -> Async.return ()
-  | Error (#Conduit_async.Client.error as err) ->
-      failwith "Client got an error: %a" Conduit_async.Client.pp_error err
+  | Error (#Conduit_async.error as err) ->
+      failwith "got an error: %a" Conduit_async.pp_error err
 
 let resolve_ping_pong = Conduit_async_tcp.resolv_conf ~port:5000
 
@@ -157,16 +157,16 @@ let resolve_tls_ping_pong =
 
 let resolvers =
   Conduit.empty
-  |> Conduit_async.Client.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
-  |> Conduit_async.Client.add ~priority:10 tls_protocol resolve_tls_ping_pong
-  |> Conduit_async.Client.add ~priority:20 tcp_protocol resolve_ping_pong
+  |> Conduit_async.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
+  |> Conduit_async.add ~priority:10 tls_protocol resolve_tls_ping_pong
+  |> Conduit_async.add ~priority:20 tcp_protocol resolve_ping_pong
 
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 
 let run_with :
     type cfg master flow.
     cfg ->
-    protocol:(_, flow) Conduit_async.Client.protocol ->
+    protocol:(_, flow) Conduit_async.protocol ->
     service:(cfg, master, flow) Conduit_async.Service.service ->
     string list ->
     unit =

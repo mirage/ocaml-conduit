@@ -199,7 +199,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         StackV4.TCPV4.close t.flow >>= fun () -> Lwt.return_ok ())
   end
 
-  let protocol = Conduit_mirage.Client.register ~protocol:(module Protocol)
+  let protocol = Conduit_mirage.register ~protocol:(module Protocol)
 
   type nonrec configuration = StackV4.t configuration
 

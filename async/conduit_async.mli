@@ -16,4 +16,4 @@ val serve_with_handler :
   unit Async.Condition.t * unit Async.Deferred.t
 
 val reader_and_writer_of_flow :
-  Client.flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t
+  flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t

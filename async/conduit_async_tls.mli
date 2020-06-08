@@ -7,14 +7,14 @@ val underlying : 'flow protocol_with_tls -> 'flow
 val handshake : 'flow protocol_with_tls -> bool
 
 val protocol_with_tls :
-  ('edn, 'flow) Client.protocol ->
-  ('edn * Tls.Config.client, 'flow protocol_with_tls) Client.protocol
+  ('edn, 'flow) protocol ->
+  ('edn * Tls.Config.client, 'flow protocol_with_tls) protocol
 
 type 'service service_with_tls
 
 val service_with_tls :
   ('cfg, 't, 'flow) Service.service ->
-  ('edn, 'flow protocol_with_tls) Client.protocol ->
+  ('edn, 'flow protocol_with_tls) protocol ->
   ( 'cfg * Tls.Config.server,
     't service_with_tls,
     'flow protocol_with_tls )
@@ -26,7 +26,7 @@ module TCP : sig
   val protocol :
     ( endpoint * Tls.Config.client,
       Protocol.flow protocol_with_tls )
-    Client.protocol
+    protocol
 
   val service :
     ( configuration * Tls.Config.server,
@@ -37,5 +37,5 @@ module TCP : sig
   val resolv_conf :
     port:int ->
     config:Tls.Config.client ->
-    (endpoint * Tls.Config.client) Client.resolver
+    (endpoint * Tls.Config.client) resolver
 end

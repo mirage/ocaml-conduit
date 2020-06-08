@@ -51,13 +51,13 @@ let reader_and_writer_of_flow flow =
   let recv flow writer =
     let tmp = Cstruct.create 0x1000 in
     let rec loop () =
-      Client.recv flow tmp >>= function
+      recv flow tmp >>= function
       | Ok (`Input len) ->
           Pipe.write writer (Cstruct.to_string (Cstruct.sub tmp 0 len)) >>= loop
       | Ok `End_of_flow ->
           Pipe.close writer ;
           Async.return ()
-      | Error err -> failwith "%a" Client.pp_error err in
+      | Error err -> failwith "%a" pp_error err in
     loop () in
   let send flow reader =
     let rec loop () =
@@ -68,9 +68,9 @@ let reader_and_writer_of_flow flow =
             if Cstruct.len tmp = 0
             then Async.return ()
             else
-              Client.send flow tmp >>= function
+              send flow tmp >>= function
               | Ok shift -> go (Cstruct.shift tmp shift)
-              | Error err -> failwith "%a" Client.pp_error err in
+              | Error err -> failwith "%a" pp_error err in
           go (Cstruct.of_string v) >>= loop in
     loop () in
   let preader = Pipe.create_reader ~close_on_exception:true (recv flow) in

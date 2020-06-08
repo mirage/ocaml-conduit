@@ -302,9 +302,9 @@ module Server = struct
     Lwt.return_ok ()
 end
 
-let protocol = Conduit_lwt.Client.register ~protocol:(module Protocol)
+let protocol = Conduit_lwt.register ~protocol:(module Protocol)
 
-include (val Conduit_lwt.Client.repr protocol)
+include (val Conduit_lwt.repr protocol)
 
 let service = Conduit_lwt.Service.register ~service:(module Server)
 

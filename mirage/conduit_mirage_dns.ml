@@ -13,7 +13,7 @@ struct
       t ->
       ?nameserver:Transport.ns_addr ->
       port:int ->
-      (Ipaddr.V4.t * int) Client.resolver =
+      (Ipaddr.V4.t * int) resolver =
    fun t ?nameserver ~port domain_name ->
     gethostbyname ?nameserver t domain_name >>= function
     | Ok domain_name -> Lwt.return_some (domain_name, port)

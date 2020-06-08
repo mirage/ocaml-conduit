@@ -78,7 +78,7 @@ type 'flow with_ssl = {
 }
 
 module Protocol (Protocol : sig
-  include Conduit_async.Client.PROTOCOL
+  include Conduit_async.PROTOCOL
 
   val reader : flow -> Reader.t
 
@@ -177,10 +177,10 @@ let protocol_with_ssl :
     type edn flow.
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
-    (edn, flow) Conduit_async.Client.protocol ->
-    (context * edn, flow with_ssl) Conduit_async.Client.protocol =
+    (edn, flow) Conduit_async.protocol ->
+    (context * edn, flow with_ssl) Conduit_async.protocol =
  fun ~reader ~writer protocol ->
-  let module F = (val Conduit_async.Client.impl_of_protocol protocol) in
+  let module F = (val Conduit_async.impl protocol) in
   let module Flow = struct
     include F
 
@@ -189,7 +189,7 @@ let protocol_with_ssl :
     let writer = writer
   end in
   let module M = Protocol (Flow) in
-  Conduit_async.Client.register ~protocol:(module M)
+  Conduit_async.register ~protocol:(module M)
 
 module Make (Service : sig
   include Conduit_async.Service.SERVICE
@@ -282,7 +282,7 @@ let service_with_ssl :
     (cfg, t, flow) Conduit_async.Service.service ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
-    (edn, flow with_ssl) Conduit_async.Client.protocol ->
+    (edn, flow with_ssl) Conduit_async.protocol ->
     (context * cfg, context * t, flow with_ssl) Conduit_async.Service.service =
  fun service ~reader ~writer _ ->
   let module S = (val Conduit_async.Service.impl service) in

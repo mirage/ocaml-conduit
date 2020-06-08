@@ -25,7 +25,7 @@ let endpoint ~file_descr ~context ?verify endpoint =
 
 let pf = Format.fprintf
 
-module Protocol (Flow : Conduit_lwt_unix.Client.PROTOCOL) = struct
+module Protocol (Flow : Conduit_lwt_unix.PROTOCOL) = struct
   type input = Cstruct.t
 
   type output = Cstruct.t
@@ -66,12 +66,12 @@ end
 
 let protocol_with_ssl :
     type edn flow.
-    (edn, flow) Conduit_lwt_unix.Client.protocol ->
-    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol =
+    (edn, flow) Conduit_lwt_unix.protocol ->
+    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt_unix.protocol =
  fun protocol ->
-  let module Flow = (val Conduit_lwt_unix.Client.impl_of_protocol protocol) in
+  let module Flow = (val Conduit_lwt_unix.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt_unix.Client.register ~protocol:(module M)
+  Conduit_lwt_unix.register ~protocol:(module M)
 
 type 't master = { master : 't; context : Ssl.context }
 
@@ -114,7 +114,7 @@ let service_with_ssl :
     type cfg edn t flow.
     (cfg, t, flow) Conduit_lwt_unix.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
-    (edn, Lwt_ssl.socket) Conduit_lwt_unix.Client.protocol ->
+    (edn, Lwt_ssl.socket) Conduit_lwt_unix.protocol ->
     ( Ssl.context * cfg,
       t master,
       Lwt_ssl.socket )

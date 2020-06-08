@@ -42,7 +42,7 @@ module type CONDUIT = sig
 
   type master
 
-  val protocol : (endpoint, flow) Client.protocol
+  val protocol : (endpoint, flow) protocol
 
   val service : (configuration, master, flow) Service.service
 end

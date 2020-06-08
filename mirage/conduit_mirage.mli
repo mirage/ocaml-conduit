@@ -6,11 +6,11 @@ include
      and type output = Cstruct.t
      and type +'a s = 'a Lwt.t
      and type scheduler = Conduit_lwt.scheduler
-     and type ('edn, 'flow) Client.protocol =
-          ('edn, 'flow) Conduit_lwt.Client.protocol
+     and type ('edn, 'flow) protocol =
+          ('edn, 'flow) Conduit_lwt.protocol
      and type ('cfg, 't, 'flow) Service.service =
           ('cfg, 't, 'flow) Conduit_lwt.Service.service
-     and type Client.flow = Conduit_lwt.Client.flow
+     and type flow = Conduit_lwt.flow
 
 val serve_with_handler :
   handler:('flow -> unit Lwt.t) ->
@@ -27,7 +27,7 @@ module type CONDUIT = sig
 
   type master
 
-  val protocol : (endpoint, flow) Client.protocol
+  val protocol : (endpoint, flow) protocol
 
   val service : (configuration, master, flow) Service.service
 end

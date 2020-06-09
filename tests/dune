@@ -58,6 +58,7 @@
 
 (rule
  (alias runtest)
+ (package conduit)
  (action
   (run ./flow.exe)))
 
@@ -68,5 +69,6 @@
 
 (rule
  (alias runtest)
+ (package conduit)
  (action
   (run ./resolvers.exe)))

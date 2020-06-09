@@ -46,4 +46,5 @@ depends: [
   "dune"
   "domain-name"
   "stdlib-shims"
+  "alcotest" {with-test}
 ]

@@ -231,12 +231,12 @@ module type S = sig
           |> add Conduit_tcp_ssl.t https_resolver ~priority:20
       ]} *)
 
-  val connect :
+  val resolve :
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
     [ `host ] Domain_name.t ->
     (flow, [> error ]) result s
-  (** [connect resolvers domain_name] is the flow created by connecting to the
+  (** [resolve resolvers domain_name] is the flow created by connecting to the
      domain name [domain_name], using the resolvers [resolvers]. Each resolver
      tries to resolve the given domain-name (they are ordered by the given
      priority). The first which connects successfully wins.
@@ -256,7 +256,7 @@ module type S = sig
           |> add tcp ~priority:10 resolver_on_my_private_network
           |> add tcp ~priority:20 resolver_on_internet
 
-        let () = Conduit.connect resolvers mirage_io >>? function
+        let () = Conduit.resolve resolvers mirage_io >>? function
           | TCP.T (Conduit.Value file_descr) as flow ->
             let peer = Unix.getpeername file_descr in
             ignore @@ Conduit.send flow ("Hello " ^ string_of_sockaddr peer)
@@ -264,6 +264,8 @@ module type S = sig
             ignore @@ Conduit.send flow "Hello World!"
       ]}
   *)
+
+  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result s
 
   (** {2:service Server-side conduits.} *)
 

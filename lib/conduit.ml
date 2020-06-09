@@ -16,6 +16,12 @@ type _ resolver =
 
 type ('a, 'b) value = Value : 'b -> ('a, 'b) value
 
+let reword_error f = function
+  | Ok x -> Ok x
+  | Error err -> Error (f err)
+
+let msgf fmt = Fmt.kstrf (fun err -> `Msg err) fmt
+
 [@@@warning "-37"]
 
 type ('a, 'b, 'c) thd =
@@ -107,11 +113,13 @@ module type S = sig
     resolvers ->
     resolvers
 
-  val connect :
+  val resolve :
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
     [ `host ] Domain_name.t ->
     (flow, [> error ]) result s
+
+  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result s
 
   module Service : sig
     module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
@@ -169,6 +177,10 @@ module Make
   let ( >>= ) x f = Scheduler.bind x f
 
   let ( >>| ) x f = x >>= fun x -> return (f x)
+
+  let ( >>? ) x f = x >>= function
+    | Ok x -> f x
+    | Error err -> return (Error err)
 
   type +'a s = 'a Scheduler.t
 
@@ -340,7 +352,7 @@ module Make
   let abstract : type edn v. (edn, v) protocol -> v -> flow =
    fun (module Witness) flow -> Witness.T (Value flow)
 
-  let connect :
+  let resolve :
       type edn v.
       resolvers ->
       ?protocol:(edn, v) protocol ->
@@ -362,6 +374,15 @@ module Make
               | Ok flow -> return (Ok (Witness.T (Value flow)))
               | Error _err -> go r) in
         go l
+
+  let connect :
+    type edn v.
+    edn -> (edn, v) protocol -> (flow, [> error ]) result s =
+   fun edn (module Witness) ->
+    let (Protocol (_, (module Protocol))) = Witness.witness in
+    Protocol.connect edn
+    >>| reword_error (msgf "%a" Protocol.pp_error)
+    >>? fun flow -> return (Ok (Witness.T (Value flow)))
 
   let impl :
       type edn flow.

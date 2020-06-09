@@ -8,7 +8,7 @@ type _ witness = ..
 
 type _ resolver =
   | Resolver : {
-      priority : int;
+      priority : int option;
       resolve : [ `host ] Domain_name.t -> ('edn option, 's) Sigs.app;
       witness : 's witness;
     }
@@ -103,6 +103,8 @@ module type S = sig
   val is : flow -> ('edn, 'flow) protocol -> 'flow option
 
   type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
+
+  val empty : resolvers
 
   val add :
     ('edn, 'flow) protocol ->
@@ -265,6 +267,8 @@ module Make
 
   let ( <.> ) f g x = f (g x)
 
+  let empty = empty
+
   let add :
       type edn flow.
       (edn, flow) protocol ->
@@ -272,7 +276,7 @@ module Make
       edn resolver ->
       resolvers ->
       resolvers =
-   fun (module Witness) ?(priority = 0) resolve ->
+   fun (module Witness) ?priority resolve ->
     let (Protocol (key, _)) = Witness.witness in
     let resolve = inj <.> resolve in
     Map.add key (Resolver { priority; resolve; witness })
@@ -318,6 +322,10 @@ module Make
     | Witness -> Some Refl.Refl
     | _ -> None
 
+  let inf = -1
+
+  and sup = 1
+
   let resolve : resolvers -> [ `host ] Domain_name.t -> endpoint list s =
    fun m domain_name ->
     let rec go acc = function
@@ -331,7 +339,11 @@ module Make
           | None -> go acc r) in
     let compare (Map.Value (_, Resolver { priority = pa; _ }))
         (Map.Value (_, Resolver { priority = pb; _ })) =
-      (Stdlib.compare : int -> int -> int) pa pb in
+      match (pa, pb) with
+      | Some a, Some b -> (Stdlib.compare : int -> int -> int) a b
+      | None, Some _ -> sup
+      | Some _, None -> inf
+      | None, None -> 0 in
     go [] (List.sort compare (Map.bindings m))
 
   let create :

@@ -207,6 +207,8 @@ module type S = sig
      ]}
   *)
 
+  val empty : resolvers
+
   val add :
     ('edn, _) protocol ->
     ?priority:int ->

@@ -58,4 +58,5 @@
 
 (rule
  (alias runtest)
- (action (run ./flow.exe)))
+ (action
+  (run ./flow.exe)))

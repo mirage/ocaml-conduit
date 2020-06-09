@@ -16,9 +16,7 @@ type _ resolver =
 
 type ('a, 'b) value = Value : 'b -> ('a, 'b) value
 
-let reword_error f = function
-  | Ok x -> Ok x
-  | Error err -> Error (f err)
+let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
 let msgf fmt = Fmt.kstrf (fun err -> `Msg err) fmt
 
@@ -178,9 +176,8 @@ module Make
 
   let ( >>| ) x f = x >>= fun x -> return (f x)
 
-  let ( >>? ) x f = x >>= function
-    | Ok x -> f x
-    | Error err -> return (Error err)
+  let ( >>? ) x f =
+    x >>= function Ok x -> f x | Error err -> return (Error err)
 
   type +'a s = 'a Scheduler.t
 
@@ -376,12 +373,10 @@ module Make
         go l
 
   let connect :
-    type edn v.
-    edn -> (edn, v) protocol -> (flow, [> error ]) result s =
+      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result s =
    fun edn (module Witness) ->
     let (Protocol (_, (module Protocol))) = Witness.witness in
-    Protocol.connect edn
-    >>| reword_error (msgf "%a" Protocol.pp_error)
+    Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Witness.T (Value flow)))
 
   let impl :

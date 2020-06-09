@@ -3,19 +3,25 @@ module Sigs = Sigs
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
 type resolvers
+(** Type for resolvers map. *)
 
 val empty : resolvers
+(** [empty] is an empty {!resolvers} map. *)
 
 type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
 
 module type S = sig
   type input
+  (** The type for payload inputs. *)
 
   type output
+  (** The type for payload outputs. *)
 
   type +'a s
+  (** The type for I/O effects. *)
 
   type scheduler
+  (** The type of I/O monads. *)
 
   (** {2:client Client-side Conduits.} *)
 
@@ -259,6 +265,8 @@ module type S = sig
       ]}
   *)
 
+  (** {2:service Server-side conduits.} *)
+
   module Service : sig
     module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
 
@@ -269,8 +277,26 @@ module type S = sig
           and type flow = 'flow)
 
     type ('cfg, 't, 'flow) service
+    (** The type for services, e.g. service-side protocols. ['cfg] is the type
+       for configuration, ['t] is the type for state states. ['flow] is the type
+       for underlying flows. *)
 
     val register : service:('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) service
+    (** [register ~service] is the service using the implementation [service].
+       [service] must define [make] and [accept] function to be able to create
+       server-side flows.
+
+         For instance:
+
+        {[
+          module TCP : SERVICE with type configuration = Unix.sockaddr
+                                and type t = Unix.file_descr
+                                and type flow = Unix.file_descr
+
+          let tcp_service : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
+            Service.register ~service:(module TCP)
+        ]}
+    *)
 
     type error = [ `Msg of string ]
 
@@ -278,12 +304,17 @@ module type S = sig
 
     val serve :
       'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
+    (** [serve cfg ~service] initialises the service with the configuration
+       [cfg]. *)
 
     val accept :
       service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result s
+    (** [accept service t] waits for a connection on the service [t]. The result
+       is a {i flow} connected to the client. *)
 
     val close :
       service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result s
+    (** [close ~service t] releases the resources associated to the server [t]. *)
 
     val impl :
       ('cfg, 't, 'flow) service ->
@@ -291,6 +322,7 @@ module type S = sig
          with type configuration = 'cfg
           and type t = 't
           and type flow = 'flow)
+    (** [impl service] is [service]'s underlying implementation. *)
   end
 end
 

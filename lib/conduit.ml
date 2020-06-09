@@ -17,8 +17,10 @@ type _ resolver =
 type ('a, 'b) value = Value : 'b -> ('a, 'b) value
 
 [@@@warning "-37"]
-type ('a, 'b, 'c) thd = Thd : 'b -> ('a, 'b, 'c) thd
-(** XXX(dinosaure): we must define [(_, _, _) thd] to be able to keep some
+
+type ('a, 'b, 'c) thd =
+  | Thd : 'b -> ('a, 'b, 'c) thd
+      (** XXX(dinosaure): we must define [(_, _, _) thd] to be able to keep some
    existential types (eg. ['cfg] and ['flow] when we use [('cfg, 't, 'flow)
    service]) but still to use only on (eg. ['t]).
 

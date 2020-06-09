@@ -50,3 +50,12 @@
   client2)
  (action
   (run %{test})))
+
+(executable
+ (name flow)
+ (modules flow)
+ (libraries alcotest rresult conduit))
+
+(rule
+ (alias runtest)
+ (action (run ./flow.exe)))

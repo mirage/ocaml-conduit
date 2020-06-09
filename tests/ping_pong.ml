@@ -88,7 +88,7 @@ let server :
 (* part *)
 
 let client ~resolvers domain_name responses =
-  Conduit_lwt.connect resolvers domain_name >>? fun flow ->
+  Conduit_lwt.resolve resolvers domain_name >>? fun flow ->
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go = function
     | [] -> Conduit_lwt.close flow

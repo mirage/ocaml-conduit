@@ -116,7 +116,7 @@ let server :
   | Error err -> failwith "%a" Conduit_async.Service.pp_error err
 
 let client ~resolvers domain_name responses =
-  Conduit_async.connect resolvers domain_name >>? fun flow ->
+  Conduit_async.resolve resolvers domain_name >>? fun flow ->
   let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
   let rec go = function
     | [] -> Conduit_async.close flow

@@ -17,8 +17,6 @@
 
 open Lwt.Infix
 
-let () = Mirage_crypto_rng_unix.initialize ()
-
 module X509 = struct
   let private_of_pems ~cert ~priv_key =
     X509_lwt.private_of_pems ~cert ~priv_key

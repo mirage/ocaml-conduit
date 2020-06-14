@@ -1,3 +1,8 @@
+## v2.2.2 (2020-06-14)
+
+* conduit-lwt-unix no longer calls Mirage_crypto_rng_unix.initialize, and is
+  compatible with tls 0.12.1 (#317 @hannesm)
+
 ## v2.2.1 (2020-05-20)
 
 * conduit-mirage requires mirage-time (fix opam and dune) (#315 @hannesm)

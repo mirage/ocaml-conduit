@@ -1,7 +1,7 @@
 include Conduit_tls.Make (Conduit_lwt.Lwt_scheduler) (Conduit_lwt)
 
 module TCP = struct
-  open Conduit_lwt_unix_tcp
+  open Conduit_lwt.TCP
 
   let protocol = protocol_with_tls protocol
 

@@ -6,8 +6,8 @@
 (executable
  (name ping_pong)
  (modules ping_pong)
- (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix
-   conduit-lwt-unix.tcp conduit-lwt-unix.tls conduit-lwt-unix.ssl))
+ (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-lwt
+   conduit-lwt-tls conduit-lwt-ssl))
 
 (executable
  (name with_async)
@@ -22,7 +22,7 @@
 
 (rule
  (alias runtest)
- (package conduit-lwt-unix)
+ (package conduit-lwt)
  (deps
   (:test test_lwt.exe)
   ping_pong.exe

@@ -25,7 +25,7 @@ let endpoint ~file_descr ~context ?verify endpoint =
 
 let pf = Format.fprintf
 
-module Protocol (Flow : Conduit_lwt_unix.PROTOCOL) = struct
+module Protocol (Flow : Conduit_lwt.PROTOCOL) = struct
   type input = Cstruct.t
 
   type output = Cstruct.t
@@ -66,17 +66,17 @@ end
 
 let protocol_with_ssl :
     type edn flow.
-    (edn, flow) Conduit_lwt_unix.protocol ->
-    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt_unix.protocol =
+    (edn, flow) Conduit_lwt.protocol ->
+    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt.protocol =
  fun protocol ->
-  let module Flow = (val Conduit_lwt_unix.impl protocol) in
+  let module Flow = (val Conduit_lwt.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt_unix.register ~protocol:(module M)
+  Conduit_lwt.register ~protocol:(module M)
 
 type 't master = { master : 't; context : Ssl.context }
 
 module Server (Service : sig
-  include Conduit_lwt_unix.Service.SERVICE
+  include Conduit_lwt.Service.SERVICE
 
   val file_descr : flow -> Lwt_unix.file_descr
 end) =
@@ -112,30 +112,27 @@ end
 
 let service_with_ssl :
     type cfg edn t flow.
-    (cfg, t, flow) Conduit_lwt_unix.Service.service ->
+    (cfg, t, flow) Conduit_lwt.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
-    (edn, Lwt_ssl.socket) Conduit_lwt_unix.protocol ->
-    ( Ssl.context * cfg,
-      t master,
-      Lwt_ssl.socket )
-    Conduit_lwt_unix.Service.service =
+    (edn, Lwt_ssl.socket) Conduit_lwt.protocol ->
+    (Ssl.context * cfg, t master, Lwt_ssl.socket) Conduit_lwt.Service.service =
  fun service ~file_descr _ ->
-  let module S = (val Conduit_lwt_unix.Service.impl service) in
+  let module S = (val Conduit_lwt.Service.impl service) in
   let module M = Server (struct
     include S
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt_unix.Service.register ~service:(module M)
+  Conduit_lwt.Service.register ~service:(module M)
 
 module TCP = struct
   let resolv_conf ~port ~context ?verify domain_name =
-    let file_descr = Conduit_lwt_unix_tcp.Protocol.file_descr in
-    Conduit_lwt_unix_tcp.resolv_conf ~port domain_name >|= function
+    let file_descr = Conduit_lwt.TCP.Protocol.file_descr in
+    Conduit_lwt.TCP.resolv_conf ~port domain_name >|= function
     | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
     | None -> None
 
-  open Conduit_lwt_unix_tcp
+  open Conduit_lwt.TCP
 
   type verify =
     Ssl.context ->

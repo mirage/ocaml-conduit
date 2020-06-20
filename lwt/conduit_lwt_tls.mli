@@ -7,7 +7,7 @@
 
     For more details about behaviours, you should look into [conduit-tls]. *)
 
-open Conduit_lwt_unix
+open Conduit_lwt
 
 type 'flow protocol_with_tls
 
@@ -33,7 +33,7 @@ val service_with_tls :
   Service.service
 
 module TCP : sig
-  open Conduit_lwt_unix_tcp
+  open Conduit_lwt.TCP
 
   val protocol :
     ( Lwt_unix.sockaddr * Tls.Config.client,

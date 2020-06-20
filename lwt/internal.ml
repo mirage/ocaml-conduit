@@ -1,4 +1,4 @@
-module Mirage_scheduler = struct
+module Lwt_scheduler = struct
   type +'a t = 'a Lwt.t
 
   let bind x f = Lwt.bind x f
@@ -6,7 +6,7 @@ module Mirage_scheduler = struct
   let return x = Lwt.return x
 end
 
-include Conduit.Make (Mirage_scheduler) (Cstruct) (Cstruct)
+include Conduit.Make (Lwt_scheduler) (Cstruct) (Cstruct)
 
 let failwith fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
 

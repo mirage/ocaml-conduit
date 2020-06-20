@@ -302,11 +302,11 @@ module Server = struct
     Lwt.return_ok ()
 end
 
-let protocol = Conduit_lwt.register ~protocol:(module Protocol)
+let protocol = Internal.register ~protocol:(module Protocol)
 
-include (val Conduit_lwt.repr protocol)
+include (val Internal.repr protocol)
 
-let service = Conduit_lwt.Service.register ~service:(module Server)
+let service = Internal.Service.register ~service:(module Server)
 
 let resolv_conf ~port domain_name =
   Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function

@@ -1,8 +1,20 @@
 (library
  (name conduit_lwt)
  (public_name conduit-lwt)
- (modules conduit_lwt)
- (libraries cstruct lwt conduit))
+ (modules conduit_lwt internal tCP)
+ (libraries cstruct lwt lwt.unix conduit))
+
+(library
+ (name conduit_lwt_ssl)
+ (public_name conduit-lwt-ssl)
+ (modules conduit_lwt_ssl)
+ (libraries conduit-lwt lwt_ssl))
+
+(library
+ (name conduit_lwt_tls)
+ (public_name conduit-lwt-tls)
+ (modules conduit_lwt_tls)
+ (libraries conduit-lwt conduit-tls))
 
 (library
  (name conduit_lwt_flow)

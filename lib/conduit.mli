@@ -125,6 +125,7 @@ module type S = sig
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
           let t = register ~protocol:(module TLS)
+        end
       ]}
 
       As a protocol implementer, you must {i register} your implementation and

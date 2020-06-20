@@ -27,7 +27,7 @@
     [connect] call). So, nothing was exchanged between you and your peer at this
     time - even the handshake. *)
 
-open Conduit_lwt_unix
+open Conduit_lwt
 
 type ('edn, 'flow) endpoint = {
   context : Ssl.context;
@@ -76,7 +76,7 @@ val service_with_ssl :
     service a [Lwt_unix.file_descr] needed to create a [Lwt_ssl.socket]. *)
 
 module TCP : sig
-  open Conduit_lwt_unix_tcp
+  open Conduit_lwt.TCP
 
   val protocol :
     ((Lwt_unix.sockaddr, Protocol.flow) endpoint, Lwt_ssl.socket) protocol

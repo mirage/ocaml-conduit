@@ -2,19 +2,7 @@
  (name conduit_mirage)
  (public_name conduit-mirage)
  (modules conduit_mirage)
- (libraries conduit conduit-lwt))
-
-(library
- (name conduit_mirage_tls)
- (public_name conduit-mirage.tls)
- (modules conduit_mirage_tls)
- (libraries conduit-mirage conduit-tls))
-
-(library
- (name conduit_mirage_flow)
- (public_name conduit-mirage.flow)
- (modules conduit_mirage_flow)
- (libraries conduit-mirage conduit-lwt.flow))
+ (libraries cstruct conduit lwt))
 
 (library
  (name conduit_mirage_tcp)

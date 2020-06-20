@@ -24,7 +24,5 @@ depends: [
   "ocaml" {>= "4.07.0"}
   "dune"
   "conduit-lwt"
-  "base-unix"
   "lwt_ssl"
-  "conduit-tls"
 ]

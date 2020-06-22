@@ -84,7 +84,7 @@ module Protocol = struct
       Writer.close writer >>= fun () -> Async.return (Ok ()))
 end
 
-let protocol = Conduit_async.register ~protocol:(module Protocol)
+let protocol = Internal.register ~protocol:(module Protocol)
 
 type configuration = Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
@@ -147,7 +147,7 @@ module Server = struct
     Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
 end
 
-let service = Conduit_async.Service.register ~service:(module Server)
+let service = Internal.Service.register ~service:(module Server)
 
 let resolv_conf ~port domain_name =
   Monitor.try_with (fun () ->

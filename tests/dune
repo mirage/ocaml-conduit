@@ -12,8 +12,8 @@
 (executable
  (name with_async)
  (modules with_async)
- (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-async.tcp
-   conduit-async.tls conduit-async.ssl))
+ (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-async
+   conduit-async-tls conduit-async-ssl))
 
 (executable
  (name test_lwt)

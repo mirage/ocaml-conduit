@@ -20,7 +20,7 @@ include Common.Make
           end)
 
 let tcp_protocol, tcp_service =
-  let open Conduit_async_tcp in
+  let open Conduit_async.TCP in
   (protocol, service)
 
 let ssl_protocol, ssl_service =
@@ -33,7 +33,7 @@ let tls_protocol, tls_service =
 
 let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
 
-let resolve_ping_pong = Conduit_async_tcp.resolv_conf ~port:5000
+let resolve_ping_pong = Conduit_async.TCP.resolv_conf ~port:5000
 
 let resolve_ssl_ping_pong =
   let context =
@@ -79,13 +79,13 @@ let run_with :
 
 let run_with_tcp clients =
   run_with
-    (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 5000))
+    (Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 5000))
     ~protocol:tcp_protocol ~service:tcp_service clients
 
 let run_with_ssl cert key clients =
   let ctx = Conduit_async_ssl.context ~crt_file:cert ~key_file:key () in
   run_with
-    (ctx, Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 7000))
+    (ctx, Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 7000))
     ~protocol:ssl_protocol ~service:ssl_service clients
 
 let load_file filename =
@@ -110,7 +110,7 @@ let config cert key =
 let run_with_tls cert key clients =
   let ctx = config cert key in
   run_with
-    (Conduit_async_tcp.Listen (Tcp.Where_to_listen.of_port 9000), ctx)
+    (Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 9000), ctx)
     ~protocol:tls_protocol ~service:tls_service clients
 
 let () =

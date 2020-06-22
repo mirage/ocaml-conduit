@@ -297,7 +297,7 @@ let service_with_ssl :
   Conduit_async.Service.register ~service:(module M)
 
 module TCP = struct
-  open Conduit_async_tcp
+  open Conduit_async.TCP
 
   let protocol =
     protocol_with_ssl ~reader:Protocol.reader ~writer:Protocol.writer protocol

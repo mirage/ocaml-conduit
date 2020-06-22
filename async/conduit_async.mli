@@ -1,5 +1,7 @@
 (** Conduit with Async. *)
 
+open Async_unix
+
 module Async_scheduler :
   Conduit.Sigs.SCHEDULER with type +'a t = 'a Async.Deferred.t
 

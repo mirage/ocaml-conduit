@@ -55,7 +55,7 @@ val service_with_ssl :
   (context * 'cfg, context * 't, 'flow with_ssl) Service.service
 
 module TCP : sig
-  open Conduit_async_tcp
+  open Conduit_async.TCP
 
   val protocol : (context * endpoint, Protocol.flow with_ssl) protocol
 

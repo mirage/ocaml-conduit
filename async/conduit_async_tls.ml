@@ -2,7 +2,7 @@ open Async
 include Conduit_tls.Make (Conduit_async.Async_scheduler) (Conduit_async)
 
 module TCP = struct
-  open Conduit_async_tcp
+  open Conduit_async.TCP
 
   let protocol = protocol_with_tls protocol
 

@@ -23,7 +23,7 @@ module type S = sig
   type scheduler
   (** The type of I/O monads. *)
 
-  (** {2:client Client-side Conduits.} *)
+  (** {2:client Client-side conduits.} *)
 
   type flow = private ..
   (** The type for generic flows. {!PROTOCOL} implementations are extending (via
@@ -131,6 +131,32 @@ module type S = sig
       As a protocol implementer, you must {i register} your implementation and
      expose the {i witness} of it. Then, users will be able to use it. *)
 
+  (** {2 Injection and Extraction.}
+
+      The goal of [Conduit] is to provide:
+      {ul
+      {- A way to manipulate a fully-abstract [flow].}
+      {- A way to manipulate a concrete and well-know [flow].}}
+
+      [Conduit] provides several mechanisms to be able to manipulate our abstract
+     type {!flow} and destruct it to a concrete value such as a [Unix.file_descr].
+     [Conduit] can assert one assumption: from a given abstracted [flow], it exists
+     one and only one {!FLOW} implementation.
+
+      As [Conduit] determines this implementation, the user can determine the used
+     implementation when he wants to {!send} or {!recv} datas.
+
+      So [Conduit] uses or extracts uniqely the implementation registered before
+     with {!register} and no layer can tweak or update this assertion.
+
+      {!repr}, {!flow}, {!impl} and {!is} can extracts in differents ways the
+     abstracted {!flow}:
+      {ul
+      {- with the {i pattern-matching}}
+      {- with {i first-class module}}
+      {- with the function {!is}}}
+  *)
+
   module type REPR = sig
     type t
 
@@ -163,15 +189,16 @@ module type S = sig
       ]}
   *)
 
-  val abstract : (_, 'v) protocol -> 'v -> flow
-  (** [abstract protocol concrete_flow] abstracts the given [flow] into the
-     {!flow} type from a given [protocol]. It permits to use [Conduit] with a
-     concrete value created by the user.
+  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+
+  val flow : flow -> pack
+  (** [flow flow] projects the module implementation associated to the given
+     abstract [flow] such as:
 
       {[
-        let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-        let flow = Conduit.abstract Conduit_tcp.t socket in
-        Conduit.send flow "Hello World!"
+        Conduit.connect edn >>= fun flow ->
+        let Conduit.Flow (flow, (module Flow)) = Conduit.flow flow in
+        Flow.send flow "Hello World!"
       ]}
   *)
 
@@ -188,6 +215,18 @@ module type S = sig
         match Conduit.is flow Conduit_tcp.t with
         | Some (file_descr : Unix.file_descr) -> Some (Unix.getpeername file_descr)
         | None -> None
+      ]}
+  *)
+
+  val abstract : (_, 'v) protocol -> 'v -> flow
+  (** [abstract protocol concrete_flow] abstracts the given [flow] into the
+     {!flow} type from a given [protocol]. It permits to use [Conduit] with a
+     concrete value created by the user.
+
+      {[
+        let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
+        let flow = Conduit.abstract Conduit_tcp.t socket in
+        Conduit.send flow "Hello World!"
       ]}
   *)
 

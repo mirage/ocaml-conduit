@@ -25,10 +25,10 @@ let msgf fmt = Fmt.kstrf (fun err -> `Msg err) fmt
 type ('a, 'b, 'c) thd =
   | Thd : 'b -> ('a, 'b, 'c) thd
       (** XXX(dinosaure): we must define [(_, _, _) thd] to be able to keep some
-   existential types (eg. ['cfg] and ['flow] when we use [('cfg, 't, 'flow)
-   service]) but still to use only on (eg. ['t]).
+          existential types (eg. ['cfg] and ['flow] when we use [('cfg, 't, 'flow)
+          service]) but still to use only on (eg. ['t]).
 
-    We add [warning "-37"] to be able to compile the project. *)
+          We add [warning "-37"] to be able to compile the project. *)
 
 let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
 
@@ -94,13 +94,17 @@ module type S = sig
 
   val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
 
-  val abstract : ('edn, 'v) protocol -> 'v -> flow
+  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+
+  val flow : flow -> pack
 
   val impl :
     ('edn, 'flow) protocol ->
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
 
   val is : flow -> ('edn, 'flow) protocol -> 'flow option
+
+  val abstract : ('edn, 'v) protocol -> 'v -> flow
 
   type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
 
@@ -221,15 +225,32 @@ module Make
 
   type ('edn, 'flow) protocol = ('edn, 'flow) value Ptr.s
 
+  (* XXX(dinosaure): note about performance, [Ptr.prj] can cost where
+   * it's a lookup into the global [hashtbl] (created by [Ptr]). However,
+   * the usual pattern of [Conduit] is multiple calls of [send]/[recv] with
+   * the same [flow].
+   *
+   * Implementation of internal [hashtbl] memoize such case. We have different
+   * overheads:
+   * - about [recv]/[send], it's around ~500ns (first call), ~125ns (subsequent calls)
+   * - about [flow] & [Flow.recv]/[Flow.send], it's aroung ~75ns
+   *
+   * However, keep in your mind that:
+   * - the internal [hashtbl] should be small (smaller than 16 elements)
+   * - performance is intrinsic with [caml_hash]
+   *)
+
   let recv flow input =
-    let (Ptr.Value (flow, Protocol (_, (module Protocol)))) = Ptr.prj flow in
+    let (Ptr.Value (flow, Protocol (_, (module Protocol))) : Ptr.v) =
+      Ptr.prj flow in
     let (Value flow) = flow in
     Protocol.recv flow input >>| function
     | Ok _ as v -> v
     | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
-  let send flow output =
-    let (Ptr.Value (flow, Protocol (_, (module Protocol)))) = Ptr.prj flow in
+  let send (flow : Ptr.t) output =
+    let (Ptr.Value (flow, Protocol (_, (module Protocol))) : Ptr.v) =
+      Ptr.prj flow in
     let (Value flow) = flow in
     Protocol.send flow output >>| function
     | Ok _ as v -> v
@@ -390,6 +411,15 @@ module Make
     let (Protocol (_, (module Protocol))) = Witness.witness in
     Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Witness.T (Value flow)))
+
+  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+
+  let flow : flow -> pack =
+   fun flow ->
+    let (Ptr.Value (flow, Protocol (_, (module Protocol))) : Ptr.v) =
+      Ptr.prj flow in
+    let (Value flow) = flow in
+    Flow (flow, (module Protocol))
 
   let impl :
       type edn flow.

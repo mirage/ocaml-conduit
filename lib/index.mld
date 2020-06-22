@@ -1,0 +1,162 @@
+{1 Conduit - an abstraction of protocols.}
+
+Conduit is a little library to be able to abtract the protocol used to
+communicate with a peer.
+
+{2 Implement a protocol.}
+
+A Conduit's protocol can be defined as:
+
+{[
+module type S = sig
+  type flow
+  type endpoint
+
+  type error
+
+  val pp_error : error Fmt.t
+
+  val connect : endpoint -> (flow, error) result
+  val send : flow -> string -> (int, error) result
+  val recv : flow -> bytes -> (int, error) result
+  val close : flow -> (unit, error) result
+end
+]}
+
+This definition is pretty-close to the [Unix] module:
+
+{[
+module TCP = struct
+  type flow = Unix.file_descr
+  type endpoint = Unix.sockaddr
+
+  type error = (Unix.error * string * string)
+
+  let pp_error (error, call, _) =
+    Fmt.pf ppf "%s: %s" call (Unix.error_message error)
+
+  let connect sockaddr =
+    try let socket = Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+        Unix.connect socket sockaddr ; Ok socket
+    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+
+  let send socket str =
+    try
+      let rec go off len =
+        let len' = Unix.write_substring socket str off len in
+        if len' < len then go (off + len') (len - len') in
+      go 0 (String.length str) ; Ok (String.length str)
+    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+
+  let recv socket buf =
+    try
+      let len = Unix.read socket 0 (Bytes.length buf) in
+      if len = 0 then Ok `End_of_flow else Ok (`Input len)
+    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+
+  let close socket =
+    try Unix.close socket ; Ok ()
+    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+]}
+
+This is an example of how to implement the TCP protocol according the Conduit's
+interface {!PROTOCOL}. We concretely define the flow as an [Unix.file_descr] and
+the endpoint (the value required to create the flow) as an [Unix.sockaddr].
+
+Now, the protocol must be registered into [Conduit] with:
+
+{[
+let tcp = Conduit.register ~protocol:(module TCP)
+]}
+
+The registration gives to us a {i type-witness} which is a small representation
+of our protocol. This value {b must} be exposed to the user:
+
+{[
+val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+]}
+
+As you can see, the value keeps the type of your [endpoint] and the type of your
+[flow]. This value is the uniq link to your implementation [TCP].
+
+{2 Use a Conduit's protocol.}
+
+Now, the implementation of our protocol is reachable at any point of your code
+with Conduit. The library provides mainly 2 ways to start a transmission:
+
+{[
+let loopback = Unix.ADDR_INET Unix.inet_addr_loopback
+
+let socket : Unix.file_descr = Conduit.connect loopback My_protocol.tcp
+]}
+
+It's the usual way when you want to start a TCP transmission. However, in some
+cases, you want to start {i "a transmission"} regardless the kind of the
+transmission. Conduit provides a {i resolution} mechanism which is able to start
+any kind of protocols.
+
+{3 Resolution.}
+
+We consider [[ `host ] Domain_name.t] as the most general concrete type to
+represent a peer. From it, we can extract the [Unix.sockaddr] such as:
+
+{[
+let http_resolv domain_name =
+  match Unix.gethostbyname (Domain_name.to_string domain_name) with
+  | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
+    Some (Unix.INET_ADDR (h_addr_list.(0), 80))
+  | _ -> None
+  | exception _ -> None
+]}
+
+But we can extract (or decide to bind) something else such as a set of TLS
+certificates. More generally, the value returned by your resolution is free as
+long as a Conduit's protocol can use it to initialise a transmission.
+
+Then, Conduit defines a [resolvers] which can contains your function such as
+[http_resolv] and let the user to bind them to a specific protocol. For example,
+we can bind our [http_resolv] with our TCP protocol:
+
+{[
+let my_resolvers = Conduit.add My_protocol.tcp http_resolv Conduit.empty
+]}
+
+Finally, we can use this value to start {i "a transmission"}:
+
+{[
+let google = Domain_name.(host_exn (of_string_exn "google.com"))
+
+let flow : Conduit.flow = Conduit.resolve my_resolvers google
+]}
+
+You can denote that we finally return a {!Conduit.flow} value which is an
+abstract type instead to return a concrete [Unix.file_descr] value as before.
+From it, you still able to use [send]/[recv] functions with:
+
+{[
+let hello (flow : Conduit.flow) =
+  Conduit.send flow "Hello World!"
+]}
+
+But the flow can be an usual TCP transmission or something more complex like a
+TLS connection. But all of this complexity is hidden by the abstract type.
+
+More generally, in some context, it's useful to be abstract over the protocol
+used to communicate with a peer. Specially when you have several ways to
+communicate with your peer. An example is Git which can communicate with:
+
+{ul
+{- TCP with a [git://] URL.}
+{- SSH with a [git@] endpoint.}
+{- HTTP with a [http://] URL.}
+{- HTTPS with a [https://] URL.}}
+
+However contents of the transmission is pretty the same betweem all of these
+ways. Instead to duplicate the process to communicate with our peer, it could be
+better to use one and a full abstract [flow] and be less-aware about the
+underlying protocol used - or, at least, shift this responsability to the final
+user.
+
+An other case is about MirageOS which does not assert that the TCP/IP stack -
+and the TCP protocol - is available into your unikernel. Of course, the protocol
+can exists but it can be replaced by something else.

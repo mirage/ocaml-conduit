@@ -21,25 +21,28 @@ jobs:
       run: |
         opam pin add -n conduit.dev .
         opam pin add -n conduit-lwt.dev .
-        opam pin add -n conduit-lwt-unix.dev .
         opam pin add -n conduit-async.dev .
         opam pin add -n conduit-mirage.dev .
         opam pin add -n conduit-tls.dev .
-        opam depext  -y conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
-        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
+        opam pin add -n conduit-async-tls.dev .
+        opam pin add -n conduit-async-ssl.dev .
+        opam pin add -n conduit-lwt-tls.dev .
+        opam pin add -n conduit-lwt-ssl.dev .
+        opam depext  -y conduit conduit-tls conduit-lwt conduit-async conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-lwt-ssl conduit-async conduit-async-tls conduit-async-ssl conduit-mirage
     - name: Deps (Windows)
       if: runner.os == 'Windows'
       run: |
         opam pin add -n conduit.dev .
         opam pin add -n conduit-lwt.dev .
-        opam pin add -n conduit-lwt-unix.dev .
         opam pin add -n conduit-mirage.dev .
         opam pin add -n conduit-tls.dev .
-        opam depext  -y conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-mirage
-        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-unix conduit-mirage
+        opam pin add -n conduit-lwt-tls.dev .
+        opam depext  -y conduit conduit-tls conduit-lwt conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-mirage
     - name: Build (Windows)
       if: runner.os == 'Windows'
-      run: opam exec -- dune build -p conduit,conduit-tls,conduit-lwt,conduit-lwt-unix,conduit-mirage
+      run: opam exec -- dune build -p conduit,conduit-tls,conduit-lwt,conduit-mirage
     - name: Build
       if: runner.os != 'Windows'
       run: opam exec -- dune build

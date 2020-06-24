@@ -6,6 +6,9 @@ include
      and type output = Cstruct.t
      and type +'a s = 'a Lwt.t
 
+val io_of_flow :
+  flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel
+
 val serve_with_handler :
   handler:('flow -> unit Lwt.t) ->
   service:('cfg, 'master, 'flow) Service.service ->

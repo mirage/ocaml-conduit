@@ -53,7 +53,7 @@ module TCP : sig
       Protocol.flow protocol_with_tls )
     Service.service
 
-  val resolv_conf :
+  val resolve :
     port:int ->
     config:Tls.Config.client ->
     (Lwt_unix.sockaddr * Tls.Config.client) resolver

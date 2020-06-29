@@ -236,7 +236,7 @@ module TCP = struct
 
   let service = Service.register ~service:(module Server)
 
-  let resolv_conf ~port domain_name =
+  let resolve ~port domain_name =
     Monitor.try_with (fun () ->
         Unix.Inet_addr.of_string_or_getbyname
           (Domain_name.to_string domain_name))

@@ -306,8 +306,8 @@ module TCP = struct
     service_with_ssl service ~reader:Protocol.reader ~writer:Protocol.writer
       protocol
 
-  let resolv_conf ~port ~context domain_name =
-    resolv_conf ~port domain_name >>| function
+  let resolve ~port ~context domain_name =
+    resolve ~port domain_name >>| function
     | Some edn -> Some (context, edn)
     | None -> None
 end

@@ -92,7 +92,7 @@ module TCP : sig
     Protocol.flow ->
     (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t
 
-  val resolv_conf :
+  val resolve :
     port:int ->
     context:Ssl.context ->
     ?verify:verify ->

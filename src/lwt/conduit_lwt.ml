@@ -392,7 +392,7 @@ module TCP = struct
 
   let service = Service.register ~service:(module Server)
 
-  let resolv_conf ~port domain_name =
+  let resolve ~port domain_name =
     Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function
     | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
         Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))

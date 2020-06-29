@@ -27,16 +27,16 @@ let ssl_protocol, ssl_service =
 
 (* Resolution *)
 
-let resolve_ping_pong = Conduit_lwt.TCP.resolv_conf ~port:4000
+let resolve_ping_pong = Conduit_lwt.TCP.resolve ~port:4000
 
 let resolve_tls_ping_pong =
   let null ~host:_ _ = Ok None in
   let config = Tls.Config.client ~authenticator:null () in
-  Conduit_lwt_tls.TCP.resolv_conf ~port:8000 ~config
+  Conduit_lwt_tls.TCP.resolve ~port:8000 ~config
 
 let resolve_ssl_ping_pong =
   let context = Ssl.create_context Ssl.TLSv1_2 Ssl.Client_context in
-  Conduit_lwt_ssl.TCP.resolv_conf ~port:6000 ~context ?verify:None
+  Conduit_lwt_ssl.TCP.resolve ~port:6000 ~context ?verify:None
 
 let resolvers =
   Conduit.empty

@@ -33,18 +33,18 @@ let tls_protocol, tls_service =
 
 let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
 
-let resolve_ping_pong = Conduit_async.TCP.resolv_conf ~port:5000
+let resolve_ping_pong = Conduit_async.TCP.resolve ~port:5000
 
 let resolve_ssl_ping_pong =
   let context =
     Conduit_async_ssl.context ~verify_modes:Ssl.Verify_mode.[ Verify_none ] ()
   in
-  Conduit_async_ssl.TCP.resolv_conf ~port:7000 ~context
+  Conduit_async_ssl.TCP.resolve ~port:7000 ~context
 
 let resolve_tls_ping_pong =
   let null ~host:_ _ = Ok None in
   let config = Tls.Config.client ~authenticator:null () in
-  Conduit_async_tls.TCP.resolv_conf ~port:9000 ~config
+  Conduit_async_tls.TCP.resolve ~port:9000 ~config
 
 let resolvers =
   Conduit.empty

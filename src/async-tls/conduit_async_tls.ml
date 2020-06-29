@@ -8,8 +8,8 @@ module TCP = struct
 
   let service = service_with_tls service protocol
 
-  let resolv_conf ~port ~config domain_name =
-    resolv_conf ~port domain_name >>| function
+  let resolve ~port ~config domain_name =
+    resolve ~port domain_name >>| function
     | Some edn -> Some (edn, config)
     | None -> None
 end

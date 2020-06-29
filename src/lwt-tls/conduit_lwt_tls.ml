@@ -9,9 +9,9 @@ module TCP = struct
 
   let service = service_with_tls service protocol
 
-  let resolv_conf ~port ~config domain_name =
+  let resolve ~port ~config domain_name =
     let open Lwt.Infix in
-    resolv_conf ~port domain_name >|= function
+    resolve ~port domain_name >|= function
     | Some edn -> Some (edn, config)
     | None -> None
 end

@@ -126,9 +126,9 @@ let service_with_ssl :
   Conduit_lwt.Service.register ~service:(module M)
 
 module TCP = struct
-  let resolv_conf ~port ~context ?verify domain_name =
+  let resolve ~port ~context ?verify domain_name =
     let file_descr = Conduit_lwt.TCP.Protocol.file_descr in
-    Conduit_lwt.TCP.resolv_conf ~port domain_name >|= function
+    Conduit_lwt.TCP.resolve ~port domain_name >|= function
     | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
     | None -> None
 

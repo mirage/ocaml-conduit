@@ -32,7 +32,7 @@ module TCP : sig
       Protocol.flow protocol_with_tls )
     Service.service
 
-  val resolv_conf :
+  val resolve :
     port:int ->
     config:Tls.Config.client ->
     (endpoint * Tls.Config.client) resolver

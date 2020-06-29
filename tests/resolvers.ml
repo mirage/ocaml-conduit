@@ -161,6 +161,4 @@ let only_one =
   Alcotest.(check bool) "call string" !string_called true ;
   Alcotest.(check bool) "call unit" !unit_called true
 
-let () =
-  Alcotest.run "resolvers"
-    [ ("resolve", [ all_resolvers; priorities; only_one ]) ]
+let tests = [ ("resolvers", [ all_resolvers; priorities; only_one ]) ]

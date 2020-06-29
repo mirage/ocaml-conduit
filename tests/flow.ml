@@ -247,14 +247,13 @@ let test_output_strings =
     (String.concat "" (List.map Bytes.to_string bufs))
     "Hello World!"
 
-let () =
-  Alcotest.run "flow"
-    [
-      ( "memory",
-        [
-          test_input_string;
-          test_output_string;
-          test_input_strings;
-          test_output_strings;
-        ] );
-    ]
+let tests =
+  [
+    ( "flow",
+      [
+        test_input_string;
+        test_output_string;
+        test_input_strings;
+        test_output_strings;
+      ] );
+  ]

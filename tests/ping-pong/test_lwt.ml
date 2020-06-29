@@ -15,17 +15,17 @@ let properly_exited = function Unix.WEXITED 0 -> true | _ -> false
 
 let () =
   let pid =
-    Unix.create_process_env "./ping_pong.exe"
-      [| "./ping_pong.exe"; "client0"; "client1"; "client2" |]
+    Unix.create_process_env "./with_lwt.exe"
+      [| "./with_lwt.exe"; "client0"; "client1"; "client2" |]
       [||] Unix.stdin Unix.stdout Unix.stderr in
   let _, status = Unix.waitpid [] pid in
   res := !res && properly_exited status ;
-  Format.printf ">>> ping_pong.exe: %a.\n%!" pp_process_status status ;
+  Format.printf ">>> with_lwt.exe: %a.\n%!" pp_process_status status ;
 
   let pid =
-    Unix.create_process_env "./ping_pong.exe"
+    Unix.create_process_env "./with_lwt.exe"
       [|
-        "./ping_pong.exe";
+        "./with_lwt.exe";
         "--with-ssl";
         "server.pem";
         "server.key";
@@ -36,12 +36,12 @@ let () =
       [||] Unix.stdin Unix.stdout Unix.stderr in
   let _, status = Unix.waitpid [] pid in
   res := !res && properly_exited status ;
-  Format.printf ">>> ping_pong.exe --with-ssl: %a.\n%!" pp_process_status status ;
+  Format.printf ">>> with_lwt.exe --with-ssl: %a.\n%!" pp_process_status status ;
 
   let pid =
-    Unix.create_process_env "./ping_pong.exe"
+    Unix.create_process_env "./with_lwt.exe"
       [|
-        "./ping_pong.exe";
+        "./with_lwt.exe";
         "--with-tls";
         "server.pem";
         "server.key";
@@ -52,6 +52,6 @@ let () =
       [||] Unix.stdin Unix.stdout Unix.stderr in
   let _, status = Unix.waitpid [] pid in
   res := !res && properly_exited status ;
-  Format.printf ">>> ping_pong.exe --with-tls: %a.\n%!" pp_process_status status ;
+  Format.printf ">>> with_lwt.exe --with-tls: %a.\n%!" pp_process_status status ;
 
   if !res then exit exit_success else exit exit_failure

@@ -75,7 +75,7 @@ let protocol_with_ssl :
 
 type 't service = { service : 't; context : Ssl.context }
 
-module Server (Service : sig
+module Service (Service : sig
   include Conduit_lwt.SERVICE
 
   val file_descr : flow -> Lwt_unix.file_descr
@@ -118,7 +118,7 @@ let service_with_ssl :
     (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.service =
  fun service ~file_descr _ ->
   let module S = (val Conduit_lwt.Service.impl service) in
-  let module M = Server (struct
+  let module M = Service (struct
     include S
 
     let file_descr = file_descr

@@ -10,9 +10,12 @@ include
      and type output = Cstruct.t
      and type +'a io = 'a Async.Deferred.t
 
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+(** The type for async services. *)
+
 val serve :
   handler:('flow -> unit Async.Deferred.t) ->
-  service:('cfg, 'master, 'flow) Service.service ->
+  service:('cfg, 'master, 'flow) service ->
   'cfg ->
   unit Async.Condition.t * unit Async.Deferred.t
 
@@ -39,9 +42,9 @@ module TCP : sig
   type configuration =
     | Listen : ('a, 'b) Async.Tcp.Where_to_listen.t -> configuration
 
-  module Server : SERVICE with type configuration = configuration
+  module Service : SERVICE with type configuration = configuration
 
-  val service : (configuration, Server.t, Protocol.flow) Service.service
+  val service : (configuration, Service.t, Protocol.flow) service
 
   val resolve : port:int -> endpoint resolver
 end

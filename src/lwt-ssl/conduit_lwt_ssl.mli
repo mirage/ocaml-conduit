@@ -83,9 +83,9 @@ module TCP : sig
 
   val service :
     ( Ssl.context * configuration,
-      Server.t service,
+      Service.t service,
       Lwt_ssl.socket )
-    Service.service
+    Conduit_lwt.service
 
   type verify =
     Ssl.context ->

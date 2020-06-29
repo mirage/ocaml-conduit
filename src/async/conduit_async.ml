@@ -7,15 +7,18 @@ module IO = struct
 end
 
 include Conduit.Make (IO) (Cstruct) (Cstruct)
+module S = Service
 
 let failwith fmt = Format.kasprintf failwith fmt
 
 let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+
 let serve :
     type cfg t flow.
     handler:(flow -> unit Async.Deferred.t) ->
-    service:(cfg, t, flow) Service.service ->
+    service:(cfg, t, flow) service ->
     cfg ->
     unit Async.Condition.t * unit Async.Deferred.t =
  fun ~handler ~service cfg ->
@@ -173,7 +176,7 @@ module TCP = struct
   type configuration =
     | Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
-  module Server = struct
+  module Service = struct
     type +'a io = 'a Async.Deferred.t
 
     type flow = Protocol.flow
@@ -234,7 +237,7 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = Service.register ~service:(module Server)
+  let service = S.register ~service:(module Service)
 
   let resolve ~port domain_name =
     Monitor.try_with (fun () ->

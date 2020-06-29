@@ -212,7 +212,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
     mutable closed : bool;
   }
 
-  module Server = struct
+  module Service = struct
     type +'a io = 'a Conduit_mirage.io
 
     type error = Connection_aborted
@@ -269,5 +269,5 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let service = Conduit_mirage.Service.register ~service:(module Server)
+  let service = Conduit_mirage.Service.register ~service:(module Service)
 end

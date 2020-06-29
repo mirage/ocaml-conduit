@@ -7,6 +7,9 @@ module IO = struct
 end
 
 include Conduit.Make (IO) (Cstruct) (Cstruct)
+module S = Service
+
+type ('a, 'b, 'c) service = ('a, 'b, 'c) S.service
 
 let failwith fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
 
@@ -278,7 +281,7 @@ module TCP = struct
 
   type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
-  module Server = struct
+  module Service = struct
     type +'a io = 'a Lwt.t
 
     type nonrec configuration = configuration = {
@@ -390,7 +393,7 @@ module TCP = struct
 
   include (val repr protocol)
 
-  let service = Service.register ~service:(module Server)
+  let service = S.register ~service:(module Service)
 
   let resolve ~port domain_name =
     Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function

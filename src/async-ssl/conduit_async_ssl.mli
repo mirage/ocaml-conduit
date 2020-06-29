@@ -60,10 +60,10 @@ module TCP : sig
   val protocol : (context * endpoint, Protocol.flow with_ssl) protocol
 
   val service :
-    ( context * Server.configuration,
-      context * Server.t,
+    ( context * Service.configuration,
+      context * Service.t,
       Protocol.flow with_ssl )
-    Service.service
+    service
 
   val resolve : port:int -> context:context -> (context * endpoint) resolver
 end

@@ -49,9 +49,9 @@ module TCP : sig
 
   val service :
     ( configuration * Tls.Config.server,
-      Server.t service_with_tls,
+      Service.t service_with_tls,
       Protocol.flow protocol_with_tls )
-    Service.service
+    service
 
   val resolve :
     port:int ->

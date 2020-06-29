@@ -9,9 +9,12 @@ include
 val io_of_flow :
   flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel
 
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+(** The type for lwt services. *)
+
 val serve :
   handler:('flow -> unit Lwt.t) ->
-  service:('cfg, 'service, 'flow) Service.service ->
+  service:('cfg, 'service, 'flow) service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
 (** [serve ~handler ~service cfg] creates an usual infinite [service]
@@ -83,7 +86,7 @@ module TCP : sig
 
   type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
-  module Server :
+  module Service :
     SERVICE
       with type configuration = configuration
        and type t = Lwt_unix.file_descr
@@ -108,7 +111,7 @@ module TCP : sig
 
   type flow += T of t
 
-  val service : (configuration, Server.t, Protocol.flow) Service.service
+  val service : (configuration, Service.t, Protocol.flow) service
 
   val resolve : port:int -> Lwt_unix.sockaddr resolver
 end

@@ -36,7 +36,11 @@ let identifier_equal a b = (compare : int -> int -> int) a b = 0
 
 let identifier_compare a b = (compare : int -> int -> int) a b
 
-module Make (K : Sigs.FUNCTOR) (V : Sigs.FUNCTOR) = struct
+module type S1 = sig
+  type 'a t
+end
+
+module Make (K : S1) (V : S1) = struct
   module Key = struct
     type 'a info = 'a K.t
 

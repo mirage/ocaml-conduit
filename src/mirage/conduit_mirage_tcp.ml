@@ -42,7 +42,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     type output = Conduit_mirage.output
 
-    type +'a s = 'a Conduit_mirage.s
+    type +'a io = 'a Conduit_mirage.io
 
     type error =
       | Input_too_large
@@ -213,7 +213,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   }
 
   module Server = struct
-    type +'a s = 'a Conduit_mirage.s
+    type +'a io = 'a Conduit_mirage.io
 
     type error = Connection_aborted
 
@@ -227,7 +227,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     type t = service
 
-    let make { stack; keepalive; nodelay; port } =
+    let init { stack; keepalive; nodelay; port } =
       let queue = Queue.create () in
       let condition = Lwt_condition.create () in
       let mutex = Lwt_mutex.create () in

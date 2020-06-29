@@ -16,7 +16,7 @@ struct
 
   and output = string
 
-  type +'a s = 'a
+  type +'a io = 'a
 
   type endpoint = Edn.t
 

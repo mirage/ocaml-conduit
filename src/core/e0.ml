@@ -77,7 +77,11 @@ module Tbl = struct
     if t.size > Array.length t.data lsl 1 then resize t
 end
 
-module Make (Key : Sigs.FUNCTOR) = struct
+module type S1 = sig
+  type 'a t
+end
+
+module Make (Key : S1) = struct
   type t = ..
 
   type _ id = ..

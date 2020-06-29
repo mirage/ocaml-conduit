@@ -8,7 +8,7 @@ module Protocol = struct
 
   type output = Cstruct.t
 
-  type +'a s = 'a Async.Deferred.t
+  type +'a io = 'a Async.Deferred.t
 
   type flow =
     | Socket : {
@@ -89,7 +89,7 @@ let protocol = Internal.register ~protocol:(module Protocol)
 type configuration = Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
 module Server = struct
-  type +'a s = 'a Async.Deferred.t
+  type +'a io = 'a Async.Deferred.t
 
   type flow = Protocol.flow
 
@@ -124,7 +124,7 @@ module Server = struct
   let ( >>? ) x f =
     x >>= function Ok x -> f x | Error _ as err -> Async.return err
 
-  let make (Listen where_to_listen) =
+  let init (Listen where_to_listen) =
     let (Socket_type (socket_type, addr)) =
       match Tcp.Where_to_listen.address where_to_listen with
       | `Inet _ as addr -> Socket_type (Socket.Type.tcp, addr)

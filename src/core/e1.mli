@@ -8,7 +8,11 @@ val identifier_equal : identifier -> identifier -> bool
 
 val identifier_compare : identifier -> identifier -> int
 
-module Make (K : Sigs.FUNCTOR) (V : Sigs.FUNCTOR) : sig
+module type S1 = sig
+  type 'a t
+end
+
+module Make (K : S1) (V : S1) : sig
   type 'a key
 
   module Key : sig

@@ -12,7 +12,7 @@ module Protocol = struct
 
   type output = Cstruct.t
 
-  type +'a s = 'a Lwt.t
+  type +'a io = 'a Lwt.t
 
   type endpoint = Lwt_unix.sockaddr
 
@@ -197,7 +197,7 @@ end
 type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
 module Server = struct
-  type +'a s = 'a Lwt.t
+  type +'a io = 'a Lwt.t
 
   type nonrec configuration = configuration = {
     sockaddr : Lwt_unix.sockaddr;
@@ -247,7 +247,7 @@ module Server = struct
     | Unix.ADDR_INET _ -> true
     | Unix.ADDR_UNIX _ -> false
 
-  let make { sockaddr; capacity } =
+  let init { sockaddr; capacity } =
     let socket =
       Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
     in

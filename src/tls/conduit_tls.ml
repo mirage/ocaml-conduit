@@ -1,5 +1,4 @@
 module Ke = Ke.Rke
-module Sigs = Conduit.Sigs
 
 let option_fold ~none ~some = function Some x -> some x | None -> none
 
@@ -10,15 +9,15 @@ let option_fold ~none ~some = function Some x -> some x | None -> none
    even if it an infinitely grow. *)
 
 module Make
-    (Scheduler : Sigs.SCHEDULER)
+    (IO : Conduit.IO)
     (Conduit : Conduit.S
                  with type input = Cstruct.t
                   and type output = Cstruct.t
-                  and type +'a s = 'a Scheduler.t) =
+                  and type +'a io = 'a IO.t) =
 struct
-  let return x = Scheduler.return x
+  let return x = IO.return x
 
-  let ( >>= ) x f = Scheduler.bind x f
+  let ( >>= ) x f = IO.bind x f
 
   let ( >>| ) x f = x >>= fun x -> return (f x)
 
@@ -47,17 +46,12 @@ struct
     | Some tls -> Tls.Engine.handshake_in_progress tls
     | None -> false
 
-  module Make_protocol
-      (Flow : Sigs.PROTOCOL
-                with type input = Conduit.input
-                 and type output = Conduit.output
-                 and type +'a s = 'a Scheduler.t) =
-  struct
+  module Make_protocol (Flow : Conduit.PROTOCOL) = struct
     type input = Conduit.input
 
     type output = Conduit.output
 
-    type +'a s = 'a Conduit.s
+    type +'a io = 'a Conduit.io
 
     type endpoint = Flow.endpoint * Tls.Config.client
 
@@ -79,7 +73,7 @@ struct
     let flow_error err = `Flow err
 
     let flow_wr_opt :
-        Flow.flow -> Cstruct.t option -> (unit, error) result Conduit.s =
+        Flow.flow -> Cstruct.t option -> (unit, error) result Conduit.io =
      fun flow -> function
       | None -> return (Ok ())
       | Some raw ->
@@ -106,7 +100,7 @@ struct
         (char, Bigarray.int8_unsigned_elt) Ke.t ->
         Flow.flow ->
         Cstruct.t ->
-        (Tls.Engine.state option, error) result Scheduler.t =
+        (Tls.Engine.state option, error) result IO.t =
      fun tls queue flow raw ->
       match Tls.Engine.handle_tls tls raw with
       | `Fail (failure, `Response resp) ->
@@ -134,7 +128,7 @@ struct
         (char, Bigarray.int8_unsigned_elt) Ke.t ->
         Flow.flow ->
         Cstruct.t ->
-        (Tls.Engine.state option, error) result Scheduler.t =
+        (Tls.Engine.state option, error) result IO.t =
      fun tls queue flow raw0 ->
       let rec go tls raw1 =
         match Tls.Engine.can_handle_appdata tls with
@@ -317,9 +311,8 @@ struct
     tls : Tls.Config.server;
   }
 
-  module Make_server (Service : Sigs.SERVICE with type +'a s = 'a Scheduler.t) =
-  struct
-    type +'a s = 'a Conduit.s
+  module Make_server (Service : Conduit.SERVICE) = struct
+    type +'a io = 'a Conduit.io
 
     type configuration = Service.configuration * Tls.Config.server
 
@@ -334,8 +327,8 @@ struct
 
     type t = Service.t service_with_tls
 
-    let make (edn, tls) =
-      Service.make edn >>| reword_error service_error >>? fun service ->
+    let init (edn, tls) =
+      Service.init edn >>| reword_error service_error >>? fun service ->
       Log.info (fun m -> m "Start a TLS service.") ;
       return (Ok { service; tls })
 

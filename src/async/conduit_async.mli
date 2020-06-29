@@ -2,16 +2,15 @@
 
 open Async_unix
 
-module Async_scheduler :
-  Conduit.Sigs.SCHEDULER with type +'a t = 'a Async.Deferred.t
+module IO : Conduit.IO with type +'a t = 'a Async.Deferred.t
 
 include
   Conduit.S
     with type input = Cstruct.t
      and type output = Cstruct.t
-     and type +'a s = 'a Async.Deferred.t
+     and type +'a io = 'a Async.Deferred.t
 
-val serve_with_handler :
+val serve :
   handler:('flow -> unit Async.Deferred.t) ->
   service:('cfg, 'master, 'flow) Service.service ->
   'cfg ->
@@ -40,7 +39,7 @@ module TCP : sig
   type configuration =
     | Listen : ('a, 'b) Async.Tcp.Where_to_listen.t -> configuration
 
-  module Server : Service.SERVICE with type configuration = configuration
+  module Server : SERVICE with type configuration = configuration
 
   val service : (configuration, Server.t, Protocol.flow) Service.service
 

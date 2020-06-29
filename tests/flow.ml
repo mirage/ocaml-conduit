@@ -37,7 +37,7 @@ module Memory_flow0 = struct
 
   and output = string
 
-  type +'a s = 'a
+  type +'a io = 'a
 
   type flow = {
     mutable i : string;
@@ -125,7 +125,7 @@ module Memory_flow1 = struct
 
   and output = string
 
-  type +'a s = 'a
+  type +'a io = 'a
 
   type flow = {
     mutable i : string list;

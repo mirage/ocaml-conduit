@@ -89,7 +89,7 @@ struct
 
   type output = Cstruct.t
 
-  type +'a s = 'a Async.Deferred.t
+  type +'a io = 'a Async.Deferred.t
 
   type endpoint = context * Protocol.endpoint
 
@@ -192,14 +192,14 @@ let protocol_with_ssl :
   Conduit_async.register ~protocol:(module M)
 
 module Make (Service : sig
-  include Conduit_async.Service.SERVICE
+  include Conduit_async.SERVICE
 
   val reader : flow -> Reader.t
 
   val writer : flow -> Writer.t
 end) =
 struct
-  type +'a s = 'a Async.Deferred.t
+  type +'a io = 'a Async.Deferred.t
 
   type error =
     | Service of Service.error
@@ -218,12 +218,12 @@ struct
 
   type flow = Service.flow with_ssl
 
-  let make (context, edn) =
+  let init (context, edn) =
     match (context.crt_file, context.key_file) with
     | None, None | Some _, None | None, Some _ ->
         Async.return (Error Missing_crt_or_key)
     | _ -> (
-        Service.make edn >>= function
+        Service.init edn >>= function
         | Ok t -> Async.return (Ok (context, t))
         | Error err -> Async.return (Error (Service err)))
 

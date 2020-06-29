@@ -1,5 +1,3 @@
-module Sigs = Sigs
-
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
 type resolvers
@@ -17,7 +15,7 @@ module type S = sig
   type output
   (** The type for payload outputs. *)
 
-  type +'a s
+  type +'a io
   (** The type for I/O effects. *)
 
   type scheduler
@@ -43,15 +41,15 @@ module type S = sig
   val pp_error : error Fmt.t
 
   val recv :
-    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result s
+    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result io
   (** [recv flow input] is [Ok (`Input len)] iff [n] bytes of data has been
      received from the flow [flow] and copied in [input]. *)
 
-  val send : flow -> output -> (int, [> error ]) result s
+  val send : flow -> output -> (int, [> error ]) result io
   (** [send flow output] is [Ok n] iff [n] bytes of date from [output] has been
      sent over the flow [flow]. *)
 
-  val close : flow -> (unit, [> error ]) result s
+  val close : flow -> (unit, [> error ]) result io
   (** [close flow] closes [flow]. Subsequent calls to {!recv} will return
      [Ok `End_of_flow]. Subsequent calls to {!send} will return an [Error]. *)
 
@@ -80,14 +78,14 @@ module type S = sig
     Sigs.FLOW
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   (** A protocol is a {!FLOW} plus [connect]. *)
   module type PROTOCOL =
     Sigs.PROTOCOL
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
@@ -189,15 +187,15 @@ module type S = sig
       ]}
   *)
 
-  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
-  val flow : flow -> pack
-  (** [flow flow] projects the module implementation associated to the given
+  val unpack : flow -> unpack
+  (** [pack flow] projects the module implementation associated to the given
      abstract [flow] such as:
 
       {[
         Conduit.connect edn >>= fun flow ->
-        let Conduit.Flow (flow, (module Flow)) = Conduit.flow flow in
+        let Conduit.Flow (flow, (module Flow)) = Conduit.unpack flow in
         Flow.send flow "Hello World!"
       ]}
   *)
@@ -207,8 +205,8 @@ module type S = sig
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
   (** [impl protocol] is [protocol]'s implementation. *)
 
-  val is : flow -> (_, 'flow) protocol -> 'flow option
-  (** [is flow protocol] tries to {i destruct} the given [flow] to the concrete
+  val cast : flow -> (_, 'flow) protocol -> 'flow option
+  (** [cast flow protocol] tries to {i cast} the given [flow] to the concrete
      type described by the given [protocol].
 
       {[
@@ -218,21 +216,21 @@ module type S = sig
       ]}
   *)
 
-  val abstract : (_, 'v) protocol -> 'v -> flow
-  (** [abstract protocol concrete_flow] abstracts the given [flow] into the
+  val pack : (_, 'v) protocol -> 'v -> flow
+  (** [pack protocol concrete_flow] abstracts the given [flow] into the
      {!flow} type from a given [protocol]. It permits to use [Conduit] with a
      concrete value created by the user.
 
       {[
         let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-        let flow = Conduit.abstract Conduit_tcp.t socket in
+        let flow = Conduit.pack Conduit_tcp.t socket in
         Conduit.send flow "Hello World!"
       ]}
   *)
 
   (** {2:resolution Domain name resolvers.} *)
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
+  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
   (** The type for resolver functions, which resolve domain names to endpoints.
      For instance, the DNS resolver function is:
 
@@ -277,7 +275,7 @@ module type S = sig
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
     [ `host ] Domain_name.t ->
-    (flow, [> error ]) result s
+    (flow, [> error ]) result io
   (** [resolve resolvers domain_name] is the flow created by connecting to the
      domain name [domain_name], using the resolvers [resolvers]. Each resolver
      tries to resolve the given domain-name (they are ordered by the given
@@ -307,13 +305,13 @@ module type S = sig
       ]}
   *)
 
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result s
+  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
 
   (** {2:service Server-side conduits.} *)
 
-  module Service : sig
-    module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
+  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
 
+  module Service : sig
     type ('cfg, 't, 'flow) impl =
       (module SERVICE
          with type configuration = 'cfg
@@ -346,18 +344,18 @@ module type S = sig
 
     val pp_error : error Fmt.t
 
-    val serve :
-      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
-    (** [serve cfg ~service] initialises the service with the configuration
-       [cfg]. *)
+    val init :
+      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result io
+    (** [init cfg ~service] initialises the service with the
+       configuration [cfg]. *)
 
     val accept :
-      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result s
+      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result io
     (** [accept service t] waits for a connection on the service [t]. The result
        is a {i flow} connected to the client. *)
 
     val close :
-      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result s
+      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result io
     (** [close ~service t] releases the resources associated to the server [t]. *)
 
     val impl :
@@ -370,11 +368,14 @@ module type S = sig
   end
 end
 
-module Make
-    (Scheduler : Sigs.SCHEDULER)
-    (Input : Sigs.SINGLETON)
-    (Output : Sigs.SINGLETON) :
+module type IO = Sigs.IO
+(** @inline *)
+
+module type BUFFER = Sigs.BUFFER
+(** @inline *)
+
+module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   S
     with type input = Input.t
      and type output = Output.t
-     and type +'a s = 'a Scheduler.t
+     and type +'a io = 'a IO.t

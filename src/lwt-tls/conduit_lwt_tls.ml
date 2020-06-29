@@ -1,4 +1,4 @@
-include Conduit_tls.Make (Conduit_lwt.Lwt_scheduler) (Conduit_lwt)
+include Conduit_tls.Make (Conduit_lwt.IO) (Conduit_lwt)
 
 module TCP = struct
   open Conduit_lwt.TCP

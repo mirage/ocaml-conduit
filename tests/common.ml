@@ -3,11 +3,11 @@ module type S = sig
 
   type 'a condition
 
-  val serve_with_handler :
-    handler:('flow -> unit s) ->
+  val serve :
+    handler:('flow -> unit io) ->
     service:('cfg, 'master, 'flow) Service.service ->
     'cfg ->
-    unit condition * unit s
+    unit condition * unit io
 end
 
 module type CONDITION = sig
@@ -17,20 +17,20 @@ end
 let ( <.> ) f g x = f (g x)
 
 module Make
-    (Scheduler : Conduit.Sigs.SCHEDULER)
+    (IO : Conduit.IO)
     (Condition : CONDITION)
     (Conduit : S
-                 with type +'a s = 'a Scheduler.t
+                 with type +'a io = 'a IO.t
                   and type 'a condition = 'a Condition.t
                   and type input = Cstruct.t
                   and type output = Cstruct.t) =
 struct
-  let return = Scheduler.return
+  let return = IO.return
 
-  let ( >>= ) = Scheduler.bind
+  let ( >>= ) = IO.bind
 
   let ( >>? ) x f =
-    x >>= function Ok x -> f x | Error err -> Scheduler.return (Error err)
+    x >>= function Ok x -> f x | Error err -> IO.return (Error err)
 
   let localhost = Domain_name.(host_exn <.> of_string_exn) "localhost"
 
@@ -62,10 +62,10 @@ struct
       Bigstringaf.blit src ~src_off dst ~dst_off ~len in
     let rec go () =
       match getline queue with
-      | Some line -> Scheduler.return (Ok (`Line line))
+      | Some line -> IO.return (Ok (`Line line))
       | None -> (
           Conduit.recv flow tmp >>? function
-          | `End_of_flow -> Scheduler.return (Ok `Close)
+          | `End_of_flow -> IO.return (Ok `Close)
           | `Input len ->
               Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
               go ()) in
@@ -99,10 +99,10 @@ struct
       cfg ->
       protocol:(_, flow) Conduit.protocol ->
       service:(cfg, master, flow) Conduit.Service.service ->
-      unit Condition.t * unit Scheduler.t =
+      unit Condition.t * unit IO.t =
    fun cfg ~protocol ~service ->
-    Conduit.serve_with_handler
-      ~handler:(fun flow -> transmission (Conduit.abstract protocol flow))
+    Conduit.serve
+      ~handler:(fun flow -> transmission (Conduit.pack protocol flow))
       ~service cfg
 
   (* part *)
@@ -129,9 +129,9 @@ struct
     let responses = go [] ic in
     close_in ic ;
     client ~resolvers localhost responses >>= function
-    | Ok () -> Scheduler.return ()
-    | Error `Closed_by_peer -> Scheduler.return ()
+    | Ok () -> IO.return ()
+    | Error `Closed_by_peer -> IO.return ()
     | Error (#Conduit.error as err) ->
         Fmt.epr "client: %a.\n%!" Conduit.pp_error err ;
-        Scheduler.return ()
+        IO.return ()
 end

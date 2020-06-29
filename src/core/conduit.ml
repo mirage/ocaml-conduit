@@ -6,10 +6,12 @@ let strf = Format.asprintf
 
 type _ witness = ..
 
+type (+'a, 's) app
+
 type _ resolver =
   | Resolver : {
       priority : int option;
-      resolve : [ `host ] Domain_name.t -> ('edn option, 's) Sigs.app;
+      resolve : [ `host ] Domain_name.t -> ('edn option, 's) app;
       witness : 's witness;
     }
       -> ('edn * 's) resolver
@@ -50,7 +52,7 @@ module type S = sig
 
   type output
 
-  type +'a s
+  type +'a io
 
   type scheduler
 
@@ -61,23 +63,23 @@ module type S = sig
   val pp_error : error Fmt.t
 
   val recv :
-    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result s
+    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result io
 
-  val send : flow -> output -> (int, [> error ]) result s
+  val send : flow -> output -> (int, [> error ]) result io
 
-  val close : flow -> (unit, [> error ]) result s
+  val close : flow -> (unit, [> error ]) result io
 
   module type FLOW =
     Sigs.FLOW
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   module type PROTOCOL =
     Sigs.PROTOCOL
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
@@ -94,19 +96,19 @@ module type S = sig
 
   val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
 
-  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
-  val flow : flow -> pack
+  val unpack : flow -> unpack
 
   val impl :
     ('edn, 'flow) protocol ->
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
 
-  val is : flow -> ('edn, 'flow) protocol -> 'flow option
+  val cast : flow -> ('edn, 'flow) protocol -> 'flow option
 
-  val abstract : ('edn, 'v) protocol -> 'v -> flow
+  val pack : ('edn, 'v) protocol -> 'v -> flow
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
+  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
 
   val empty : resolvers
 
@@ -121,13 +123,13 @@ module type S = sig
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
     [ `host ] Domain_name.t ->
-    (flow, [> error ]) result s
+    (flow, [> error ]) result io
 
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result s
+  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
+
+  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
 
   module Service : sig
-    module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
-
     type ('cfg, 't, 'flow) impl =
       (module SERVICE
          with type configuration = 'cfg
@@ -142,14 +144,14 @@ module type S = sig
 
     val pp_error : error Fmt.t
 
-    val serve :
-      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result s
+    val init :
+      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result io
 
     val accept :
-      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result s
+      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result io
 
     val close :
-      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result s
+      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result io
 
     val impl :
       ('cfg, 't, 'flow) service ->
@@ -160,15 +162,38 @@ module type S = sig
   end
 end
 
-module Make
-    (Scheduler : Sigs.SCHEDULER)
-    (Input : Sigs.SINGLETON)
-    (Output : Sigs.SINGLETON) :
+module type IO = Sigs.IO
+
+module type BUFFER = Sigs.BUFFER
+
+module type BIJECTION = sig
+  type +'a s
+
+  type t
+
+  external inj : 'a s -> ('a, t) app = "%identity"
+
+  external prj : ('a, t) app -> 'a s = "%identity"
+end
+
+module Higher (Functor : sig
+  type +'a t
+end) : BIJECTION with type +'a s = 'a Functor.t = struct
+  type +'a s = 'a Functor.t
+
+  type t
+
+  external inj : 'a s -> ('a, t) app = "%identity"
+
+  external prj : ('a, t) app -> 'a s = "%identity"
+end
+
+module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   S
     with type input = Input.t
      and type output = Output.t
-     and type +'a s = 'a Scheduler.t = struct
-  module Bijection = Sigs.Higher (Scheduler)
+     and type +'a io = 'a IO.t = struct
+  module Bijection = Higher (IO)
 
   type scheduler = Bijection.t
 
@@ -176,16 +201,16 @@ module Make
 
   let prj = Bijection.prj
 
-  let return = Scheduler.return
+  let return = IO.return
 
-  let ( >>= ) x f = Scheduler.bind x f
+  let ( >>= ) x f = IO.bind x f
 
   let ( >>| ) x f = x >>= fun x -> return (f x)
 
   let ( >>? ) x f =
     x >>= function Ok x -> f x | Error err -> return (Error err)
 
-  type +'a s = 'a Scheduler.t
+  type +'a io = 'a IO.t
 
   type _ witness += Witness : scheduler witness
 
@@ -199,20 +224,20 @@ module Make
     Sigs.PROTOCOL
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   module type FLOW =
     Sigs.FLOW
       with type input = input
        and type output = output
-       and type +'a s = 'a s
+       and type +'a io = 'a io
 
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
 
   type 'edn key = ('edn * scheduler) Map.key
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option s
+  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
 
   module F = struct
     type _ t =
@@ -310,8 +335,8 @@ module Make
     | `Msg err -> pf ppf "%s" err
     | `Not_found -> pf ppf "Not found"
 
-  let flow_of_endpoint : type edn. edn key -> edn -> (flow, [> error ]) result s
-      =
+  let flow_of_endpoint :
+      type edn. edn key -> edn -> (flow, [> error ]) result io =
    fun key edn ->
     let rec go = function
       | [] -> return (Error `Not_found)
@@ -325,7 +350,7 @@ module Make
     go (Ptr.bindings ())
 
   let flow_of_protocol :
-      type edn flow. (edn, flow) protocol -> edn -> (flow, [> error ]) result s
+      type edn flow. (edn, flow) protocol -> edn -> (flow, [> error ]) result io
       =
    fun (module Witness) edn ->
     let (Protocol (_, (module Protocol))) = Witness.witness in
@@ -347,7 +372,7 @@ module Make
 
   and sup = 1
 
-  let resolve : resolvers -> [ `host ] Domain_name.t -> endpoint list s =
+  let resolve : resolvers -> [ `host ] Domain_name.t -> endpoint list io =
    fun m domain_name ->
     let rec go acc = function
       | [] -> return (List.rev acc) (* XXX(dinosaure): keep order. *)
@@ -368,7 +393,7 @@ module Make
     go [] (List.sort compare (Map.bindings m))
 
   let create :
-      resolvers -> [ `host ] Domain_name.t -> (flow, [> error ]) result s =
+      resolvers -> [ `host ] Domain_name.t -> (flow, [> error ]) result io =
    fun m domain_name ->
     resolve m domain_name >>= fun l ->
     let rec go = function
@@ -379,7 +404,7 @@ module Make
           | Error _err -> go r) in
     go l
 
-  let abstract : type edn v. (edn, v) protocol -> v -> flow =
+  let pack : type edn v. (edn, v) protocol -> v -> flow =
    fun (module Witness) flow -> Witness.T (Value flow)
 
   let resolve :
@@ -387,7 +412,7 @@ module Make
       resolvers ->
       ?protocol:(edn, v) protocol ->
       [ `host ] Domain_name.t ->
-      (flow, [> error ]) result s =
+      (flow, [> error ]) result io =
    fun m ?protocol domain_name ->
     match protocol with
     | None -> create m domain_name
@@ -406,15 +431,15 @@ module Make
         go l
 
   let connect :
-      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result s =
+      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result io =
    fun edn (module Witness) ->
     let (Protocol (_, (module Protocol))) = Witness.witness in
     Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Witness.T (Value flow)))
 
-  type pack = Flow : 'flow * (module FLOW with type flow = 'flow) -> pack
+  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
-  let flow : flow -> pack =
+  let unpack : flow -> unpack =
    fun flow ->
     let (Ptr.Value (flow, Protocol (_, (module Protocol))) : Ptr.v) =
       Ptr.prj flow in
@@ -429,15 +454,15 @@ module Make
     let (Protocol (_, (module Protocol))) = Witness.witness in
     (module Protocol)
 
-  let is : type edn v. flow -> (edn, v) protocol -> v option =
+  let cast : type edn v. flow -> (edn, v) protocol -> v option =
    fun flow witness ->
     match Ptr.extract flow witness with
     | Some (Value flow) -> Some flow
     | None -> None
 
-  module Service = struct
-    module type SERVICE = Sigs.SERVICE with type +'a s = 'a s
+  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
 
+  module Service = struct
     type ('cfg, 't, 'flow) impl =
       (module SERVICE
          with type configuration = 'cfg
@@ -463,18 +488,18 @@ module Make
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
 
-    let serve :
+    let init :
         type cfg t flow.
-        cfg -> service:(cfg, t, flow) service -> (t, [> error ]) result s =
+        cfg -> service:(cfg, t, flow) service -> (t, [> error ]) result io =
      fun edn ~service:(module Witness) ->
       let (Service (_, (module Service))) = Witness.witness in
-      Service.make edn >>= function
+      Service.init edn >>= function
       | Ok t -> return (Ok t)
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let accept :
         type cfg t flow.
-        service:(cfg, t, flow) service -> t -> (flow, [> error ]) result s =
+        service:(cfg, t, flow) service -> t -> (flow, [> error ]) result io =
      fun ~service:(module Witness) t ->
       let (Service (_, (module Service))) = Witness.witness in
       Service.accept t >>= function
@@ -483,7 +508,7 @@ module Make
 
     let close :
         type cfg t flow.
-        service:(cfg, t, flow) service -> t -> (unit, [> error ]) result s =
+        service:(cfg, t, flow) service -> t -> (unit, [> error ]) result io =
      fun ~service:(module Witness) t ->
       let (Service (_, (module Service))) = Witness.witness in
       Service.close t >>= function

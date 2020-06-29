@@ -1,20 +1,20 @@
-module Lwt_scheduler : Conduit.Sigs.SCHEDULER with type +'a t = 'a Lwt.t
+module IO : Conduit.IO with type +'a t = 'a Lwt.t
 
 include
   Conduit.S
     with type input = Cstruct.t
      and type output = Cstruct.t
-     and type +'a s = 'a Lwt.t
+     and type +'a io = 'a Lwt.t
 
 val io_of_flow :
   flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel
 
-val serve_with_handler :
+val serve :
   handler:('flow -> unit Lwt.t) ->
   service:('cfg, 'master, 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
-(** [serve_with_handler ~handler ~service cfg] creates an usual infinite [service]
+(** [serve ~handler ~service cfg] creates an usual infinite [service]
     loop from the given configuration ['cfg]. It returns the {i promise} to launch
     the loop and a condition variable to stop the loop.
 
@@ -53,14 +53,14 @@ end
 
 module TCP : sig
   (** Implementation of TCP protocol as a client.
-  
+
       Behaviours of [Protocol] differs from {i syscall} provided by [Lwt_unix].
       This is a description of what they currently do.
-  
+
       {b NOTE}: [recv] wants to fill the given buffer as much as possible until it
       has reached {i end-of-input}. In other words, [recv] can do a multiple call
       to [Lwt_unix.recv] to fill the given buffer.
-  
+
       {b NOTE}: [send] tries to send as much as it can the given buffer. However,
       if internal call of [Lwt_unix.send] returns something smaller than what we
       requested, we stop the process and return how many byte(s) we sended. In
@@ -98,7 +98,7 @@ module TCP : sig
   type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
   module Server :
-    Service.SERVICE
+    SERVICE
       with type configuration = configuration
        and type t = Lwt_unix.file_descr
        and type flow = Protocol.flow

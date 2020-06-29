@@ -1,4 +1,4 @@
-module Async_scheduler = struct
+module IO = struct
   type +'a t = 'a Async.Deferred.t
 
   let bind x f = Async.Deferred.bind x ~f
@@ -6,13 +6,13 @@ module Async_scheduler = struct
   let return x = Async.Deferred.return x
 end
 
-include Conduit.Make (Async_scheduler) (Cstruct) (Cstruct)
+include Conduit.Make (IO) (Cstruct) (Cstruct)
 
 let failwith fmt = Format.kasprintf failwith fmt
 
 let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
-let serve_with_handler :
+let serve :
     type cfg master flow.
     handler:(flow -> unit Async.Deferred.t) ->
     service:(cfg, master, flow) Service.service ->
@@ -23,7 +23,7 @@ let serve_with_handler :
   let stop = Async.Condition.create () in
   let module Svc = (val Service.impl service) in
   let main =
-    Service.serve cfg ~service >>= function
+    Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok master -> (
         let rec loop () =

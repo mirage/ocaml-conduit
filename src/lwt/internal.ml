@@ -1,4 +1,4 @@
-module Lwt_scheduler = struct
+module IO = struct
   type +'a t = 'a Lwt.t
 
   let bind x f = Lwt.bind x f
@@ -6,7 +6,7 @@ module Lwt_scheduler = struct
   let return x = Lwt.return x
 end
 
-include Conduit.Make (Lwt_scheduler) (Cstruct) (Cstruct)
+include Conduit.Make (IO) (Cstruct) (Cstruct)
 
 let failwith fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
 
@@ -43,7 +43,7 @@ let io_of_flow flow =
 
 let ( >>? ) = Lwt_result.bind
 
-let serve_with_handler :
+let serve :
     type cfg master flow.
     handler:(flow -> unit Lwt.t) ->
     service:(cfg, master, flow) Service.service ->
@@ -54,7 +54,7 @@ let serve_with_handler :
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
   let main =
-    Service.serve cfg ~service >>= function
+    Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok master -> (
         let rec loop () =

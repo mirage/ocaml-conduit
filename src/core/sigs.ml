@@ -1,50 +1,5 @@
 type 'x or_end_of_flow = [ `End_of_flow | `Input of 'x ]
 
-module type FUNCTOR = sig
-  type 'a t
-end
-
-module type SINGLETON = sig
-  type t
-end
-
-type (+'a, 's) app
-
-type 's scheduler = {
-  bind : 'a 'b. ('a, 's) app -> ('a -> ('b, 's) app) -> ('b, 's) app;
-  return : 'a. 'a -> ('a, 's) app;
-}
-
-module type BIJECTION = sig
-  type +'a s
-
-  type t
-
-  external inj : 'a s -> ('a, t) app = "%identity"
-
-  external prj : ('a, t) app -> 'a s = "%identity"
-end
-
-module Higher (Functor : sig
-  type +'a t
-end) : BIJECTION with type +'a s = 'a Functor.t = struct
-  type +'a s = 'a Functor.t
-
-  type t
-
-  external inj : 'a s -> ('a, t) app = "%identity"
-
-  external prj : ('a, t) app -> 'a s = "%identity"
-end
-
-module type SCHEDULER = sig
-  type +'a t
-
-  val bind : 'a t -> ('a -> 'b t) -> 'b t
-
-  val return : 'a -> 'a t
-end
-
 module type FLOW = sig
   (** [FLOW] is the signature for flow clients.
 
@@ -69,7 +24,7 @@ module type FLOW = sig
      a protocol without such complexity.
   *)
 
-  type +'a s
+  type +'a io
 
   type flow
 
@@ -99,15 +54,15 @@ module type FLOW = sig
   val pp_error : error Fmt.t
   (** [pp_error] is the pretty-printer for {!error}. *)
 
-  val recv : flow -> input -> (int or_end_of_flow, error) result s
+  val recv : flow -> input -> (int or_end_of_flow, error) result io
   (** [recv flow input] is [Ok (`Input len)] iff [len] bytes of data has been received from
      the flow [flow] and copied in [input]. *)
 
-  val send : flow -> output -> (int, error) result s
+  val send : flow -> output -> (int, error) result io
   (** [send t output] is [Ok len] iff [len] bytes of data from [output] has been
      sent over the flow [flow]. *)
 
-  val close : flow -> (unit, error) result s
+  val close : flow -> (unit, error) result io
   (** [close flow] closes [flow]. Subsequent calls to {!recv} on [flow] will
      return [`End_of_flow]. Subsequent calls to {!send} on [t] will return an
      [Error]. *)
@@ -118,11 +73,11 @@ module type PROTOCOL = sig
 
   type endpoint
 
-  val connect : endpoint -> (flow, error) result s
+  val connect : endpoint -> (flow, error) result io
 end
 
 module type SERVICE = sig
-  type +'a s
+  type +'a io
 
   type flow
 
@@ -132,11 +87,23 @@ module type SERVICE = sig
 
   type configuration
 
-  val make : configuration -> (t, error) result s
+  val init : configuration -> (t, error) result io
 
   val pp_error : error Fmt.t
 
-  val accept : t -> (flow, error) result s
+  val accept : t -> (flow, error) result io
 
-  val close : t -> (unit, error) result s
+  val close : t -> (unit, error) result io
+end
+
+module type IO = sig
+  type +'a t
+
+  val bind : 'a t -> ('a -> 'b t) -> 'b t
+
+  val return : 'a -> 'a t
+end
+
+module type BUFFER = sig
+  type t
 end

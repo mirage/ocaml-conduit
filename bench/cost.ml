@@ -15,7 +15,7 @@ module Fake_protocol0 = struct
 
   and output = string
 
-  and +'a s = 'a
+  and +'a io = 'a
 
   type endpoint = Unix.file_descr
 
@@ -43,7 +43,7 @@ module Fake_protocol1 = struct
 
   and output = string
 
-  and +'a s = 'a
+  and +'a io = 'a
 
   type endpoint = Unix.file_descr
 
@@ -67,7 +67,7 @@ module Fake_protocol2 = struct
 
   and output = string
 
-  and +'a s = 'a
+  and +'a io = 'a
 
   type endpoint = Unix.file_descr
 
@@ -104,7 +104,7 @@ let run () =
   Tuyau.connect Unix.stderr fake0 >>= fun flow ->
   Tuyau.send flow hello_world >>= fun _ ->
   let samples0 = Benchmark.run (fn_fully_abstr flow) in
-  let samples1 = Benchmark.run (fn_abstr (Tuyau.flow flow)) in
+  let samples1 = Benchmark.run (fn_abstr (Tuyau.unpack flow)) in
 
   match
     ( Linear_algebra.ols (fun m -> m.(1)) [| (fun m -> m.(0)) |] samples0,

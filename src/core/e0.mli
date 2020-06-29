@@ -1,6 +1,10 @@
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
-module Make (Key : Sigs.FUNCTOR) : sig
+module type S1 = sig
+  type 'a t
+end
+
+module Make (Key : S1) : sig
   (* XXX(dinosaure): only on [>= 4.06.0] *)
   type t = private ..
 

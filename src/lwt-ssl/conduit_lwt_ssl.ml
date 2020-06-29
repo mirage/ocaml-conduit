@@ -30,7 +30,7 @@ module Protocol (Flow : Conduit_lwt.PROTOCOL) = struct
 
   type output = Cstruct.t
 
-  type +'a s = 'a Lwt.t
+  type +'a io = 'a Lwt.t
 
   type error = [ `Flow of Flow.error | `Verify of string ]
 
@@ -76,12 +76,12 @@ let protocol_with_ssl :
 type 't master = { master : 't; context : Ssl.context }
 
 module Server (Service : sig
-  include Conduit_lwt.Service.SERVICE
+  include Conduit_lwt.SERVICE
 
   val file_descr : flow -> Lwt_unix.file_descr
 end) =
 struct
-  type +'a s = 'a Lwt.t
+  type +'a io = 'a Lwt.t
 
   type configuration = Ssl.context * Service.configuration
 
@@ -93,8 +93,8 @@ struct
 
   let pp_error ppf (`Service err) = Service.pp_error ppf err
 
-  let make (context, edn) =
-    Service.make edn >|= reword_error (fun err -> `Service err)
+  let init (context, edn) =
+    Service.init edn >|= reword_error (fun err -> `Service err)
     >>? fun master -> Lwt.return_ok { master; context }
 
   let accept { master; context } =

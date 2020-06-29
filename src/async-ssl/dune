@@ -1,0 +1,4 @@
+(library
+ (name conduit_async_ssl)
+ (public_name conduit-async-ssl)
+ (libraries core async_ssl conduit-async))

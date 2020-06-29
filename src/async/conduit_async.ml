@@ -13,9 +13,9 @@ let failwith fmt = Format.kasprintf failwith fmt
 let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
 let serve :
-    type cfg master flow.
+    type cfg t flow.
     handler:(flow -> unit Async.Deferred.t) ->
-    service:(cfg, master, flow) Service.service ->
+    service:(cfg, t, flow) Service.service ->
     cfg ->
     unit Async.Condition.t * unit Async.Deferred.t =
  fun ~handler ~service cfg ->
@@ -25,20 +25,20 @@ let serve :
   let main =
     Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
-    | Ok master -> (
+    | Ok t -> (
         let rec loop () =
           let close = Async.Condition.wait stop >>| fun () -> Ok `Stop in
           let accept =
-            Svc.accept master >>? fun flow ->
+            Svc.accept t >>? fun flow ->
             Async.(Deferred.ok (return (`Flow flow))) in
 
           Async.Deferred.any [ close; accept ] >>= function
           | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok `Stop -> Svc.close master
+          | Ok `Stop -> Svc.close t
           | Error err0 -> (
-              Svc.close master >>= function
+              Svc.close t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in
         loop () >>= function
@@ -192,7 +192,7 @@ module TCP = struct
     type nonrec configuration = configuration
 
     type t =
-      | Master :
+      | Socket :
           ([ `Passive ], ([< Socket.Address.t ] as 'a)) Socket.t * 'a
           -> t
 
@@ -219,9 +219,9 @@ module TCP = struct
       let socket = Socket.create socket_type in
       let f () = Socket.bind socket addr >>| Socket.listen in
       close_socket_on_error ~process:`Make socket ~f >>? fun socket ->
-      Async.return (Ok (Master (socket, addr)))
+      Async.return (Ok (Socket (socket, addr)))
 
-    let accept (Master (socket, _)) =
+    let accept (Socket (socket, _)) =
       Socket.accept socket >>= function
       | `Ok (socket, address) ->
           let reader = Reader.create (Socket.fd socket) in
@@ -230,7 +230,7 @@ module TCP = struct
           Async.return (Ok flow)
       | `Socket_closed -> Async.return (Error Socket_closed)
 
-    let close (Master (socket, _)) =
+    let close (Socket (socket, _)) =
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 

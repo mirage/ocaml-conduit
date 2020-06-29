@@ -73,7 +73,7 @@ let protocol_with_ssl :
   let module M = Protocol (Flow) in
   Conduit_lwt.register ~protocol:(module M)
 
-type 't master = { master : 't; context : Ssl.context }
+type 't service = { service : 't; context : Ssl.context }
 
 module Server (Service : sig
   include Conduit_lwt.SERVICE
@@ -85,7 +85,7 @@ struct
 
   type configuration = Ssl.context * Service.configuration
 
-  type t = Service.t master
+  type t = Service.t service
 
   type flow = Lwt_ssl.socket
 
@@ -95,10 +95,10 @@ struct
 
   let init (context, edn) =
     Service.init edn >|= reword_error (fun err -> `Service err)
-    >>? fun master -> Lwt.return_ok { master; context }
+    >>? fun service -> Lwt.return_ok { service; context }
 
-  let accept { master; context } =
-    Service.accept master >|= reword_error (fun err -> `Service err)
+  let accept { service; context } =
+    Service.accept service >|= reword_error (fun err -> `Service err)
     >>? fun flow ->
     let accept () = Lwt_ssl.ssl_accept (Service.file_descr flow) context in
     let process socket = Lwt.return_ok socket in
@@ -106,8 +106,8 @@ struct
       Lwt_unix.close (Service.file_descr flow) >>= fun () -> Lwt.fail exn in
     Lwt.try_bind accept process error
 
-  let close { master; _ } =
-    Service.close master >|= reword_error (fun err -> `Service err)
+  let close { service; _ } =
+    Service.close service >|= reword_error (fun err -> `Service err)
 end
 
 let service_with_ssl :
@@ -115,7 +115,7 @@ let service_with_ssl :
     (cfg, t, flow) Conduit_lwt.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
     (edn, Lwt_ssl.socket) Conduit_lwt.protocol ->
-    (Ssl.context * cfg, t master, Lwt_ssl.socket) Conduit_lwt.Service.service =
+    (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.service =
  fun service ~file_descr _ ->
   let module S = (val Conduit_lwt.Service.impl service) in
   let module M = Server (struct

@@ -44,9 +44,9 @@ let io_of_flow flow =
 let ( >>? ) = Lwt_result.bind
 
 let serve :
-    type cfg master flow.
+    type cfg service flow.
     handler:(flow -> unit Lwt.t) ->
-    service:(cfg, master, flow) Service.service ->
+    service:(cfg, service, flow) Service.service ->
     cfg ->
     unit Lwt_condition.t * unit Lwt.t =
  fun ~handler ~service cfg ->
@@ -56,19 +56,19 @@ let serve :
   let main =
     Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
-    | Ok master -> (
+    | Ok service -> (
         let rec loop () =
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
-            Svc.accept master >>? fun flow -> Lwt.return_ok (`Flow flow) in
+            Svc.accept service >>? fun flow -> Lwt.return_ok (`Flow flow) in
 
           Lwt.pick [ stop; accept ] >>= function
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok `Stop -> Svc.close master
+          | Ok `Stop -> Svc.close service
           | Error err0 -> (
-              Svc.close master >>= function
+              Svc.close service >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function
@@ -377,15 +377,15 @@ module TCP = struct
           Lwt.return_error `Operation_not_supported
       | exn -> Lwt.fail exn
 
-    let rec accept master =
+    let rec accept service =
       let process () =
-        Lwt_unix.accept master >>= fun (socket, sockaddr) ->
+        Lwt_unix.accept service >>= fun (socket, sockaddr) ->
         let linger = Bytes.create 0x1000 in
         Lwt.return_ok { Protocol.socket; sockaddr; linger; closed = false }
       in
       Lwt.catch process @@ function
-      | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> accept master
-      | Unix.(Unix_error (EINTR, _, _)) -> accept master
+      | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> accept service
+      | Unix.(Unix_error (EINTR, _, _)) -> accept service
       | Unix.(Unix_error (EMFILE, _, _))
       | Unix.(Unix_error ((ENOBUFS | ENOMEM), _, _)) ->
           Lwt.return_error `Limit_reached
@@ -394,7 +394,7 @@ module TCP = struct
           Lwt.return_error `Firewall_rules_forbid_connection
       | exn -> Lwt.fail exn
 
-    let close _master =
+    let close _service =
       (* XXX(dinosaure): it seems that on MacOS, try to close the [master]
          socket raises an error. *)
       Lwt.return_ok ()

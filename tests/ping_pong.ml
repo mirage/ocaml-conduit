@@ -65,10 +65,10 @@ let config cert key =
   | _ -> Fmt.failwith "Invalid key or certificate"
 
 let run_with :
-    type cfg master flow.
+    type cfg service flow.
     cfg ->
     protocol:(_, flow) Conduit_lwt.protocol ->
-    service:(cfg, master, flow) Conduit_lwt.Service.service ->
+    service:(cfg, service, flow) Conduit_lwt.Service.service ->
     string list ->
     unit =
  fun cfg ~protocol ~service clients ->

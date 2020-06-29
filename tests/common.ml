@@ -95,10 +95,10 @@ struct
     | Ok () -> return ()
 
   let server :
-      type cfg master flow.
+      type cfg service flow.
       cfg ->
       protocol:(_, flow) Conduit.protocol ->
-      service:(cfg, master, flow) Conduit.Service.service ->
+      service:(cfg, service, flow) Conduit.Service.service ->
       unit Condition.t * unit IO.t =
    fun cfg ~protocol ~service ->
     Conduit.serve

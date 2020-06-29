@@ -11,7 +11,7 @@ val io_of_flow :
 
 val serve :
   handler:('flow -> unit Lwt.t) ->
-  service:('cfg, 'master, 'flow) Service.service ->
+  service:('cfg, 'service, 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
 (** [serve ~handler ~service cfg] creates an usual infinite [service]

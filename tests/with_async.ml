@@ -55,10 +55,10 @@ let resolvers =
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 
 let run_with :
-    type cfg master flow.
+    type cfg service flow.
     cfg ->
     protocol:(_, flow) Conduit_async.protocol ->
-    service:(cfg, master, flow) Conduit_async.Service.service ->
+    service:(cfg, service, flow) Conduit_async.Service.service ->
     string list ->
     unit =
  fun cfg ~protocol ~service clients ->

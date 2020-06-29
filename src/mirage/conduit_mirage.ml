@@ -44,17 +44,3 @@ let serve :
         | Ok () -> Lwt.return_unit
         | Error err -> failwith "%a" Svc.pp_error err) in
   (stop, main)
-
-module type CONDUIT = sig
-  type endpoint
-
-  type flow
-
-  type configuration
-
-  type service
-
-  val protocol : (endpoint, flow) protocol
-
-  val service : (configuration, service, flow) Service.service
-end

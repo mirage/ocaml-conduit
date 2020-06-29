@@ -11,17 +11,3 @@ val serve :
   service:('cfg, 'master, 'flow) Service.service ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t
-
-module type CONDUIT = sig
-  type endpoint
-
-  type flow
-
-  type configuration
-
-  type master
-
-  val protocol : (endpoint, flow) protocol
-
-  val service : (configuration, master, flow) Service.service
-end

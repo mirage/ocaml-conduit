@@ -37,20 +37,6 @@ val serve :
     of {i types witnesses}.
 *)
 
-module type CONDUIT = sig
-  type endpoint
-
-  type flow
-
-  type configuration
-
-  type master
-
-  val protocol : (endpoint, flow) protocol
-
-  val service : (configuration, master, flow) Service.service
-end
-
 module TCP : sig
   (** Implementation of TCP protocol as a client.
 

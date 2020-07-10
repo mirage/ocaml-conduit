@@ -245,6 +245,8 @@ module type S = sig
      ]}
   *)
 
+  type nonrec resolvers = resolvers
+
   val empty : resolvers
 
   val add :

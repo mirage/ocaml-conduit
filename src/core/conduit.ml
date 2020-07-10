@@ -110,6 +110,8 @@ module type S = sig
 
   type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
 
+  type nonrec resolvers = resolvers
+
   val empty : resolvers
 
   val add :
@@ -312,6 +314,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     (module M)
 
   let ( <.> ) f g x = f (g x)
+
+  type nonrec resolvers = resolvers
 
   let empty = empty
 

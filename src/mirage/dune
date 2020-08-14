@@ -14,7 +14,7 @@
  (name conduit_mirage_dns)
  (public_name conduit-mirage.dns)
  (modules conduit_mirage_dns)
- (libraries conduit-mirage dns-client.mirage))
+ (libraries conduit-mirage conduit-mirage.tcp dns-client.mirage))
 
 (library
  (name conduit_mirage_flow)

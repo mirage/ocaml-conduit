@@ -24,5 +24,6 @@ depends: [
   "conduit"
   "tcpip"
   "mirage-flow"
+  "mirage-time"
   "dns-client"
 ]

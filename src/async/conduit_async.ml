@@ -17,11 +17,12 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 
 let serve :
     type cfg t flow.
+    ?timeout:int ->
     handler:(flow -> unit Async.Deferred.t) ->
     service:(cfg, t, flow) service ->
     cfg ->
     unit Async.Condition.t * unit Async.Deferred.t =
- fun ~handler ~service cfg ->
+ fun ?timeout ~handler ~service cfg ->
   let open Async in
   let stop = Async.Condition.create () in
   let module Svc = (val Service.impl service) in
@@ -34,13 +35,19 @@ let serve :
           let accept =
             Svc.accept t >>? fun flow ->
             Async.(Deferred.ok (return (`Flow flow))) in
+          let events () = match timeout with
+            | None ->
+              Async.Deferred.any [ close; accept; ] >>| fun res -> `Result res
+            | Some t ->
+              let t = Core.Time.Span.of_int_sec t in
+              Async.with_timeout t (Async.Deferred.any [ close; accept; ]) in
 
-          Async.Deferred.any [ close; accept ] >>= function
-          | Ok (`Flow flow) ->
+          events () >>= function
+          | `Result (Ok (`Flow flow)) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok `Stop -> Svc.close t
-          | Error err0 -> (
+          | `Result (Ok `Stop) | `Timeout -> Svc.close t
+          | `Result (Error err0) -> (
               Svc.close t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in

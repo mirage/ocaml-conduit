@@ -14,6 +14,7 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 (** The type for async services. *)
 
 val serve :
+  ?timeout:int ->
   handler:('flow -> unit Async.Deferred.t) ->
   service:('cfg, 'master, 'flow) service ->
   'cfg ->

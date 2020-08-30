@@ -13,6 +13,7 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 (** The type for lwt services. *)
 
 val serve :
+  ?timeout:int ->
   handler:('flow -> unit Lwt.t) ->
   service:('cfg, 'service, 'flow) service ->
   'cfg ->
@@ -22,7 +23,7 @@ val serve :
     the loop and a condition variable to stop the loop.
 
     {[
-      let stop, loop = serve_with_handle
+      let stop, loop = serve
         ~handler ~service:TCP.service cfg in
       Lwt.both
         (Lwt_unix.sleep 10. >>= fun () ->
@@ -31,7 +32,8 @@ val serve :
         loop
     ]}
 
-    In your example, we want to launch a server only for 10 seconds. *)
+    In your example, we want to launch a server only for 10 seconds. To help the user,
+    the option [?timeout] allows us to wait less than [timeout] seconds. *)
 
 (** Common interface to properly expose a protocol.
 

@@ -4,6 +4,7 @@ module type S = sig
   type 'a condition
 
   val serve :
+    ?timeout:int ->
     handler:('flow -> unit io) ->
     service:('cfg, 'master, 'flow) Service.service ->
     'cfg ->

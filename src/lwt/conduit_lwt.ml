@@ -48,11 +48,12 @@ let ( >>? ) = Lwt_result.bind
 
 let serve :
     type cfg service flow.
+    ?timeout:int ->
     handler:(flow -> unit Lwt.t) ->
     service:(cfg, service, flow) Service.service ->
     cfg ->
     unit Lwt_condition.t * unit Lwt.t =
- fun ~handler ~service cfg ->
+ fun ?timeout ~handler ~service cfg ->
   let open Lwt.Infix in
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
@@ -64,12 +65,19 @@ let serve :
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
             Svc.accept service >>? fun flow -> Lwt.return_ok (`Flow flow) in
+          let events = match timeout with
+            | None -> [ stop; accept ]
+            | Some t ->
+              let timeout =
+                Lwt_unix.sleep (float_of_int t) >>= fun () ->
+                Lwt.return_ok `Timeout in
+              [ stop; accept; timeout ] in
 
-          Lwt.pick [ stop; accept ] >>= function
+          Lwt.pick events >>= function
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok `Stop -> Svc.close service
+          | Ok (`Stop | `Timeout) -> Svc.close service
           | Error err0 -> (
               Svc.close service >>= function
               | Ok () -> Lwt.return_error err0

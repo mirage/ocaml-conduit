@@ -325,6 +325,21 @@ module type S = sig
        for configuration, ['t] is the type for state states. ['flow] is the type
        for underlying flows. *)
 
+    val equal :
+      ('cfg0, 't0, 'flow0) service ->
+      ('cfg1, 't1, 'flow1) service ->
+      (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
+    (** [equal svc0 svc1 ] proves that [svc0] and [svc1] are
+       physically the same. For instance, Conduit] asserts:
+
+        {[
+          let service = Service.register ~service:(module V) ;;
+
+          let () = match Service.equal service service with
+            | Some (Refl, Refl, Refl) -> ...
+            | _ -> assert false
+        ]} *)
+
     val register : service:('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) service
     (** [register ~service] is the service using the implementation [service].
        [service] must define [make] and [accept] function to be able to create

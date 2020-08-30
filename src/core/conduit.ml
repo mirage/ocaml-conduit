@@ -140,6 +140,11 @@ module type S = sig
 
     type ('cfg, 't, 'flow) service
 
+    val equal :
+      ('cfg0, 't0, 'flow0) service ->
+      ('cfg1, 't1, 'flow1) service ->
+      (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
+
     val register : service:('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) service
 
     type error = [ `Msg of string ]
@@ -491,6 +496,14 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     type error = [ `Msg of string ]
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
+
+    let equal : type a b c d e f.
+      (a, b, c) service -> (d, e, f) service ->
+      ((a, d) refl * (b, e) refl * (c, f) refl) option
+      = fun (module A) (module B)->
+        match A.Id with
+        | B.Id -> Some (Refl, Refl, Refl)
+        | _ -> None
 
     let init :
         type cfg t flow.

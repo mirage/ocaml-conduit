@@ -174,7 +174,7 @@ module TCP = struct
   let protocol = register ~protocol:(module Protocol)
 
   type configuration =
-    | Listen : ('a, 'b) Tcp.Where_to_listen.t -> configuration
+    | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
   module Service = struct
     type +'a io = 'a Async.Deferred.t
@@ -214,13 +214,13 @@ module TCP = struct
     let ( >>? ) x f =
       x >>= function Ok x -> f x | Error _ as err -> Async.return err
 
-    let init (Listen where_to_listen) =
+    let init (Listen (backlog, where_to_listen)) =
       let (Socket_type (socket_type, addr)) =
         match Tcp.Where_to_listen.address where_to_listen with
         | `Inet _ as addr -> Socket_type (Socket.Type.tcp, addr)
         | `Unix _ as addr -> Socket_type (Socket.Type.unix, addr) in
       let socket = Socket.create socket_type in
-      let f () = Socket.bind socket addr >>| Socket.listen in
+      let f () = Socket.bind socket addr >>| Socket.listen ?backlog in
       close_socket_on_error ~process:`Make socket ~f >>? fun socket ->
       Async.return (Ok (Socket (socket, addr)))
 

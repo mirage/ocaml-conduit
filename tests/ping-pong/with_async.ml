@@ -79,13 +79,13 @@ let run_with :
 
 let run_with_tcp clients =
   run_with
-    (Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 5000))
+    (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 5000))
     ~protocol:tcp_protocol ~service:tcp_service clients
 
 let run_with_ssl cert key clients =
   let ctx = Conduit_async_ssl.context ~crt_file:cert ~key_file:key () in
   run_with
-    (ctx, Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 7000))
+    (ctx, Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 7000))
     ~protocol:ssl_protocol ~service:ssl_service clients
 
 let load_file filename =
@@ -110,7 +110,7 @@ let config cert key =
 let run_with_tls cert key clients =
   let ctx = config cert key in
   run_with
-    (Conduit_async.TCP.Listen (Tcp.Where_to_listen.of_port 9000), ctx)
+    (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000), ctx)
     ~protocol:tls_protocol ~service:tls_service clients
 
 let () =

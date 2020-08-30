@@ -40,7 +40,7 @@ module TCP : sig
   val protocol : (Protocol.endpoint, Protocol.flow) protocol
 
   type configuration =
-    | Listen : ('a, 'b) Async.Tcp.Where_to_listen.t -> configuration
+    | Listen : int option * ('a, 'b) Async.Tcp.Where_to_listen.t -> configuration
 
   module Service : SERVICE with type configuration = configuration
 

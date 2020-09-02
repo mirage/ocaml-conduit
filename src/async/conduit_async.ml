@@ -40,16 +40,15 @@ let serve :
             | None -> [ close; accept ]
             | Some t ->
                 let t = Core.Time.Span.of_int_sec t in
-                let timeout =
-                  Async.after t >>| fun () -> Async.return `Timeout in
+                let timeout = Async.after t >>| fun () -> Ok `Timeout in
                 [ close; accept; timeout ] in
 
           Async.Deferred.any events >>= function
-          | `Result (Ok (`Flow flow)) ->
+          | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | `Result (Ok `Stop) | `Timeout -> Svc.close t
-          | `Result (Error err0) -> (
+          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Error err0 -> (
               Svc.close t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in

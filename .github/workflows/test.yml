@@ -6,18 +6,14 @@ jobs:
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        ocaml-version: [ '4.08.1', '4.09.0', '4.10.0' ]
-        operating-system: [macos-latest, ubuntu-latest, windows-latest]
+        ocaml-version: [ '4.08.1', '4.09.0', '4.10.0', '4.11.1' ]
+        operating-system: [ ubuntu-latest ]
     steps:
-    - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@master
+    - uses: actions/checkout@v2
+    - uses: avsm/setup-ocaml@v1
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
-    - name: Install pkg-config
-      if: runner.os == 'macOS'
-      run: brew install pkg-config
     - name: Deps
-      if: runner.os != 'Windows'
       run: |
         opam pin add -n conduit.dev .
         opam pin add -n conduit-lwt.dev .
@@ -30,22 +26,7 @@ jobs:
         opam pin add -n conduit-lwt-ssl.dev .
         opam depext  -y conduit conduit-tls conduit-lwt conduit-async conduit-mirage
         opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-lwt-ssl conduit-async conduit-async-tls conduit-async-ssl conduit-mirage
-    - name: Deps (Windows)
-      if: runner.os == 'Windows'
-      run: |
-        opam pin add -n conduit.dev .
-        opam pin add -n conduit-lwt.dev .
-        opam pin add -n conduit-mirage.dev .
-        opam pin add -n conduit-tls.dev .
-        opam pin add -n conduit-lwt-tls.dev .
-        opam depext  -y conduit conduit-tls conduit-lwt conduit-mirage
-        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-mirage
-    - name: Build (Windows)
-      if: runner.os == 'Windows'
-      run: opam exec -- dune build -p conduit,conduit-tls,conduit-lwt,conduit-mirage
     - name: Build
-      if: runner.os != 'Windows'
       run: opam exec -- dune build
     - name: Test
-      if: runner.os != 'Windows'
       run: opam exec -- dune runtest --no-buffer --verbose -j 1

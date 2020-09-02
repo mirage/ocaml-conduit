@@ -35,14 +35,16 @@ let serve :
           let accept =
             Svc.accept t >>? fun flow ->
             Async.(Deferred.ok (return (`Flow flow))) in
-          let events () = match timeout with
-            | None ->
-              Async.Deferred.any [ close; accept; ] >>| fun res -> `Result res
+          let events =
+            match timeout with
+            | None -> [ close; accept ]
             | Some t ->
-              let t = Core.Time.Span.of_int_sec t in
-              Async.with_timeout t (Async.Deferred.any [ close; accept; ]) in
+                let t = Core.Time.Span.of_int_sec t in
+                let timeout =
+                  Async.after t >>| fun () -> Async.return `Timeout in
+                [ close; accept; timeout ] in
 
-          events () >>= function
+          Async.Deferred.any events >>= function
           | `Result (Ok (`Flow flow)) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()

@@ -497,13 +497,13 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
 
-    let equal : type a b c d e f.
-      (a, b, c) service -> (d, e, f) service ->
-      ((a, d) refl * (b, e) refl * (c, f) refl) option
-      = fun (module A) (module B)->
-        match A.Id with
-        | B.Id -> Some (Refl, Refl, Refl)
-        | _ -> None
+    let equal :
+        type a b c d e f.
+        (a, b, c) service ->
+        (d, e, f) service ->
+        ((a, d) refl * (b, e) refl * (c, f) refl) option =
+     fun (module A) (module B) ->
+      match A.Id with B.Id -> Some (Refl, Refl, Refl) | _ -> None
 
     let init :
         type cfg t flow.

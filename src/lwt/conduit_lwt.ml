@@ -65,13 +65,14 @@ let serve :
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
             Svc.accept service >>? fun flow -> Lwt.return_ok (`Flow flow) in
-          let events = match timeout with
+          let events =
+            match timeout with
             | None -> [ stop; accept ]
             | Some t ->
-              let timeout =
-                Lwt_unix.sleep (float_of_int t) >>= fun () ->
-                Lwt.return_ok `Timeout in
-              [ stop; accept; timeout ] in
+                let timeout =
+                  Lwt_unix.sleep (float_of_int t) >>= fun () ->
+                  Lwt.return_ok `Timeout in
+                [ stop; accept; timeout ] in
 
           Lwt.pick events >>= function
           | Ok (`Flow flow) ->

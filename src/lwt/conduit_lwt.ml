@@ -52,12 +52,12 @@ let serve :
     handler:(flow -> unit Lwt.t) ->
     service:(cfg, service, flow) Service.service ->
     cfg ->
-    unit Lwt_condition.t * unit Lwt.t =
+    unit Lwt_condition.t * (unit -> unit Lwt.t) =
  fun ?timeout ~handler ~service cfg ->
   let open Lwt.Infix in
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
-  let main =
+  let main () =
     Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok service -> (

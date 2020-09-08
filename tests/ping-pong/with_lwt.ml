@@ -78,7 +78,7 @@ let run_with :
     Lwt.join clients >>= fun () ->
     Lwt_condition.broadcast stop () ;
     Lwt.return_unit in
-  Lwt_main.run (Lwt.join [ server; clients ])
+  Lwt_main.run (Lwt.join [ server (); clients ])
 
 let run_with_tcp clients =
   run_with

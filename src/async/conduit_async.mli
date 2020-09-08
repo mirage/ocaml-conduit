@@ -18,7 +18,7 @@ val serve :
   handler:('flow -> unit Async.Deferred.t) ->
   service:('cfg, 'master, 'flow) service ->
   'cfg ->
-  unit Async.Condition.t * unit Async.Deferred.t
+  unit Async.Condition.t * (unit -> unit Async.Deferred.t)
 
 val reader_and_writer_of_flow :
   flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t

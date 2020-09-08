@@ -74,7 +74,7 @@ let run_with :
     Condition.broadcast stop () ;
     Async.return () in
   Async.don't_wait_for
-    (Async.Deferred.all_unit [ server; clients ] >>| fun () -> shutdown 0) ;
+    (Async.Deferred.all_unit [ server (); clients ] >>| fun () -> shutdown 0) ;
   Core.never_returns (Scheduler.go ())
 
 let run_with_tcp clients =

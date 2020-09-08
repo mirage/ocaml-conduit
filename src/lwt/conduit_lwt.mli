@@ -17,7 +17,7 @@ val serve :
   handler:('flow -> unit Lwt.t) ->
   service:('cfg, 'service, 'flow) service ->
   'cfg ->
-  unit Lwt_condition.t * unit Lwt.t
+  unit Lwt_condition.t * (unit -> unit Lwt.t)
 (** [serve ~handler ~service cfg] creates an usual infinite [service]
     loop from the given configuration ['cfg]. It returns the {i promise} to launch
     the loop and a condition variable to stop the loop.

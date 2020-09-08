@@ -8,7 +8,7 @@ module type S = sig
     handler:('flow -> unit io) ->
     service:('cfg, 'master, 'flow) Service.service ->
     'cfg ->
-    unit condition * unit io
+    unit condition * (unit -> unit io)
 end
 
 module type CONDITION = sig
@@ -100,7 +100,7 @@ struct
       cfg ->
       protocol:(_, flow) Conduit.protocol ->
       service:(cfg, service, flow) Conduit.Service.service ->
-      unit Condition.t * unit IO.t =
+      unit Condition.t * (unit -> unit IO.t) =
    fun cfg ~protocol ~service ->
     Conduit.serve
       ~handler:(fun flow -> transmission (Conduit.pack protocol flow))

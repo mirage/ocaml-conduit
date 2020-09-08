@@ -21,12 +21,12 @@ let serve :
     handler:(flow -> unit Async.Deferred.t) ->
     service:(cfg, t, flow) service ->
     cfg ->
-    unit Async.Condition.t * unit Async.Deferred.t =
+    unit Async.Condition.t * (unit -> unit Async.Deferred.t) =
  fun ?timeout ~handler ~service cfg ->
   let open Async in
   let stop = Async.Condition.create () in
   let module Svc = (val Service.impl service) in
-  let main =
+  let main () =
     Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok t -> (

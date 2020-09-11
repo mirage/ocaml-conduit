@@ -26,6 +26,5 @@ depends: [
   "conduit-async"
   "async" {>= "v0.12.0"}
   "async_ssl"
-  "conduit-tls"
   "stdlib-shims" {with-test}
 ]

@@ -1,4 +1,4 @@
 (library
  (name conduit_async)
  (public_name conduit-async)
- (libraries cstruct async conduit))
+ (libraries cstruct async ipaddr.unix conduit))

@@ -73,7 +73,7 @@ let all_resolvers =
     |> Conduit.add dummy_int int
     |> Conduit.add dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ = Conduit.resolve resolvers localhost in
+  let _ = Conduit.resolve resolvers (Conduit.Endpoint.domain localhost) in
   Alcotest.(check bool) "call int" !int_called true ;
   Alcotest.(check bool) "call string" !string_called true ;
   Alcotest.(check bool) "call unit" !unit_called true
@@ -105,7 +105,7 @@ let priorities =
     |> Conduit.add ~priority:0 dummy_int int
     |> Conduit.add ~priority:10 dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ = Conduit.resolve resolvers localhost in
+  let _ = Conduit.resolve resolvers (Conduit.Endpoint.domain localhost) in
   Alcotest.(check (option int)) "call int" !int_called (Some 0) ;
   Alcotest.(check (option int)) "call string" !string_called (Some 1) ;
   Alcotest.(check (option int)) "call unit" !unit_called (Some 2) ;
@@ -120,7 +120,7 @@ let priorities =
     |> Conduit.add dummy_int int
     |> Conduit.add ~priority:0 dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ = Conduit.resolve resolvers localhost in
+  let _ = Conduit.resolve resolvers (Conduit.Endpoint.domain localhost) in
   Alcotest.(check (option int)) "call int" !int_called (Some 2) ;
   Alcotest.(check (option int)) "call string" !string_called (Some 0) ;
   Alcotest.(check (option int)) "call unit" !unit_called (Some 1) ;
@@ -135,7 +135,7 @@ let priorities =
     |> Conduit.add dummy_int int
     |> Conduit.add dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ = Conduit.resolve resolvers localhost in
+  let _ = Conduit.resolve resolvers (Conduit.Endpoint.domain localhost) in
   Alcotest.(check (option int)) "call int" !int_called (Some 2) ;
   Alcotest.(check (option int)) "call string" !string_called (Some 1) ;
   Alcotest.(check (option int)) "call unit" !unit_called (Some 0)
@@ -156,7 +156,9 @@ let only_one =
     |> Conduit.add dummy_int int
     |> Conduit.add dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ = Conduit.resolve resolvers ~protocol:dummy_string localhost in
+  let _ =
+    Conduit.resolve resolvers ~protocol:dummy_string
+      (Conduit.Endpoint.domain localhost) in
   Alcotest.(check bool) "call int" !int_called true ;
   Alcotest.(check bool) "call string" !string_called true ;
   Alcotest.(check bool) "call unit" !unit_called true

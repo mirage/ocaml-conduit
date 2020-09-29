@@ -1,4 +1,4 @@
 (library
  (name conduit_lwt)
  (public_name conduit-lwt)
- (libraries cstruct lwt lwt.unix conduit))
+ (libraries cstruct lwt ipaddr.unix lwt.unix conduit))

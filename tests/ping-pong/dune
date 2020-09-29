@@ -1,0 +1,54 @@
+(library
+ (name common)
+ (modules common)
+ (libraries bigarray cstruct stdlib-shims bigstringaf ke fmt rresult conduit))
+
+(executable
+ (name with_lwt)
+ (modules with_lwt)
+ (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-lwt
+   conduit-lwt-tls conduit-lwt-ssl))
+
+(executable
+ (name test_lwt)
+ (modules test_lwt)
+ (libraries unix))
+
+(rule
+ (alias runtest)
+ (package conduit-lwt)
+ (deps
+  (:test test_lwt.exe)
+  with_lwt.exe
+  server.pem
+  server.key
+  client0
+  client1
+  client2)
+ (action
+  (run %{test})))
+
+(executable
+ (name with_async)
+ (modules with_async)
+ (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-async
+   conduit-async-tls conduit-async-ssl))
+
+(executable
+ (name test_async)
+ (modules test_async)
+ (libraries unix))
+
+(rule
+ (alias runtest)
+ (package conduit-async)
+ (deps
+  (:test test_async.exe)
+  with_async.exe
+  server.pem
+  server.key
+  client0
+  client1
+  client2)
+ (action
+  (run %{test})))

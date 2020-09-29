@@ -1,0 +1,4 @@
+(library
+ (name conduit)
+ (public_name conduit)
+ (libraries stdlib-shims domain-name))

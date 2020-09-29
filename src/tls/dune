@@ -1,0 +1,4 @@
+(library
+ (name conduit_tls)
+ (public_name conduit-tls)
+ (libraries stdlib-shims logs bigstringaf ke tls conduit))

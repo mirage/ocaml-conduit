@@ -1,0 +1,4 @@
+(test
+ (name tests)
+ (package conduit)
+ (libraries alcotest rresult conduit))

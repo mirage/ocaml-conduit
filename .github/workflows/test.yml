@@ -6,23 +6,27 @@ jobs:
     runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        ocaml-version: [ '4.08.1', '4.09.0', '4.10.0' ]
-        operating-system: [macos-latest, ubuntu-latest, windows-latest]
+        ocaml-version: [ '4.08.1', '4.09.0', '4.10.0', '4.11.1' ]
+        operating-system: [ ubuntu-latest ]
     steps:
-    - uses: actions/checkout@master
-    - uses: avsm/setup-ocaml@master
+    - uses: actions/checkout@v2
+    - uses: avsm/setup-ocaml@v1
       with:
         ocaml-version: ${{ matrix.ocaml-version }}
     - name: Deps
       run: |
         opam pin add -n conduit.dev .
         opam pin add -n conduit-lwt.dev .
-        opam pin add -n conduit-lwt-unix.dev .
         opam pin add -n conduit-async.dev .
         opam pin add -n conduit-mirage.dev .
-        opam depext -y conduit conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
-        opam install --deps-only .
+        opam pin add -n conduit-tls.dev .
+        opam pin add -n conduit-async-tls.dev .
+        opam pin add -n conduit-async-ssl.dev .
+        opam pin add -n conduit-lwt-tls.dev .
+        opam pin add -n conduit-lwt-ssl.dev .
+        opam depext  -y conduit conduit-tls conduit-lwt conduit-async conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-lwt-ssl conduit-async conduit-async-tls conduit-async-ssl conduit-mirage
     - name: Build
       run: opam exec -- dune build
     - name: Test
-      run: opam exec -- dune runtest
+      run: opam exec -- dune runtest --no-buffer --verbose -j 1

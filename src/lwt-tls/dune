@@ -1,0 +1,4 @@
+(library
+ (name conduit_lwt_tls)
+ (public_name conduit-lwt-tls)
+ (libraries conduit-lwt conduit-tls))

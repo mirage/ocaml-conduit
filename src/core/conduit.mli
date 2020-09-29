@@ -330,7 +330,7 @@ module type S = sig
       ('cfg1, 't1, 'flow1) service ->
       (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
     (** [equal svc0 svc1 ] proves that [svc0] and [svc1] are
-       physically the same. For instance, Conduit] asserts:
+       physically the same. For instance, [Conduit] asserts:
 
         {[
           let service = Service.register ~service:(module V) ;;

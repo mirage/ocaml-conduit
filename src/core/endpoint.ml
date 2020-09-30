@@ -9,7 +9,7 @@ let error_msg str = Error (`Msg str)
 let error_msgf fmt = Format.kasprintf error_msg fmt
 
 let of_string str =
-  let ( >>= ) = Result.bind in
+  let ( >>= ) = Stdlib.Result.bind in
   match Domain_name.of_string str >>= Domain_name.host with
   | Ok domain_name -> Ok (Domain domain_name)
   | Error _err0 ->

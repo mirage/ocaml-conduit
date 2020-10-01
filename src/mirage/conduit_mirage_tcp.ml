@@ -15,7 +15,7 @@ type 'stack configuration = {
   port : int;
 }
 
-module Make (StackV4 : Mirage_stack.V4) = struct
+module Make (Stack : Mirage_stack.V4V6) = struct
   open Rresult
   open Lwt.Infix
 
@@ -27,15 +27,15 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   module Log = (val Logs.src_log src : Logs.LOG)
 
   type protocol = {
-    flow : StackV4.TCPV4.flow;
+    flow : Stack.TCP.flow;
     nodelay : bool;
     queue : (char, Bigarray.int8_unsigned_elt) Ke.t;
     mutable closed : bool;
   }
 
-  let dst { flow; _ } = StackV4.TCPV4.dst flow
+  let dst { flow; _ } = Stack.TCP.dst flow
 
-  type nonrec endpoint = (StackV4.t, Ipaddr.V4.t) endpoint
+  type nonrec endpoint = (Stack.t, Ipaddr.t) endpoint
 
   module Protocol = struct
     type input = Conduit_mirage.input
@@ -46,8 +46,8 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     type error =
       | Input_too_large
-      | TCP_error of StackV4.TCPV4.error
-      | Write_error of StackV4.TCPV4.write_error
+      | TCP_error of Stack.TCP.error
+      | Write_error of Stack.TCP.write_error
       | Exn of exn
       (* XXX(dinosaure): it appears that [Tcpip_stack_socket] can raise
          exception. We should handle them and consider our fd ressource
@@ -56,18 +56,18 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     let pp_error ppf = function
       | Input_too_large -> Fmt.string ppf "Input too large"
-      | TCP_error err -> StackV4.TCPV4.pp_error ppf err
-      | Write_error err -> StackV4.TCPV4.pp_write_error ppf err
+      | TCP_error err -> Stack.TCP.pp_error ppf err
+      | Write_error err -> Stack.TCP.pp_write_error ppf err
       | Exn exn -> Fmt.pf ppf "Exception: %s" (Printexc.to_string exn)
       | Closed_by_peer -> Fmt.pf ppf "Closed by peer"
 
-    let error : StackV4.TCPV4.error -> error = fun err -> TCP_error err
+    let error : Stack.TCP.error -> error = fun err -> TCP_error err
 
-    let write_error : StackV4.TCPV4.write_error -> error =
+    let write_error : Stack.TCP.write_error -> error =
      fun err -> Write_error err
 
     type flow = protocol = {
-      flow : StackV4.TCPV4.flow;
+      flow : Stack.TCP.flow;
       nodelay : bool;
       queue : (char, Bigarray.int8_unsigned_elt) Ke.t;
       mutable closed : bool;
@@ -76,8 +76,8 @@ module Make (StackV4 : Mirage_stack.V4) = struct
     type nonrec endpoint = endpoint
 
     let connect { stack; keepalive; nodelay; ip; port } =
-      let tcpv4 = StackV4.tcpv4 stack in
-      StackV4.TCPV4.create_connection tcpv4 ?keepalive (ip, port)
+      let tcp = Stack.tcp stack in
+      Stack.TCP.create_connection tcp ?keepalive (ip, port)
       >|= R.reword_error error
       >>? fun flow ->
       let queue, _ = Ke.create ~capacity:0x1000 Bigarray.Char in
@@ -100,8 +100,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                that, we decide to protect [StackV4.TCPV4.read] with [Lwt.no_cancel]. *) ;
             Lwt.catch
               (fun () ->
-                Lwt.no_cancel (StackV4.TCPV4.read t.flow)
-                >|= R.reword_error error)
+                Lwt.no_cancel (Stack.TCP.read t.flow) >|= R.reword_error error)
               (fun exn -> Lwt.return_error (Exn exn))
             >>= function
             | Error err as v ->
@@ -120,7 +119,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                    this _opcode_ so we handle it in this place. *)
                 if Cstruct.len buf = 1 && Cstruct.get_char buf 0 = '\004'
                 then (
-                  StackV4.TCPV4.close t.flow >>= fun () ->
+                  Stack.TCP.close t.flow >>= fun () ->
                   Log.debug (fun m -> m "<- End of input (end of transmission)") ;
                   Lwt.return (Ok `End_of_flow))
                 else
@@ -175,8 +174,8 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         Log.debug (fun m -> m "-> Start to write %d byte(s)." (Cstruct.len raw)) ;
         let send flow raw =
           if t.nodelay
-          then StackV4.TCPV4.write_nodelay flow raw
-          else StackV4.TCPV4.write flow raw in
+          then Stack.TCP.write_nodelay flow raw
+          else Stack.TCP.write flow raw in
         Lwt.catch
           (fun () -> send t.flow raw >|= R.reword_error write_error)
           (fun exn -> Lwt.return_error (Exn exn))
@@ -196,16 +195,16 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         Lwt.return_ok ())
       else (
         Log.debug (fun m -> m "Close the connection") ;
-        StackV4.TCPV4.close t.flow >>= fun () -> Lwt.return_ok ())
+        Stack.TCP.close t.flow >>= fun () -> Lwt.return_ok ())
   end
 
   let protocol = Conduit_mirage.register ~protocol:(module Protocol)
 
-  type nonrec configuration = StackV4.t configuration
+  type nonrec configuration = Stack.t configuration
 
   type service = {
-    stack : StackV4.t;
-    queue : StackV4.TCPV4.flow Queue.t;
+    stack : Stack.t;
+    queue : Stack.TCP.flow Queue.t;
     condition : unit Lwt_condition.t;
     mutex : Lwt_mutex.t;
     nodelay : bool;
@@ -237,7 +236,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         Lwt_condition.signal condition () ;
         Lwt_mutex.unlock mutex ;
         Lwt.return () in
-      StackV4.listen_tcpv4 ?keepalive stack ~port listener ;
+      Stack.listen_tcp ?keepalive stack ~port listener ;
       Lwt.return
         (Ok { stack; queue; condition; mutex; nodelay; closed = false })
 
@@ -264,7 +263,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
     let close ({ stack; mutex; _ } as t) =
       Lwt_mutex.with_lock mutex (fun () ->
-          StackV4.disconnect stack >>= fun () ->
+          Stack.disconnect stack >>= fun () ->
           t.closed <- true ;
           Lwt.return (Ok ()))
   end

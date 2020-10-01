@@ -25,6 +25,7 @@ depends: [
   "tcpip"
   "mirage-flow"
   "mirage-time"
+  "mirage-stack" {>= "2.2.0"}
   "dns-client"  {>= "4.6.0"}
   "ke"
   "bigstringaf"

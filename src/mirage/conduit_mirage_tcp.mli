@@ -15,15 +15,15 @@ type 'stack configuration = {
   port : int;
 }
 
-module Make (StackV4 : Mirage_stack.V4) : sig
+module Make (Stack : Mirage_stack.V4V6) : sig
   type protocol
 
   val protocol :
-    ((StackV4.t, Ipaddr.V4.t) endpoint, protocol) Conduit_mirage.protocol
+    ((Stack.t, Ipaddr.t) endpoint, protocol) Conduit_mirage.protocol
 
-  val dst : protocol -> Ipaddr.V4.t * int
+  val dst : protocol -> Ipaddr.t * int
 
   type service
 
-  val service : (StackV4.t configuration, service, protocol) Service.service
+  val service : (Stack.t configuration, service, protocol) Service.service
 end

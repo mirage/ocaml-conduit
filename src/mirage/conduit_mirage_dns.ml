@@ -4,7 +4,7 @@ module Make
     (R : Mirage_random.S)
     (T : Mirage_time.S)
     (C : Mirage_clock.MCLOCK)
-    (S : Mirage_stack.V4) =
+    (S : Mirage_stack.V4V6) =
 struct
   include Dns_client_mirage.Make (R) (T) (C) (S)
 
@@ -15,15 +15,18 @@ struct
       t ->
       ?nameserver:Transport.ns_addr ->
       port:int ->
-      (S.t, Ipaddr.V4.t) Conduit_mirage_tcp.endpoint Conduit_mirage.resolver =
+      (S.t, Ipaddr.t) Conduit_mirage_tcp.endpoint Conduit_mirage.resolver =
    fun stack ?keepalive ?(nodelay = false) t ?nameserver ~port -> function
-    | Conduit.Endpoint.IP (Ipaddr.V6 _) -> Lwt.return_none
-    | IP (Ipaddr.V4 ip) ->
+    | IP ip ->
         Lwt.return_some
           { Conduit_mirage_tcp.stack; keepalive; nodelay; ip; port }
     | Domain domain_name -> (
-        gethostbyname ?nameserver t domain_name >>= function
+        (* TODO use gethostbyname6 as well (if stack has v6 connectivity),
+           implement happy eyeballs *)
+        gethostbyname ?nameserver t domain_name
+        >>= function
         | Ok ip ->
+            let ip = Ipaddr.V4 ip in
             Lwt.return_some
               { Conduit_mirage_tcp.stack; keepalive; nodelay; ip; port }
         | Error _err -> Lwt.return_none)

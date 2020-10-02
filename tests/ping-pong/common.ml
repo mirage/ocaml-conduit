@@ -129,7 +129,7 @@ struct
     let ic = open_in filename in
     let responses = go [] ic in
     close_in ic ;
-    client ~resolvers localhost responses >>= function
+    client ~resolvers (Conduit.Endpoint.domain localhost) responses >>= function
     | Ok () -> IO.return ()
     | Error `Closed_by_peer -> IO.return ()
     | Error (#Conduit.error as err) ->

@@ -247,13 +247,18 @@ module TCP = struct
 
   let service = S.register ~service:(module Service)
 
-  let resolve ~port domain_name =
-    Monitor.try_with (fun () ->
-        Unix.Inet_addr.of_string_or_getbyname
-          (Domain_name.to_string domain_name))
-    >>= function
-    | Ok inet_addr ->
-        let inet_addr = Socket.Address.Inet.create inet_addr ~port in
+  let resolve ~port = function
+    | Conduit.Endpoint.IP ip ->
+        let inet_addr =
+          Socket.Address.Inet.create (Ipaddr_unix.to_inet_addr ip) ~port in
         Async.return (Some (Inet inet_addr))
-    | _ -> Async.return None
+    | Domain domain_name -> (
+        Monitor.try_with (fun () ->
+            Unix.Inet_addr.of_string_or_getbyname
+              (Domain_name.to_string domain_name))
+        >>= function
+        | Ok inet_addr ->
+            let inet_addr = Socket.Address.Inet.create inet_addr ~port in
+            Async.return (Some (Inet inet_addr))
+        | _ -> Async.return None)
 end

@@ -1,3 +1,5 @@
+module Endpoint = Endpoint
+
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
 type resolvers
@@ -9,6 +11,8 @@ val empty : resolvers
 type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
 
 module type S = sig
+  module Endpoint : module type of Endpoint
+
   type input
   (** The type for payload inputs. *)
 
@@ -230,13 +234,14 @@ module type S = sig
 
   (** {2:resolution Domain name resolvers.} *)
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
+  type 'edn resolver = Endpoint.t -> 'edn option io
   (** The type for resolver functions, which resolve domain names to endpoints.
      For instance, the DNS resolver function is:
 
      {[
-       let http_resolver : Unix.sockaddr resolver =
-         fun domain_name -> match Unix.gethostbyname (Domain_name.to_string domain_name) with
+       let http_resolver : Unix.sockaddr resolver = function
+         | IP ip -> Some (Ipaddr_unix.to_inet_addr ip, 80)
+         | Domain domain_name -> match Unix.gethostbyname (Domain_name.to_string domain_name) with
            | { Unix.h_addr_list; _ } ->
              if Array.length h_addr_list > 0
              then Some (Unix.ADDR_INET (h_addr_list.(0), 80))
@@ -276,7 +281,7 @@ module type S = sig
   val resolve :
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
-    [ `host ] Domain_name.t ->
+    Endpoint.t ->
     (flow, [> error ]) result io
   (** [resolve resolvers domain_name] is the flow created by connecting to the
      domain name [domain_name], using the resolvers [resolvers]. Each resolver
@@ -298,7 +303,7 @@ module type S = sig
           |> add tcp ~priority:10 resolver_on_my_private_network
           |> add tcp ~priority:20 resolver_on_internet
 
-        let () = Conduit.resolve resolvers mirage_io >>? function
+        let () = Conduit.resolve resolvers (Conduit.Endpoint.domain mirage_io) >>? function
           | TCP.T (Conduit.Value file_descr) as flow ->
             let peer = Unix.getpeername file_descr in
             ignore @@ Conduit.send flow ("Hello " ^ string_of_sockaddr peer)

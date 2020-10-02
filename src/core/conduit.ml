@@ -1,3 +1,4 @@
+module Endpoint = Endpoint
 module Sigs = Sigs
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
@@ -11,7 +12,7 @@ type (+'a, 's) app
 type _ resolver =
   | Resolver : {
       priority : int option;
-      resolve : [ `host ] Domain_name.t -> ('edn option, 's) app;
+      resolve : Endpoint.t -> ('edn option, 's) app;
       witness : 's witness;
     }
       -> ('edn * 's) resolver
@@ -48,6 +49,8 @@ type resolvers = Map.t
 let empty = Map.empty
 
 module type S = sig
+  module Endpoint : module type of Endpoint
+
   type input
 
   type output
@@ -108,7 +111,7 @@ module type S = sig
 
   val pack : ('edn, 'v) protocol -> 'v -> flow
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
+  type 'edn resolver = Endpoint.t -> 'edn option io
 
   type nonrec resolvers = resolvers
 
@@ -124,7 +127,7 @@ module type S = sig
   val resolve :
     resolvers ->
     ?protocol:('edn, 'v) protocol ->
-    [ `host ] Domain_name.t ->
+    Endpoint.t ->
     (flow, [> error ]) result io
 
   val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
@@ -200,6 +203,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     with type input = Input.t
      and type output = Output.t
      and type +'a io = 'a IO.t = struct
+  module Endpoint = Endpoint
   module Bijection = Higher (IO)
 
   type scheduler = Bijection.t
@@ -244,7 +248,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   type 'edn key = ('edn * scheduler) Map.key
 
-  type 'edn resolver = [ `host ] Domain_name.t -> 'edn option io
+  type 'edn resolver = Endpoint.t -> 'edn option io
 
   module F = struct
     type _ t =
@@ -381,7 +385,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   and sup = 1
 
-  let resolve : resolvers -> [ `host ] Domain_name.t -> endpoint list io =
+  let resolve : resolvers -> Endpoint.t -> endpoint list io =
    fun m domain_name ->
     let rec go acc = function
       | [] -> return (List.rev acc) (* XXX(dinosaure): keep order. *)
@@ -401,8 +405,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       | None, None -> 0 in
     go [] (List.sort compare (Map.bindings m))
 
-  let create :
-      resolvers -> [ `host ] Domain_name.t -> (flow, [> error ]) result io =
+  let create : resolvers -> Endpoint.t -> (flow, [> error ]) result io =
    fun m domain_name ->
     resolve m domain_name >>= fun l ->
     let rec go = function
@@ -420,7 +423,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       type edn v.
       resolvers ->
       ?protocol:(edn, v) protocol ->
-      [ `host ] Domain_name.t ->
+      Endpoint.t ->
       (flow, [> error ]) result io =
    fun m ?protocol domain_name ->
     match protocol with

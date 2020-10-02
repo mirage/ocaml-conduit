@@ -404,9 +404,12 @@ module TCP = struct
 
   let service = S.register ~service:(module Service)
 
-  let resolve ~port domain_name =
-    Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function
-    | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
-        Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
-    | _ -> Lwt.return_none
+  let resolve ~port = function
+    | Conduit.Endpoint.IP ip ->
+        Lwt.return_some (Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port))
+    | Conduit.Endpoint.Domain domain_name -> (
+        Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function
+        | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
+            Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
+        | _ -> Lwt.return_none)
 end

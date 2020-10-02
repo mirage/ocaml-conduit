@@ -16,10 +16,15 @@ struct
       ?nameserver:Transport.ns_addr ->
       port:int ->
       (S.t, Ipaddr.V4.t) Conduit_mirage_tcp.endpoint Conduit_mirage.resolver =
-   fun stack ?keepalive ?(nodelay = false) t ?nameserver ~port domain_name ->
-    gethostbyname ?nameserver t domain_name >>= function
-    | Ok ip ->
+   fun stack ?keepalive ?(nodelay = false) t ?nameserver ~port -> function
+    | Conduit.Endpoint.IP (Ipaddr.V6 _) -> Lwt.return_none
+    | IP (Ipaddr.V4 ip) ->
         Lwt.return_some
           { Conduit_mirage_tcp.stack; keepalive; nodelay; ip; port }
-    | Error _err -> Lwt.return_none
+    | Domain domain_name -> (
+        gethostbyname ?nameserver t domain_name >>= function
+        | Ok ip ->
+            Lwt.return_some
+              { Conduit_mirage_tcp.stack; keepalive; nodelay; ip; port }
+        | Error _err -> Lwt.return_none)
 end

@@ -30,3 +30,7 @@ depends: [
   "ke"
   "bigstringaf"
 ]
+
+pin-depends: [
+ [ "dns-client.4.6.2" "git+https://github.com/hannesm/ocaml-dns.git#0258dfabbdf0ae1d997f15627693edccab432f6f" ]
+]

@@ -25,4 +25,5 @@ depends: [
   "dune"
   "conduit-lwt"
   "conduit-tls"
+  "mirage-crypto-rng" {>= "0.8.0"}
 ]

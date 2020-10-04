@@ -1,5 +1,7 @@
 include Conduit_tls.Make (Conduit_lwt.IO) (Conduit_lwt)
 
+let () = Mirage_crypto_rng_lwt.initialize ()
+
 module TCP = struct
   open Conduit_lwt.TCP
 

@@ -1,3 +1,12 @@
+## v3.0.0 (2020-10-06)
+
+* **breaking change** - New version of `conduit`. Most of the new API has a
+  description on the pull-request
+  [#311](https://github.com/mirage/ocaml-conduit/pull/311). Documentation is
+  updated as well with a small HOW-TO (available
+  [here](https://mirage.github.io/ocaml-conduit/conduit/index.html)) which
+  describes the new API.
+
 ## v2.2.2 (2020-06-14)
 
 * conduit-lwt-unix no longer calls Mirage_crypto_rng_unix.initialize, and is

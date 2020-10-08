@@ -1,162 +1,693 @@
-{1 Conduit - an abstraction of protocols.}
+{1 Conduit - defunctorize protocols.}
 
-Conduit is a little library to be able to abtract the protocol used to
-communicate with a peer.
+[Conduit] is a library which wants to be used into multiple perspectives:
+{ul
+{- As a protocol implementer.}
+{- As a simple end-user who wants to use a protocol.}
+{- As a library implementer who wants to {i delay} the choice of protocols.}}
 
-{2 Implement a protocol.}
+In this document, we will explain step by step these perspectives to understand
+the purpose of [Conduit]. More globally the {b first} goal of [Conduit] is to {i
+de-functorize} (it wants to give you an other way than the _functorization_) an
+implementation which requires a protocol to be able to communicate with a peer.
+The {b second} goal of [Conduit] is to let the user to construct the {i
+dispatch} of protocols from a well-known (or partially-known) context (it is
+like an injection of a specific implementation into [Conduit] - or more
+concretely, an application of your {i de-functorized} implementation with a
+specific protocol implementation).
 
-A Conduit's protocol can be defined as:
+{2 Abstract a {i protocol}.}
+
+{3 Definition of a {i protocol}.}
+
+[Conduit] has a strong definition of a {!Conduit.S.PROTOCOL}. A protocol is a
+system that allows entities to transmit {i payloads}. These entities do not
+have to care about the underlying transport mechanism. flows simply deal
+with routing and delivering of these payloads. That abstraction allows
+these protocols to compose.
+
+For example, the Transmission Control Protocol (TCP) is representable as a
+flow, because it is able to encapsulate some {i payloads} without
+interpreting it. A counter-example is the Simple Mail Transfer Protocol
+(SMTP) which needs an interpretation of its {i payloads}: tokens such as
+[EHLO] or [QUIT] have a direct incidence over the life-cycle of the
+connection.
+
+An other protocol representable as a flow is the Transport Layer Security
+(TLS), as it deals only with privacy and data integrity. [Conduit] is able
+to compose flows together like [TCP ∘ TLS] to make a new flow. Higher-level
+protocols can be built in top of these abstract flows: for instance, Secure
+Simple Mail Transfer Protocol (SSMTP) or HyperText Transfer Protocol Secure
+(HTTPS) can be defined on top of both TCP and TLS. Using [Conduit], these
+can be abstracted to work over any flow implementations.
+
+{3 Concrete implementation.}
+
+Let's start to implement a TCP/IP protocol with UNIX. At first, [Conduit] needs
+a {i scheduler} and the type of [input]/[output]. [Conduit_lwt] is a
+specialisation of [Conduit] with LWT with {!Cstruct.t} as input/output. It is
+the same for [Conduit_async] with ASYNC.
+
+For our example (and to simplify our code), we will specialise [Conduit] with
+UNIX, [bytes] as input and [string] as output.
 
 {[
-module type S = sig
-  type flow
-  type endpoint
+module Scheduler = struct
+  type 'a t = 'a
 
-  type error
-
-  val pp_error : error Fmt.t
-
-  val connect : endpoint -> (flow, error) result
-  val send : flow -> string -> (int, error) result
-  val recv : flow -> bytes -> (int, error) result
-  val close : flow -> (unit, error) result
+  let return x = x
+  let bind x f = f x
 end
+
+module Conduit = Conduit.Make(Scheduler)(Bytes)(String)
 ]}
 
-This definition is pretty-close to the [Unix] module:
+Then, we can start to implement our TCP/IP protocol from what [Unix] gives to us
+- of course, this code require the [unix.cm{x}a] library:
 
 {[
 module TCP = struct
+  type 'a io = 'a
+
+  type input = bytes and output = string
+
   type flow = Unix.file_descr
+
   type endpoint = Unix.sockaddr
 
-  type error = (Unix.error * string * string)
+  type error = |
 
-  let pp_error (error, call, _) =
-    Fmt.pf ppf "%s: %s" call (Unix.error_message error)
+  let pp_error : Format.formatter -> error -> unit = fun _ -> function _ -> .
 
   let connect sockaddr =
-    try let socket = Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
-        Unix.connect socket sockaddr ; Ok socket
-    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
-
-  let send socket str =
-    try
-      let rec go off len =
-        let len' = Unix.write_substring socket str off len in
-        if len' < len then go (off + len') (len - len') in
-      go 0 (String.length str) ; Ok (String.length str)
-    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+    let domain = Unix.domain_of_sockaddr sockaddr in
+    let socket = Unix.socket domain Unix.SOCK_STREAM 0 in
+    Unix.connect socket sockaddr ; Ok socket
 
   let recv socket buf =
-    try
-      let len = Unix.read socket 0 (Bytes.length buf) in
-      if len = 0 then Ok `End_of_flow else Ok (`Input len)
-    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+    let off = 0 and len = Bytes.length buf in
+    let len' = Unix.read socket buf off len in
+    if len' = 0 then Ok `End_of_flow
+    else Ok (`Input len')
 
-  let close socket =
-    try Unix.close socket ; Ok ()
-    with Unix.Unix_error (err, call, args) -> Error (err, call, args)
+  let send socket str =
+    let off = 0 and len = String.length str in
+    let buf = Bytes.unsafe_of_string str in
+    let rec go off len =
+      let len' = Unix.write socket buf off len in
+      if len' < len then go (off + len') (len - len') in
+    go off len ; Ok len
+
+  let close socket = Unix.close socket ; Ok ()
+end
 ]}
 
-This is an example of how to implement the TCP protocol according the Conduit's
-interface {!PROTOCOL}. We concretely define the flow as an [Unix.file_descr] and
-the endpoint (the value required to create the flow) as an [Unix.sockaddr].
+The code is really simple and it does not care about details such as [exception]
+- so, don't try to use this code into a productive context! We can verify that our
+implementation respects the interface {!Conduit.S.PROTOCOL}:
 
-Now, the protocol must be registered into [Conduit] with:
+{[
+module TCP : Conduit.PROTOCOL
+  with type flow = Unix.file_descr
+   and type endpoint = Unix.sockaddr
+   and type 'a io = 'a
+   and type input = bytes
+   and type output = string
+= struct
+  ...
+end
+]}
+
+By this way, we ensure the possibility to register it with [Conduit]:
+
+{[
+let tcp
+  : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+  = Conduit.register ~protocol:(module TCP)
+]}
+
+So we create our first [Conduit] protocol! As you can see, [Conduit] some useful
+information such as:
+{ul
+{- the type of the endpoint required to initiate the protocol.}
+{- the type of the flow.}}
+
+These informations is important for [Conduit] because:
+{ul
+{- it permits the user to pass its own typed value to initiate a protocol.}
+{- it permits the user to {i destruct} the {!Conduit.S.flow} to the underlying
+   typed value.}}
+
+The protocol can be used with [Conduit] now! From the point of view of the
+protocol implementer, the cost to be [Conduit]-compatible is worth as long as we
+respect {!Conduit.S.PROTOCOL} (and our definition).
+
+Of course, in our example, we took the most understandable protocol, the TCP/IP
+protocol. But [Conduit] is usable with anything! [endpoint] and [flow] are still
+under the control of the implementer. For example, a SSH protocol requires
+something more complex such as a private RSA key - in that case, you still are
+able to register it with [Conduit].
+
+{2 The [Conduit] protocol.}
+
+[Conduit] has 2 ways to initiate a connection:
+{ul
+{- When we have a full-knowledge of which protocols are available.}
+{- When we don't any clue about protocol implementation.}}
+
+The first case is the most common case where we want to make a simple
+executable. However, the second case can appear when we want to make a library!
+A library which wants to communicate with a peer should assert one and unique
+implementation of TCP - and, with MirageOS, it's impossible to do that when the
+TCP implementation can be the UNIX one or [mirage-tcpip].
+
+But let's start with the first case, we want to make an executable:
+
+{[
+let ( >>= ) = Result.bind
+
+let run () =
+  let open Result in
+  Conduit.connect Unix.(ADDR_INET (inet_addr_loopback, 4242)) tcp >>= fun flow ->
+  Conduit.send flow "Hello World!" >>= fun _ ->
+  Conduit.close flow
+
+let () = match run () with
+  | Ok () -> ()
+  | Error err -> Format.eprintf "%a" Conduit.pp_error err
+]}
+
+We use the power of the type system to ensure that if we want to start a [tcp :
+(Unix.sockaddr, Unix.file_descr) Conduit.protocol], we must initiate it with a
+[Unix.sockaddr]. To compile and execute it (with 2 shells):
+
+{v
+$1> ocamlfind opt -linkpkg -package conduit,unix,result main.ml
+$2> nc -l localhost 4242
+$1> ./a.out
+$2> Hello World!
+v}
+
+{3 Destruct your [flow].}
+
+[Conduit] lets the possibility to {i destruct} the {!Conduit.S.flow}. It mostly
+means that from the {i abstract} value [flow], you can get the underlying
+[Unix.file_descr] in our context. Of course, you need to know that the [flow] {b
+can} be an [Unix.file_descr]. Come back as the protocol implementer, you must
+expose {i the extension} of the type {!Conduit.S.flow} to be able to {i
+destruct} it then:
+
+{[
+let tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocl = ...
+include (val Conduit.repr tcp)
+]}
+
+The last line expands to:
+
+{[
+type t = (Unix.sockaddr, Unix.file_descr) Conduit.value (* = Value of Unix.file_descr *)
+type Conduit.flow += T of t
+]}
+
+With this definition, we are able to {i pattern-flow} on our {!Conduit.S.flow}:
+
+{[
+let run () =
+  let open Result in
+  Conduit.connect Unix.(ADDR_INET (inet_addr_loopback, 4242)) tcp >>= function
+  | T (Value socket) ->
+    let oc = Unix.out_channel_of_descr socket in
+    let ppf = Format.formatter_of_out_channel oc in
+    Format.fprintf ppf "Hello World (from %d)!" (Unix.getpid ()) ;
+    Unix.close socket ; Ok ()
+  | _ ->
+    Conduit.send flow "Hello World!" >>= fun _ ->
+    Conduit.close flow
+]}
+
+In this example, we separate the computation in two branches:
+{ul
+{- When we ensure that the given flow comes from our TCP/IP implementation.}
+{- When we don't know - and keep it as an {i abstract} value.}}
+
+It permits to do something special (like [Unix.setsockopt]) when we {b
+well-known} the protocol. Of course, it's not possible to {i destruct} a [flow]
+if you don't know about any protocol implementation used - and it can be the
+case when you make a library.
+
+{3 When you make a library.}
+
+This is one of the real case of [Conduit]. As a library implementer such as an
+HTTP library, you want to be able to start a connection {b but} we don't want to
+use a {i specific} implementation of a protocol. In the case of TCP/IP, most of
+times, we rely on the host's TCP/IP implementation, the UNIX one. But it's not
+the case for MirageOS where the TCP/IP implementation used can change!
+
+This case is more concrete about the TLS implementation. Did you want to enforce
+the use of OpenSSL for your user or you want to let them to choose the
+implementation?
+
+At this question, it's hard to:
+{ul
+{- be able to start a TLS connection.}
+{- let the user to choose the TLS implementation.}}
+
+How I can, as the library implementer, know how to initiate a TLS connection
+(without any clues)? This is what [Conduit] wants to solve!
+
+The other way to initiate a connection with [Conduit] is:
+
+{[
+let run ~resolvers edn =
+  Conduit.resolve ~resolvers edn >>= fun flow ->
+  Conduit.send flow "Hello World!" >>= fun _ ->
+  Conduit.close flow
+]}
+
+It introduces 2 values:
+{ul
+{- a [resolvers] which is like a set of protocols.}
+{- a [edn] which is a {!Conduit.Endpoint.t}, a concrete value.}}
+
+The deal is to be able to start a connection from a fully-known value (our
+{!Conduit.Endpoin.t}) and a context which contains all available protocols. This
+context, the [resolvers], should be constructed by something higher than your
+library - it can be the end-user or an another library.
+
+Let's stick on our HTTP implementation. On our side, we have a way to send over
+a {!Conduit.S.FLOW} a HTTP/1.1 request. And we are able to parse and extract a
+HTTP/1.1 response from the same given {!Conduit.S.FLOW}:
+
+{[
+type request
+type response
+
+val request : uri:Uri.t -> [ `GET | `POST ] -> string option -> request
+
+val send : Conduit.flow -> request -> (unit, Conduit.error) result
+val recv : Conduit.flow -> (response, Conduit.error) result
+]}
+
+As a HTTP client, we should provide something like:
+
+{[
+val get : uri:Uri.t -> (response, error) result
+val post : uri:Uri.t -> (response, error) result
+]}
+
+With [Conduit], we will extend a bit these functions:
+
+{[
+val get :
+  resolvers:Conduit.resolvers ->
+  edn:Uri.t * Conduit.Endpoint.t ->
+  (response, error) result
+
+val post :
+  resolvers:Conduit.resolvers ->
+  edn:Uri.t * Conduit.Endpoint.t ->
+  string ->
+  (response, error) result
+]}
+
+By this way, we let the user to decide which protocol he wants to use (see
+[resolvers]) and with which peer he wants to communicate (see [edn]). We still
+are at the library-level and, at this stage, we can not have any clue (again)
+about the TCP/IP or the TLS implementation. Implementation of these functions
+should be:
+
+{[
+let get ~resolvers (uri, edn) =
+  let req = request ~uri `GET None in
+  Conduit.resolve ~resolvers edn >>= fun flow ->
+  send flow req >>= fun () ->
+  recv flow >>= fun resp ->
+  Conduit.close flow >>= fun () ->
+  Ok resp
+
+let post ~resolvers (uri, edn) body =
+  let req = request ~uri `POST (Some body) in
+  Conduit.resolve ~resolvers edn >>= fun flow ->
+  send flow req >>= fun () ->
+  recv flow >>= fun resp ->
+  Conduit.close flow >>= fun () ->
+  Ok resp
+]}
+
+{3 The library user.}
+
+It's on the responsability of the end-user to {i fill} the [resolvers] and give
+the right {!Conduit.Endpoint.t} value from what he knows. If he wants an
+executable, he is necessary aware about which protocol he can use. So we will
+assume that he knows a TCP/IP protocol and a TLS protocol:
+
+{[
+val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+val tls : (Unix.sockaddr * tls_config, tls_socket) Conduit.protocol
+]}
+
+Of course, the best representation of an HTTP target is an [Uri.t]. We will try
+to {i transform} a given [Uri.t] to a [resolver] and an [edn]:
+
+{[
+let resolve ~port = function
+  | Conduit.Endpoint.IP v -> Some (Unix.ADDR_INET (Ipaddr_unix.to_inet_addr v, port))
+  | Conduit.Endpoint.Domain v ->
+    match Unix.gethostbyname (Domain_name.to_string v) with
+    | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
+      Some (Unix.ADDR_INET (h_addr_list.(0), port))
+    | _ -> None
+
+let resolve_with_tls ~port edn =
+  match resolve ~port with
+  | Some sockaddr -> Some (sockaddr, global_tls_config)
+  | None -> None
+
+let uri_to_conduit uri =
+  let host = match Uri.host uri with
+    | Some host -> host
+    | None -> invalid_arg "An URI requires a host" in
+  let edn = Conduit.Endpoint.of_string host in
+  match Uri.scheme uri, Uri.host uri, Uri.port uri with
+  | (Some "http" | None), None ->
+    let resolvers = Conduit.add tcp (resolve ~port:80) Conduit.empty in
+    (resolvers, edn)
+  | Some "http", Some port ->
+    let resolvers = Conduit.add tcp (resolve ~port) Conduit.empty in
+    (resolvers, edn)
+  | Some "https", None ->
+    let resolvers = Conduit.add tls (resolve_with_tls ~port:443) Conduit.empty in
+    (resolvers, edn)
+  | Some "https", Some port ->
+    let resolvers = Conduit.add tls (resolve_with_tls ~port) Conduit.empty in
+    (resolvers, edn)
+  | None, None ->
+    let resolvers =
+      Conduit.empty
+      |> Conduit.add tcp (resolve ~port:80)
+      |> Conduit.add ~priority:10 tls (resolve_with_tls ~port:443) in
+    (resolvers, edn)
+  | Some scheme, _ -> invalid_arg "Invalid scheme"
+
+let get ~uri =
+  let resolvers, edn = uri_to_conduit uri in
+  get ~resolvers (uri, edn)
+
+let post ~uri =
+  let resolvers, edn = uri_to_conduit uri in
+  post ~resolvers (uri, edn)
+]}
+
+The code is a bit long but the most important point is to let the end-user
+(someone or something like a library) the full control of the dispatch of
+protocols according his context and independantly to our HTTP library.
+
+The default case (when we don't recognize a port or a scheme) lets us to {i
+inject} the TCP/IP protocol and the TLS protocol with an higher priority. In
+this case, [Conduit] will try to initiate a TLS connection and, if it fails, it
+will try the usual TCP/IP connection.
+
+{b NOTE.} Why {!Conduit.Endpoint.t} is {b not} an [Uri.t]? If you follow the
+development of [Conduit], at the beginning, [Conduit] did the dispatch from an
+[Uri.t]. It is not the case anymore where, even if we can describe lot of things
+with an [Uri.t], the value still is a special case from the point-of-view of a
+{i protocol} (according our definition).
+
+Indeed, the [port] value for example does not have any sense for a device
+protocol. Moreover, the {i scheme} should not be the qualifier of a protocol
+implementation. And the example above shows that the dispatch from an [Uri.t] is
+a bit more complex than what we can imagine.
+
+[Conduit] wants to be easy to use - and the user should be able to {i
+infer}/determine/describe the dispatch of protocols on his side. The previous
+version taught us that an [Uri.t] is not a good choice (at the [Conduit]'s
+layer) when we spend too much time to reverse-engineer the dispatch.
+
+{3 [Conduit] for a client.}
+
+[Conduit] is a tool which is able to {i inject} a {i protocol} without {i
+functorization}. The end-user must keep in his mind that the [Conduit]'s
+dispatch disqualify a protocol from 3 signals:
+{ul
+
+{- if the [resolvers] is not filled with the protocol.
+
+   Even if the protocol is {i registered} (with {!Conduit.S.register}),
+   [Conduit] look-up only on the given [resolvers]. So if the user did not fill
+   the [resolvers] with the registered protocol, [Conduit] is not able to start
+   the connection.}
+
+{- if the given {!Conduit.Endpoint.t} is not reachable by processes filled by
+   the end-user.
+
+   The user is able to disqualify some {!Conduit.Endpoin.t} if he wants - for
+   example, an user can give a [resolvers] which is able to {i resolve} only one
+   specific domain-name. Of course, the common way is to use [Unix.gethostbyname]
+   but we can use something else like our greatest MirageOS DNS stack!}
+
+{- if the [connect] of the protocol fails.
+
+   Even if we can {i resolve} the given {!Conduit.Endpoint.t}, the peer is may
+   be not accessible (for any reasons). For example, a website is not
+   neccessarily accessible with TLS - and in that case, we should try an other
+   protocol.}}
+
+From that, the end-user is able to easily infer how [Conduit] can choose a
+specific protocol - but the real difference from the old version of [Conduit] is
+the full-control of the end-user about the dispatch.
+
+[Conduit] does not come with any {i global} ({i mutlable}?) knowledge of what it
+should do when a library maintainer wants to start a connection. All are decided
+by the end-user and [Conduit] just tries to give the most easy way (with the
+simpliest mental model) to plug (like {i a conduit}!) both sides.
+
+{2 Composition.}
+
+TLS is a protocol which requires... an other protocol! In the real world, TLS is
+used over a TCP/IP [socket] but a problem appears for us (specifically for
+MirageOS) when the TCP/IP protocol is not well-known.
+
+Indeed, about MirageOS, the TCP/IP protocol can our first TCP/IP protocol
+implemented above but it can be [mirage-tcpip]. At this stage, we talk about {i
+protocol composition}. The same goes for SSH or any cryptographic layered
+protocol.
+
+It seems hard to deal with that in [Conduit] but it's not. Let's take an example
+about a possible TLS implementation which is abstracted over... a
+{!Conduit.S.PROTOCOL}!
+
+{[
+type 'a with_tls =
+  { underlying : 'a
+  ; tls : Tls.state }
+
+let underlying { underlying; _ } = underlying
+
+module Make_TLS (Protocol : Conduit.PROTOCOL) = struct
+  type 'a io = 'a Protocol.io
+
+  type input = Protocol.input
+  type output = Protocol.output
+
+  type flow = Protocol.flow with_tls
+
+  type endpoint = Protocol.endpoint * Tls.config
+
+  ...
+end
+]}
+
+It's an idiomatic code but it should be easy to concretely replace undefined
+types/values by [ocaml-tls] or [ocaml-ssl]. The global idea is, from the ['a
+with_tls], we are able to get some values such as:
+{ul
+{- the underlying representation of the protocol used.}
+{- some information about the TLS state (ciphers used for example).}}
+
+Of course, we probably need to expose the {i functor} but we decided to
+represent {i protocol} with values in [Conduit]. So we can take this advantage
+to expose less things to the end-user and to the application of the {i functors}
+by pack/unpack modules:
+
+{[
+let protocol_with_tls
+  : ('edn, 'flow) Conduit.protocol -> ('edn * Tls.config, 'flow with_tls) Conduit.protocol
+  = fun protocol ->
+    let module Protocol = (val Conduit.impl protocol) in
+    let module M = Make_TLS (Protocol) in
+    Conduit.register ~protocol:(module M)
+]}
+
+For the point-of-view of the end-user, the composition of a well-known TCP/IP
+protocol (or something else!) and our TLS implementation is:
+
+{[
+val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+let tls
+  : (Unix.sockaddr * Tls.config, Unix.file_descr with_tls) Conduit.protocol
+  = protocol_with_tls tcp
+]}
+
+And of course, all previous mechanisms available for a [Conduit.protocol] still
+are available for our [tls] protocol such as the {i destruction}:
+
+{[
+include (val Conduit.repr tls)
+
+let run sockaddr tls_config =
+  Conduit.connect (sockaddr, tls_config) tls >>= function
+  | T (V tls_socket) ->
+    let socket = underlying tls_socket in
+    let peer = Unix.getpeername socket in
+    ...
+  | flow -> ...
+]}
+
+{2 A correspondance.}
+
+Finally, it exists a correspondance between [Conduit] and a {i functorized}
+implementation.
+
+{[
+module Make (Flow : FLOW) = struct
+  let send_hello_world flow = Flow.send flow "Hello World!"
+end
+]}
+
+In [Conduit] the snippet code above is:
+
+{[
+let send_hello_world (flow : Conduit.flow) = Conduit.send flow "Hello World!"
+]}
+
+About the specialisation of your implementation from a specific protocol, we
+assume that you have a knowledge of which protocols are available (such as the
+TCP/IP protocol). Without [Conduit], this protocol is an implementation which
+should respect the [FLOW] interface:
+
+{[
+module TCP : FLOW = ...
+]}
+
+With conduit, the implementation must respect the same interface too. But,
+instead of manipulating an OCaml module, we use an OCaml value such as:
 
 {[
 let tcp = Conduit.register ~protocol:(module TCP)
 ]}
 
-The registration gives to us a {i type-witness} which is a small representation
-of our protocol. This value {b must} be exposed to the user:
+Then, the usual {i injection} of the TCP implementation with {i functors} is:
 
 {[
-val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+module M = Make(TCP)
+
+let () =
+  let flow = TCP.make localhost in
+  M.send_hello_world flow
 ]}
 
-As you can see, the value keeps the type of your [endpoint] and the type of your
-[flow]. This value is the uniq link to your implementation [TCP].
-
-{2 Use a Conduit's protocol.}
-
-Now, the implementation of our protocol is reachable at any point of your code
-with Conduit. The library provides mainly 2 ways to start a transmission:
+Where, with [Conduit], the {i injection} is:
 
 {[
-let loopback = Unix.ADDR_INET Unix.inet_addr_loopback
-
-let socket : Unix.file_descr = Conduit.connect loopback My_protocol.tcp
+let () =
+  let flow = Conduit.connect ~protocol:tcp localhost in
+  send_hello_world flow
 ]}
 
-It's the usual way when you want to start a TCP transmission. However, in some
-cases, you want to start {i "a transmission"} regardless the kind of the
-transmission. Conduit provides a {i resolution} mechanism which is able to start
-any kind of protocols.
+{2 The service.}
 
-{3 Resolution.}
+The new version of [Conduit] did the choice to provide something else to
+initiate a service. The context of the initialisation of a service (such as a
+TCP) service is more complete than the client. The implementer of a service
+(such as an HTTP service) must be aware about which implementation he wants to
+use - and he does not really need a {i dispatch} process between several
+protocol implementations.
 
-We consider [[ `host ] Domain_name.t] as the most general concrete type to
-represent a peer. From it, we can extract the [Unix.sockaddr] such as:
+In that case, [Conduit] comes like a simple framework which enforces a certain
+interface about service implementation, with the same protocol's registration
+mechanism and without the {i dispatch} (with the [resolvers]) process - because
+you should fully-know how to initiate your service!
+
+{3 A concrete implementation.}
+
+As the protocol, the service must respect an interface: {!Conduit.S.SERVICE}.
+This interface is what a POSIX-compliant protocol provides:
 
 {[
-let http_resolv domain_name =
-  match Unix.gethostbyname (Domain_name.to_string domain_name) with
-  | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
-    Some (Unix.INET_ADDR (h_addr_list.(0), 80))
-  | _ -> None
-  | exception _ -> None
+module Service = struct
+  type 'a io = 'a
+
+  type flow = Unix.file_descr
+  type t = Unix.file_descr
+
+  type error = |
+
+  let pp_error : Format.formatter -> error -> unit = fun _ -> function _ -> .
+
+  type configuration = Unix.sockaddr
+
+  let init sockaddr =
+    let domain = Unix.domain_of_sockaddr sockaddr in
+    let socket = Unix.socket domain Unix.SOCK_STREAM 0 in
+    Unix.bind socket sockaddr ;
+    Unix.listen socket 40 ; Ok socket
+
+  let accept socket =
+    let client, _ = Unix.accept socket in
+    Ok client
+
+  let close socket = Unix.close socket ; Ok ()
+end
 ]}
 
-But we can extract (or decide to bind) something else such as a set of TLS
-certificates. More generally, the value returned by your resolution is free as
-long as a Conduit's protocol can use it to initialise a transmission.
+Again, this implementation is a simple example and it should not be used into a
+productive context.
 
-Then, Conduit defines a [resolvers] which can contains your function such as
-[http_resolv] and let the user to bind them to a specific protocol. For example,
-we can bind our [http_resolv] with our TCP protocol:
+{3 Registration & use.}
 
-{[
-let my_resolvers = Conduit.add My_protocol.tcp http_resolv Conduit.empty
-]}
-
-Finally, we can use this value to start {i "a transmission"}:
-
-{[
-let google = Domain_name.(host_exn (of_string_exn "google.com"))
-
-let flow : Conduit.flow = Conduit.resolve my_resolvers google
-]}
-
-You can denote that we finally return a {!Conduit.flow} value which is an
-abstract type instead to return a concrete [Unix.file_descr] value as before.
-From it, you still able to use [send]/[recv] functions with:
-
-{[
-let hello (flow : Conduit.flow) =
-  Conduit.send flow "Hello World!"
-]}
-
-But the flow can be an usual TCP transmission or something more complex like a
-TLS connection. But all of this complexity is hidden by the abstract type.
-
-More generally, in some context, it's useful to be abstract over the protocol
-used to communicate with a peer. Specially when you have several ways to
-communicate with your peer. An example is Git which can communicate with:
-
+[Conduit] provides then all of these functions:
 {ul
-{- TCP with a [git://] URL.}
-{- SSH with a [git@] endpoint.}
-{- HTTP with a [http://] URL.}
-{- HTTPS with a [https://] URL.}}
+{- [init] to initiate the service.}
+{- [accept] to wait a client.}
+{- [close] to close the service.}}
 
-However contents of the transmission is pretty the same betweem all of these
-ways. Instead to duplicate the process to communicate with our peer, it could be
-better to use one and a full abstract [flow] and be less-aware about the
-underlying protocol used - or, at least, shift this responsability to the final
-user.
+The registration of the service with [Conduit] is:
 
-An other case is about MirageOS which does not assert that the TCP/IP stack -
-and the TCP protocol - is available into your unikernel. Of course, the protocol
-can exists but it can be replaced by something else.
+{[
+let tcp_service
+  : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Conduit.service
+  = Conduit.Service.regiseter (module Service)
+]}
+
+As you can see, we have 3 parameters (instead of 2 for a protocol). In fact, the
+[Unix.file_descr] which represents the service can be different from the value
+which represent the client. It does not appear in our case but in some context
+(such as TLS), it's required to have this difference.
+
+Of course, to be able to handle multiple functions, we should have something
+like [Thread] ([LWT] or [ASYNC]) to concurrently handle clients. Then, we are
+able to implement an usual (infinite) {i service loop}:
+
+{[
+let serve_with_handler
+  : Unix.sockaddr -> (Conduit.flow -> unit) -> unit
+  = fun cfg ~handler ->
+  let service = tcp_service in
+  Conduit.Service.init ~service cfg >>= fun t ->
+  let rec go t =
+    Conduit.Service.accept ~service t >>= fun socket ->
+    let flow = Conduit.pack tcp socket in 
+    let _ = Thread.create handler flow in
+    go t in
+  go t
+]}
+
+Again, we are the ability to {i abstract} the socket with a well-known protocol
+(such as our previous TCP/IP protocol) and give it to an user-defined function.
+Finally, the user will be able to {i destruct} it or use it for a more abstract
+process.
+
+The service has less abilities than the client, but as we said before, the
+context is a bit different where we should fully-known how we initiate our
+service (on which port, with which configuration, etc.). The {i dispatch}
+mechanism is not needed at this stage.

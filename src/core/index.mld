@@ -45,7 +45,7 @@ can be abstracted to work over any flow implementations.
 
 Let's start to implement a TCP/IP protocol with UNIX. At first, [Conduit] needs
 a {i scheduler} and the type of [input]/[output]. [Conduit_lwt] is a
-specialisation of [Conduit] with LWT with {!Cstruct.t} as input/output. It is
+specialisation of [Conduit] with LWT and {!Cstruct.t} as input/output. It is
 the same for [Conduit_async] with ASYNC.
 
 For our example (and to simplify our code), we will specialise [Conduit] with
@@ -63,7 +63,7 @@ module Conduit = Conduit.Make(Scheduler)(Bytes)(String)
 ]}
 
 Then, we can start to implement our TCP/IP protocol from what [Unix] gives to us
-- of course, this code require the [unix.cm{x}a] library:
+— of course, this code require the [unix.cm{x}a] library:
 
 {[
 module TCP = struct
@@ -103,7 +103,7 @@ end
 ]}
 
 The code is really simple and it does not care about details such as [exception]
-- so, don't try to use this code into a productive context! We can verify that our
+— so, don't try to use this code into a productive context! We can verify that our
 implementation respects the interface {!Conduit.S.PROTOCOL}:
 
 {[
@@ -126,8 +126,8 @@ let tcp
   = Conduit.register ~protocol:(module TCP)
 ]}
 
-So we create our first [Conduit] protocol! As you can see, [Conduit] some useful
-information such as:
+So we create our first [Conduit] protocol! As you can see, [Conduit] keeps some
+useful information such as:
 {ul
 {- the type of the endpoint required to initiate the protocol.}
 {- the type of the flow.}}
@@ -157,11 +157,11 @@ able to register it with [Conduit].
 
 The first case is the most common case where we want to make a simple
 executable. However, the second case can appear when we want to make a library!
-A library which wants to communicate with a peer should assert one and unique
-implementation of TCP - and, with MirageOS, it's impossible to do that when the
-TCP implementation can be the UNIX one or [mirage-tcpip].
+A library which wants to communicate with a peer should {b not} assert one and
+unique implementation of TCP/IP — and, with MirageOS, it's impossible to do that
+when the TCP/IP implementation can be the UNIX one or [mirage-tcpip].
 
-But let's start with the first case, we want to make an executable:
+But let's start with the first case, when we want to make an executable:
 
 {[
 let ( >>= ) = Result.bind
@@ -188,6 +188,11 @@ $1> ./a.out
 $2> Hello World!
 v}
 
+This is the most simple case mostly because we fullu-know our context — our
+dependencies, our target (UNIX), etc. Such context can not be well-known and,
+for a MirageOS library — or any system agnostic libraries, we must be abstract
+over these protocols.
+
 {3 Destruct your [flow].}
 
 [Conduit] lets the possibility to {i destruct} the {!Conduit.S.flow}. It mostly
@@ -209,7 +214,7 @@ type t = (Unix.sockaddr, Unix.file_descr) Conduit.value (* = Value of Unix.file_
 type Conduit.flow += T of t
 ]}
 
-With this definition, we are able to {i pattern-flow} on our {!Conduit.S.flow}:
+With this definition, we are able to {i pattern-match} on our {!Conduit.S.flow}:
 
 {[
 let run () =
@@ -233,7 +238,28 @@ In this example, we separate the computation in two branches:
 It permits to do something special (like [Unix.setsockopt]) when we {b
 well-known} the protocol. Of course, it's not possible to {i destruct} a [flow]
 if you don't know about any protocol implementation used - and it can be the
-case when you make a library.
+case when you make a library again.
+
+{4 The usage of the destruction.}
+
+Some libraries permits to manipule the flow even if they processed on it. This
+case appear for example for an HTTP library when it reads and writes into the
+{!Conduit.S.flow} and gives it to the end-user then into the the user-defined {i
+handler}:
+
+{[
+val http_serve : handler:(Conduit.flow -> Request.t -> Response.t) -> http_cfg -> unit
+]}
+
+In that case, the library wants to manipulate an {i abstract} flow (and let the
+user to do the {i injection} of a TCP/IP protocol or a TCP/IP + TLS protocol).
+However, we should let the user to be able to {i destruct} the value to the
+[Unix.file_descr] (according to our example).
+
+At this stage, the user will use [http_serve], he will define [handler] and he
+has a full knowledge of his context (and which protocol implementation he wants
+to use). With these 3 conditions, he is able to properly {i destruct} the given
+flow and introspect it (like to know who is the client with [Unix.getpeername]).
 
 {3 When you make a library.}
 
@@ -244,7 +270,7 @@ times, we rely on the host's TCP/IP implementation, the UNIX one. But it's not
 the case for MirageOS where the TCP/IP implementation used can change!
 
 This case is more concrete about the TLS implementation. Did you want to enforce
-the use of OpenSSL for your user or you want to let them to choose the
+the use of OpenSSL for your user or you want to let them to choose the TLS
 implementation?
 
 At this question, it's hard to:
@@ -267,7 +293,8 @@ let run ~resolvers edn =
 It introduces 2 values:
 {ul
 {- a [resolvers] which is like a set of protocols.}
-{- a [edn] which is a {!Conduit.Endpoint.t}, a concrete value.}}
+{- a [edn] which is a {!Conduit.Endpoint.t}, a concrete value to represent your
+   peer.}}
 
 The deal is to be able to start a connection from a fully-known value (our
 {!Conduit.Endpoin.t}) and a context which contains all available protocols. This
@@ -292,7 +319,7 @@ As a HTTP client, we should provide something like:
 
 {[
 val get : uri:Uri.t -> (response, error) result
-val post : uri:Uri.t -> (response, error) result
+val post : uri:Uri.t -> string -> (response, error) result
 ]}
 
 With [Conduit], we will extend a bit these functions:
@@ -404,8 +431,8 @@ protocols according his context and independantly to our HTTP library.
 
 The default case (when we don't recognize a port or a scheme) lets us to {i
 inject} the TCP/IP protocol and the TLS protocol with an higher priority. In
-this case, [Conduit] will try to initiate a TLS connection and, if it fails, it
-will try the usual TCP/IP connection.
+this case, [Conduit] will try to initiate a TLS connection first and, if it
+fails, it will try the usual TCP/IP connection.
 
 {b NOTE.} Why {!Conduit.Endpoint.t} is {b not} an [Uri.t]? If you follow the
 development of [Conduit], at the beginning, [Conduit] did the dispatch from an
@@ -435,15 +462,19 @@ dispatch disqualify a protocol from 3 signals:
    Even if the protocol is {i registered} (with {!Conduit.S.register}),
    [Conduit] look-up only on the given [resolvers]. So if the user did not fill
    the [resolvers] with the registered protocol, [Conduit] is not able to start
-   the connection.}
+   the connection with this protocol.}
 
 {- if the given {!Conduit.Endpoint.t} is not reachable by processes filled by
    the end-user.
 
    The user is able to disqualify some {!Conduit.Endpoin.t} if he wants - for
    example, an user can give a [resolvers] which is able to {i resolve} only one
-   specific domain-name. Of course, the common way is to use [Unix.gethostbyname]
-   but we can use something else like our greatest MirageOS DNS stack!}
+   specific domain-name (like ["localhost"]). Of course, the common way is to
+   use [Unix.gethostbyname] but we can use something else like our greatest
+   MirageOS DNS stack!
+
+   The resolution is not done by [Conduit] and only {!Conduit.S.resolver} given
+   by the end-user are able to determine required values to initiate protocols.}
 
 {- if the [connect] of the protocol fails.
 
@@ -467,10 +498,9 @@ TLS is a protocol which requires... an other protocol! In the real world, TLS is
 used over a TCP/IP [socket] but a problem appears for us (specifically for
 MirageOS) when the TCP/IP protocol is not well-known.
 
-Indeed, about MirageOS, the TCP/IP protocol can our first TCP/IP protocol
+Indeed, about MirageOS, the TCP/IP protocol can be our first TCP/IP protocol
 implemented above but it can be [mirage-tcpip]. At this stage, we talk about {i
-protocol composition}. The same goes for SSH or any cryptographic layered
-protocol.
+protocol composition}. The same goes for SSH or any layered protocol.
 
 It seems hard to deal with that in [Conduit] but it's not. Let's take an example
 about a possible TLS implementation which is abstracted over... a
@@ -498,16 +528,17 @@ end
 ]}
 
 It's an idiomatic code but it should be easy to concretely replace undefined
-types/values by [ocaml-tls] or [ocaml-ssl]. The global idea is, from the ['a
-with_tls], we are able to get some values such as:
+types/values by [ocaml-tls] or [ocaml-ssl] (and if you are curious, you can take
+a look on [conduit-tls]). The global idea is, from the ['a with_tls], we are
+able to get some values such as:
 {ul
 {- the underlying representation of the protocol used.}
 {- some information about the TLS state (ciphers used for example).}}
 
 Of course, we probably need to expose the {i functor} but we decided to
-represent {i protocol} with values in [Conduit]. So we can take this advantage
-to expose less things to the end-user and to the application of the {i functors}
-by pack/unpack modules:
+represent {i protocols} with values in [Conduit]. So we can take this advantage
+to expose less things to the end-user and do the application of the {i functor}
+by {i pack/unpack} modules:
 
 {[
 let protocol_with_tls
@@ -563,10 +594,10 @@ let send_hello_world (flow : Conduit.flow) = Conduit.send flow "Hello World!"
 About the specialisation of your implementation from a specific protocol, we
 assume that you have a knowledge of which protocols are available (such as the
 TCP/IP protocol). Without [Conduit], this protocol is an implementation which
-should respect the [FLOW] interface:
+should respect the {!Conduit.S.PROTOCOL} interface:
 
 {[
-module TCP : FLOW = ...
+module TCP : Conduit.S.PROTOCOL = ...
 ]}
 
 With conduit, the implementation must respect the same interface too. But,
@@ -598,20 +629,20 @@ let () =
 
 The new version of [Conduit] did the choice to provide something else to
 initiate a service. The context of the initialisation of a service (such as a
-TCP) service is more complete than the client. The implementer of a service
-(such as an HTTP service) must be aware about which implementation he wants to
-use - and he does not really need a {i dispatch} process between several
-protocol implementations.
+TCP service) should be more complete than the client. The implementer of a
+service (such as an HTTP service) must be aware about which implementation he
+wants to use - and he does not really need a {i dispatch} process between
+several protocol implementations.
 
 In that case, [Conduit] comes like a simple framework which enforces a certain
 interface about service implementation, with the same protocol's registration
-mechanism and without the {i dispatch} (with the [resolvers]) process - because
-you should fully-know how to initiate your service!
+mechanism and without the {i dispatch} (with the [resolvers]) process — because
+you should fully-know how to initiate your service)!
 
 {3 A concrete implementation.}
 
 As the protocol, the service must respect an interface: {!Conduit.S.SERVICE}.
-This interface is what a POSIX-compliant protocol provides:
+This interface is what a POSIX-compliant service provides:
 
 {[
 module Service = struct
@@ -683,11 +714,49 @@ let serve_with_handler
 ]}
 
 Again, we are the ability to {i abstract} the socket with a well-known protocol
-(such as our previous TCP/IP protocol) and give it to an user-defined function.
-Finally, the user will be able to {i destruct} it or use it for a more abstract
-process.
+(such as our previous TCP/IP protocol) and give it to an user-defined function
+[handler]. Finally, the user will be able to {i destruct} it or use it for a
+more abstract process.
 
 The service has less abilities than the client, but as we said before, the
 context is a bit different where we should fully-known how we initiate our
 service (on which port, with which configuration, etc.). The {i dispatch}
 mechanism is not needed at this stage.
+
+[Conduit_lwt] and [Conduit_async] provide both a [serve] such as our previous
+[serve_with_handler] function (but they are more complete).
+
+{2 Dependencies & eco-system.}
+
+[Conduit] is a small package, it requires:
+{ul
+{- [domain-name] to have a representation of a domain-name.}
+{- [ipaddr] to have a representation of an IP.}
+{- [stdlib-shims] for internal stuffs.}}
+
+As a protocol implementer, the compatibility with MirageOS require that you:
++ Functorize your code
++ Or use [Conduit]
+
+In some context, the first option is good - and this is what [mirage-tcpip] does
+(when the TCP/IP is a composition of several others protocols...). But from some
+high-level libraries such as [Irmin] or [Cohttp], [Conduit] seems the best to {i
+de-functorize} the stack.
+
+Of course, even if [Conduit] was made for MirageOS, it can be use into several
+others contexts, hence the existence of [Conduit_lwt] and [Conduit_async].
+
+{2 Conclusion.}
+
+A MirageOS project wants to provide the best way to abstract everythings which
+is commonly available on an operating-system. At this layer, we can said that
+[Conduit] is close to re-implement [/etc/services]!
+
+It serves the MirageOS purpose but, moreover, it unlocks the ability to be
+abstracted over protocols. This ability is a game between what we can assert
+about the definition of a protocol and the type-system.
+
+This document is like a little HOW-TO but tests are a good example of how to use
+[Conduit] too. Then, the documentation of each function give you an example in
+which case it could be useful to use them. Feel free to complete or fix some
+french^Wenglish issues!

@@ -5,4 +5,4 @@
 
 (documentation
  (package conduit)
- (mld_files howto index))
+ (mld_files howto readme))

@@ -38,12 +38,13 @@ let io_of_flow flow =
     | Ok `End_of_flow -> Lwt.return 0
     | Error err -> failwith "%a" pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input rrecv in
-  let send buf off len =
+  let rec ssend buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     Lwt_mutex.with_lock mutex (fun () -> send flow raw) >>= function
+    | Ok 0 -> Lwt_unix.yield () >>= fun () -> ssend buf off len
     | Ok len -> Lwt.return len
     | Error err -> failwith "%a" pp_error err in
-  let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output send in
+  let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output ssend in
   (ic, oc)
 
 let ( >>? ) = Lwt_result.bind

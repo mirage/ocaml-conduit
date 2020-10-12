@@ -160,6 +160,7 @@ struct
                             "Got EOF from underlying connection while \
                              handshake.") ;
                       return (Ok None)
+                  | `Input 0 -> return (Ok (Some tls))
                   | `Input len ->
                       let uid =
                         Hashtbl.hash
@@ -223,6 +224,9 @@ struct
                       m "<- Connection closed by underlying protocol.") ;
                   t.tls <- None ;
                   return (Ok `End_of_flow)
+              | `Input 0 ->
+                  t.tls <- Some tls ;
+                  return (Ok (`Input 0))
               | `Input len -> (
                   Log.debug (fun m -> m "<- Got %d byte(s)." len) ;
                   let handle raw =
@@ -275,6 +279,9 @@ struct
               Log.warn (fun m -> m "[-] Underlying flow already closed.") ;
               t.tls <- None ;
               return (Error `Closed_by_peer)
+          | `Input 0 ->
+              t.tls <- Some tls ;
+              return (Ok 0)
           | `Input len -> (
               let res =
                 handle_handshake tls t.queue t.flow (Cstruct.sub t.raw 0 len)

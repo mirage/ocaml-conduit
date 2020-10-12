@@ -119,7 +119,7 @@ struct
           (* XXX(dinosaure): it seems that decoding TLS inputs can produce
              something bigger than expected. For example, decoding 4096 bytes
              can produce 4119 byte(s). *)
-          Log.debug (fun m -> m "|- TLS state: Ok") ;
+          Log.debug (fun m -> m "|- TLS state: Ok.") ;
           queue_wr_opt queue data ;
           flow_wr_opt flow resp >>? fun () -> return (Ok (Some tls))
 
@@ -151,7 +151,8 @@ struct
                 flow_wr_opt flow resp >>? fun () ->
                 if Tls.Engine.handshake_in_progress tls
                 then (
-                  Log.debug (fun m -> m "<- Read the TLS flow") ;
+                  Log.debug (fun m ->
+                      m "<- Read the TLS flow (while handshake).") ;
                   Flow.recv flow raw0 >>| reword_error flow_error >>? function
                   | `End_of_flow ->
                       Log.warn (fun m ->
@@ -222,21 +223,33 @@ struct
                       m "<- Connection closed by underlying protocol.") ;
                   t.tls <- None ;
                   return (Ok `End_of_flow)
-              | `Input len ->
-                  let handle =
+              | `Input len -> (
+                  Log.debug (fun m -> m "<- Got %d byte(s)." len) ;
+                  let handle raw =
                     if Tls.Engine.handshake_in_progress tls
-                    then handle_handshake tls t.queue t.flow
-                    else handle_tls tls t.queue t.flow in
-                  let uid =
-                    Hashtbl.hash (Cstruct.to_string (Cstruct.sub t.raw 0 len))
-                  in
+                    then handle_handshake tls t.queue t.flow raw
+                    else handle_tls tls t.queue t.flow raw in
+                  let before = Tls.Engine.handshake_in_progress tls in
                   Log.debug (fun m ->
+                      let uid =
+                        Hashtbl.hash
+                          (Cstruct.to_string (Cstruct.sub t.raw 0 len)) in
                       m "<~ [%04x] Got %d bytes (handshake in progress: %b)."
                         uid len
                         (Tls.Engine.handshake_in_progress tls)) ;
                   handle (Cstruct.sub t.raw 0 len) >>? fun tls ->
+                  let after =
+                    Option.fold ~none:false
+                      ~some:Tls.Engine.handshake_in_progress tls in
                   t.tls <- tls ;
-                  recv t raw))
+                  match (tls, before, after) with
+                  | Some _, false, false | Some _, true, false ->
+                      return (Ok (`Input 0))
+                  | Some _, false, true (* renegociate *)
+                  | Some _, true, true (* continue handshake *)
+                  | None, _, _ ->
+                      Log.debug (fun m -> m "Retry to receive something.") ;
+                      recv t raw)))
       | _ ->
           let max = Cstruct.len raw in
           let len = min (Ke.length t.queue) max in

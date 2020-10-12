@@ -222,7 +222,11 @@ module TCP = struct
                 (if filled + len = 0
                 then `End_of_flow
                 else `Input (filled + len))) in
-        Lwt.catch (fun () -> process 0 raw) @@ function
+        Lwt.catch (fun () ->
+            if not (Lwt_unix.readable t.socket)
+            then Lwt.return_ok (`Input 0)
+            else process 0 raw)
+        @@ function
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw
         | Unix.(Unix_error (EINTR, _, _)) -> recv t raw
         | Unix.(Unix_error (EFAULT, _, _)) -> Lwt.return_error `Bad_address

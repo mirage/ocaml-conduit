@@ -33,7 +33,10 @@ let io_of_flow flow =
   let rec rrecv buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     Lwt_mutex.with_lock mutex (fun () -> recv flow raw) >>= function
-    | Ok (`Input 0) -> Lwt_unix.yield () >>= fun () -> rrecv buf off len
+    | Ok (`Input 0) ->
+        if len = 0
+        then Lwt.return 0
+        else Lwt_unix.yield () >>= fun () -> rrecv buf off len
     | Ok (`Input len) -> Lwt.return len
     | Ok `End_of_flow -> Lwt.return 0
     | Error err -> failwith "%a" pp_error err in
@@ -41,7 +44,10 @@ let io_of_flow flow =
   let rec ssend buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     Lwt_mutex.with_lock mutex (fun () -> send flow raw) >>= function
-    | Ok 0 -> Lwt_unix.yield () >>= fun () -> ssend buf off len
+    | Ok 0 ->
+        if len = 0
+        then Lwt.return 0
+        else Lwt_unix.yield () >>= fun () -> ssend buf off len
     | Ok len -> Lwt.return len
     | Error err -> failwith "%a" pp_error err in
   let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output ssend in
@@ -114,28 +120,8 @@ module TCP = struct
       socket : Lwt_unix.file_descr;
       sockaddr : Lwt_unix.sockaddr;
       linger : Bytes.t;
-      recv_first : bool;
       mutable closed : bool;
     }
-
-    (* XXX(dinosaure): [recv_first] is here to fit into [Lwt_io], from what we know,
-     * a tuple of [Lwt_io] [in_channel/out_channel] tries to receive first. However,
-     * such behavior is problematic for HTTP:
-     * - as a HTTP client, we should send first
-     * - as a HTTP server, we should recv first
-     * - with TLS layer [conduit-tls], both work - where
-     *   the handshake can be done by send or recv
-     *
-     * For my perspective, [Lwt_io] is not the right way to abstract a [Conduit.flow]
-     * and we should directly use [Conduit.send]/[Conduit.recv] when we need to use
-     * them. Because [Lwt_io] tries to receive in any case, we must check (with [Lwt_unix.readable])
-     * if the socket can be read. In that case and if we want to [recv_first], we start
-     * to waiting something from our peer. In the other case, we returns [`Input 0]
-     * which gives an opportunity for the scheduler to send something (so, [send_first]).
-     *
-     * Such patch is really close to what LWT/[Lwt_io] does. A problem should be a diff
-     * on behaviors between [Conduit_lwt] and [mirage-tcpip] + [Conduit_mirage]. The best
-     * way to delete it is to deprecate [io_of_flow]. *)
 
     let peer { sockaddr; _ } = sockaddr
 
@@ -184,14 +170,7 @@ module TCP = struct
       let rec go () =
         let process () =
           Lwt_unix.connect socket sockaddr >>= fun () ->
-          Lwt.return_ok
-            {
-              socket;
-              sockaddr;
-              linger;
-              closed = false;
-              recv_first = Lwt_unix.readable socket;
-            } in
+          Lwt.return_ok { socket; sockaddr; linger; closed = false } in
         Lwt.catch process @@ function
         | Unix.(Unix_error ((EACCES | EPERM), _, _)) ->
             Lwt.return_error `Operation_not_permitted
@@ -251,9 +230,9 @@ module TCP = struct
                 then `End_of_flow
                 else `Input (filled + len))) in
         Lwt.catch (fun () ->
-            if (not (Lwt_unix.readable t.socket)) && not t.recv_first
-            then Lwt.return_ok (`Input 0)
-            else process 0 raw)
+            if Lwt_unix.readable t.socket
+            then process 0 raw
+            else Lwt.return_ok (`Input 0))
         @@ function
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw
         | Unix.(Unix_error (EINTR, _, _)) -> recv t raw
@@ -273,19 +252,18 @@ module TCP = struct
       if closed
       then Lwt.return_error `Closed_by_peer
       else
-        let max = Cstruct.len raw in
-        let len0 = min (Bytes.length t.linger) max in
-        Cstruct.blit_to_bytes raw 0 t.linger 0 len0 ;
-        let process () =
-          Lwt_unix.write socket t.linger 0 len0 >>= fun len1 ->
-          if len1 = len0
-          then
-            if max > len0
-            then send t (Cstruct.shift raw len0)
-            else Lwt.return_ok max
-          else Lwt.return_ok len1
-          (* worst case *) in
-        Lwt.catch process @@ function
+        let rec process pushed raw =
+          if Cstruct.len raw = 0
+          then Lwt.return_ok pushed
+          else
+            let max = Cstruct.len raw in
+            let len0 = min (Bytes.length t.linger) max in
+            Cstruct.blit_to_bytes raw 0 t.linger 0 len0 ;
+            Lwt_unix.write socket t.linger 0 len0 >>= fun len1 ->
+            if len1 = len0 && len0 = max
+            then Lwt.return_ok (pushed + len1)
+            else process (pushed + len1) (Cstruct.shift raw len1) in
+        Lwt.catch (fun () -> process 0 raw) @@ function
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> send t raw
         | Unix.(Unix_error (EINTR, _, _)) -> send t raw
         | Unix.(Unix_error (EACCES, _, _)) ->
@@ -413,14 +391,8 @@ module TCP = struct
       let process () =
         Lwt_unix.accept service >>= fun (socket, sockaddr) ->
         let linger = Bytes.create 0x1000 in
-        Lwt.return_ok
-          {
-            Protocol.socket;
-            sockaddr;
-            linger;
-            closed = false;
-            recv_first = Lwt_unix.readable socket;
-          } in
+        Lwt.return_ok { Protocol.socket; sockaddr; linger; closed = false }
+      in
       Lwt.catch process @@ function
       | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> accept service
       | Unix.(Unix_error (EINTR, _, _)) -> accept service

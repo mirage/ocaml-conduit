@@ -143,4 +143,6 @@ module TCP = struct
 
   let service =
     service_with_ssl service ~file_descr:Protocol.file_descr protocol
+
+  include (val Conduit_lwt.repr protocol)
 end

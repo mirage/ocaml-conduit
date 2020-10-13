@@ -230,13 +230,12 @@ struct
               | `Input 0 ->
                   Log.debug (fun m -> m "We must re-schedule, nothing to read.") ;
                   return (Ok (`Input 0))
-              | `Input len -> (
+              | `Input len ->
                   Log.debug (fun m -> m "<- Got %d byte(s)." len) ;
                   let handle raw =
                     if Tls.Engine.handshake_in_progress tls
                     then handle_handshake tls t.queue t.flow raw
                     else handle_tls tls t.queue t.flow raw in
-                  let before = Tls.Engine.handshake_in_progress tls in
                   Log.debug (fun m ->
                       let uid =
                         Hashtbl.hash
@@ -245,18 +244,8 @@ struct
                         uid len
                         (Tls.Engine.handshake_in_progress tls)) ;
                   handle (Cstruct.sub t.raw 0 len) >>? fun tls ->
-                  let after =
-                    Option.fold ~none:false
-                      ~some:Tls.Engine.handshake_in_progress tls in
                   t.tls <- tls ;
-                  match (tls, before, after) with
-                  | Some _, false, false | Some _, true, false ->
-                      return (Ok (`Input 0))
-                  | Some _, false, true (* renegociate *)
-                  | Some _, true, true (* continue handshake *)
-                  | None, _, _ ->
-                      Log.debug (fun m -> m "Retry to receive something.") ;
-                      recv t raw)))
+                  recv t raw))
       | _ ->
           let max = Cstruct.len raw in
           let len = min (Ke.length t.queue) max in

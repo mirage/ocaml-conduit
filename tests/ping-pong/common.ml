@@ -15,10 +15,16 @@ module type CONDITION = sig
   type 'a t
 end
 
+module type IO = sig
+  include Conduit.IO
+
+  val yield : unit -> unit t
+end
+
 let ( <.> ) f g x = f (g x)
 
 module Make
-    (IO : Conduit.IO)
+    (IO : IO)
     (Condition : CONDITION)
     (Conduit : S
                  with type +'a io = 'a IO.t
@@ -67,6 +73,7 @@ struct
       | None -> (
           Conduit.recv flow tmp >>? function
           | `End_of_flow -> IO.return (Ok `Close)
+          | `Input 0 -> IO.yield () >>= go
           | `Input len ->
               Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
               go ()) in
@@ -76,6 +83,15 @@ struct
 
   let ping = Cstruct.of_string "ping\n"
 
+  let send flow raw =
+    let rec go flow raw =
+      Conduit.send flow raw >>? function
+      | 0 -> IO.yield () >>= fun () -> go flow raw
+      | len ->
+          let raw = Cstruct.shift raw len in
+          if Cstruct.len raw = 0 then return (Ok ()) else go flow raw in
+    go flow raw
+
   let transmission flow =
     let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
     let rec go () =
@@ -83,13 +99,13 @@ struct
       | Ok `Close | Error _ -> Conduit.close flow
       | Ok (`Line "ping") ->
           Fmt.epr "[!] received ping.\n%!" ;
-          Conduit.send flow pong >>? fun _ -> go ()
+          send flow pong >>? go
       | Ok (`Line "pong") ->
           Fmt.epr "[!] received pong.\n%!" ;
-          Conduit.send flow ping >>? fun _ -> go ()
+          send flow ping >>? go
       | Ok (`Line line) ->
           Fmt.epr "[!] received %S.\n%!" line ;
-          Conduit.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
+          send flow (Cstruct.of_string (line ^ "\n")) >>? fun () ->
           Conduit.close flow in
     go () >>= function
     | Error err -> Fmt.failwith "%a" Conduit.pp_error err
@@ -114,7 +130,7 @@ struct
     let rec go = function
       | [] -> Conduit.close flow
       | line :: rest -> (
-          Conduit.send flow (Cstruct.of_string (line ^ "\n")) >>? fun _ ->
+          send flow (Cstruct.of_string (line ^ "\n")) >>? fun () ->
           getline queue flow >>? function
           | `Close -> Conduit.close flow
           | `Line "pong" -> go rest

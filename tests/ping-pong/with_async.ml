@@ -11,6 +11,8 @@ include Common.Make
             let bind x f = Async.Deferred.bind x ~f
 
             let return = Async.Deferred.return
+
+            let yield () = Async.Deferred.return ()
           end)
           (Async.Condition)
           (struct

@@ -8,6 +8,16 @@ include
 
 val io_of_flow :
   flow -> Lwt_io.input Lwt_io.channel * Lwt_io.output Lwt_io.channel
+(** [io_of_flow flow] creates an input flow and an output flow according
+   to [Lwt_io]. This function, even if it creates something more usable
+   is {b deprecated}. Indeed, [Lwt_io] has its own way to schedule [read]
+   and [write] - you should be aware about that more specially when you
+   use [Conduit_tls] or [Conduit_lwt_ssl].
+
+    Due to a specific behavior, [Lwt_io] does not fit with some specific
+   protocols - non thread-safe protocols, {i send-first} protocols, etc.
+   From these reasons, and even if {!TCP} try to the best to fit under
+   an [Lwt_io], you should not use this function. *)
 
 type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 (** The type for lwt services. *)

@@ -160,12 +160,15 @@ struct
                             "Got EOF from underlying connection while \
                              handshake.") ;
                       return (Ok None)
-                  | `Input 0 -> return (Ok (Some tls))
-                  | `Input len ->
-                      let uid =
-                        Hashtbl.hash
-                          (Cstruct.to_string (Cstruct.sub raw0 0 len)) in
+                  | `Input 0 ->
                       Log.debug (fun m ->
+                          m "Underlying connection asks to re-schedule.") ;
+                      return (Ok (Some tls))
+                  | `Input len ->
+                      Log.debug (fun m ->
+                          let uid =
+                            Hashtbl.hash
+                              (Cstruct.to_string (Cstruct.sub raw0 0 len)) in
                           m
                             "<~ [%04x] Got %d bytes (handshake in progress: \
                              true)."
@@ -225,15 +228,14 @@ struct
                   t.tls <- None ;
                   return (Ok `End_of_flow)
               | `Input 0 ->
-                  t.tls <- Some tls ;
+                  Log.debug (fun m -> m "We must re-schedule, nothing to read.") ;
                   return (Ok (`Input 0))
-              | `Input len -> (
+              | `Input len ->
                   Log.debug (fun m -> m "<- Got %d byte(s)." len) ;
                   let handle raw =
                     if Tls.Engine.handshake_in_progress tls
                     then handle_handshake tls t.queue t.flow raw
                     else handle_tls tls t.queue t.flow raw in
-                  let before = Tls.Engine.handshake_in_progress tls in
                   Log.debug (fun m ->
                       let uid =
                         Hashtbl.hash
@@ -242,18 +244,8 @@ struct
                         uid len
                         (Tls.Engine.handshake_in_progress tls)) ;
                   handle (Cstruct.sub t.raw 0 len) >>? fun tls ->
-                  let after =
-                    Option.fold ~none:false
-                      ~some:Tls.Engine.handshake_in_progress tls in
                   t.tls <- tls ;
-                  match (tls, before, after) with
-                  | Some _, false, false | Some _, true, false ->
-                      return (Ok (`Input 0))
-                  | Some _, false, true (* renegociate *)
-                  | Some _, true, true (* continue handshake *)
-                  | None, _, _ ->
-                      Log.debug (fun m -> m "Retry to receive something.") ;
-                      recv t raw)))
+                  recv t raw))
       | _ ->
           let max = Cstruct.len raw in
           let len = min (Ke.length t.queue) max in
@@ -262,7 +254,7 @@ struct
           return (Ok (`Input len))
 
     let rec send t raw =
-      Log.debug (fun m -> m "~> Start to send.") ;
+      Log.debug (fun m -> m "~> Start to send %d bytes." (Cstruct.len raw)) ;
       match t.tls with
       | None -> return (Error `Closed_by_peer)
       | Some tls when Tls.Engine.can_handle_appdata tls -> (
@@ -276,11 +268,11 @@ struct
       | Some tls -> (
           Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
           | `End_of_flow ->
-              Log.warn (fun m -> m "[-] Underlying flow already closed.") ;
+              Log.debug (fun m -> m "[-] Underlying flow already closed.") ;
               t.tls <- None ;
               return (Error `Closed_by_peer)
           | `Input 0 ->
-              t.tls <- Some tls ;
+              Log.debug (fun m -> m "[-] Underlying flow re-schedule.") ;
               return (Ok 0)
           | `Input len -> (
               let res =

@@ -16,8 +16,8 @@ val getline : Conduit_lwt.flow ->
 ]}
 
 As the POSIX [getline] (see [man 3 getline]). The ping-pong client sends a line
-to a ping-pong server if it receives then ["pong"], it continues to talk until
-it has nothing to send. Otherwise, it closes.
+to a ping-pong server and, if it receives then ["pong"], it continues to talk
+until it has nothing to send. Otherwise, it closes the connection.
 
 {[
 let client ~resolvers edn =
@@ -28,8 +28,8 @@ let client ~resolvers edn =
         Format.printf "> %s.\n%!" line ;
         getline flow >>? function
         | `Line "pong" -> Format.printf "< pong.\n%!" ; go ()
-        | `Line line -> Format.printf "< %s.\n%!" ; go ()
-        | `End_of_flow -> Conduit_lwt.flow flow )
+        | `Line line -> Format.printf "< %s.\n%!" ; Conduit_lwt.close flow
+        | `End_of_flow -> Conduit_lwt.close flow )
     | exception End_of_file -> Conduit_lwt.close flow in
   go ()
 ]}
@@ -266,7 +266,7 @@ Above, we can see that for the default case (when we don't have a scheme), we {i
 inject} two protocols, the secure one (with a priority) and the unsecure one.
 [Conduit] will try the secure one and if it fails, it fallbacks to the second
 one. This case can appear when you want to communicate with a peer and you have
-multiple possibilies such as [http] and [htps].
+multiple possibilies such as [http] and [https].
 
 {3 Compilation & run.}
 
@@ -298,3 +298,21 @@ long as the code-base use [Conduit].
 Of course, the end-user (our [fiber] functions) must be updated according new
 protocols but it does not imply any change on the logic of the server and the
 logic of the client: this is the goal of [Conduit]!
+
+{2 MirageOS compatibility.}
+
+For MirageOS, it's hard to abstract the entire stack with {i functors} to be
+able to launch a simple HTTP request - and it's even more difficult with a
+(non-required) cryptographic layered protocol such as TLS. [Conduit] should help
+users and protocol implementers to be compatible with MirageOS.
+
+As you can see, [Conduit] is not mandatory at the logic of your protocol and you
+are able to {i functorize} this part with something close to {!Conduit.S} (as
+[cohttp] does). The application of your {i functor} with [Conduit] lets the user
+to orchestrate your implementation with others protocols (such as
+[mirage-tcpip]) without anothers {i functors}.
+
+Of course, [Conduit] is not only about MirageOS when the question of the
+abstraction can appear for anyone: which TLS implementation should I use? Should
+I enforce one of them? Again, it's about abstraction and [Conduit] is a response
+about that more generally.

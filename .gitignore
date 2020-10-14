@@ -1,5 +1,6 @@
 _build/
 _opam/
+sandbox/
 .*.swp
 *.install
 .merlin

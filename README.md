@@ -1,37 +1,47 @@
-## conduit -- an OCaml network connection establishment library
+## Conduit - a framework to abstract the protocol
 
-[![Build Status](https://travis-ci.org/mirage/ocaml-conduit.svg?branch=master)](https://travis-ci.org/mirage/ocaml-conduit)
+The `conduit` library is a simple framework to abstract a _protocol_. It
+permits, for a protocol implementer, to get rid the responsibility of the
+protocols choice (such as the TLS implementation). So, it provides a degree of
+abstraction from precise protocol (like TLS or TCP/IP) libraries used - since
+there are a variety of them.
 
-The `conduit` library takes care of establishing and listening for 
-TCP and SSL/TLS connections for the Lwt and Async libraries.
+### Documentation & Tutorials
 
-The reason this library exists is to provide a degree of abstraction
-from the precise SSL library used, since there are a variety of ways
-to bind to a library (e.g. the C FFI, or the Ctypes library), as well
-as well as which library is used (just OpenSSL for now).
+The documentation is available [here][doc].
 
-By default, OpenSSL is used as the preferred connection library, but
-you can force the use of the pure OCaml TLS stack by setting the
-environment variable `CONDUIT_TLS=native` when starting your program.
+A simple HOW-TO to describe how to implement a ping-pong server/client and how
+to upgrade them with TLS is available [here][howto]
 
-The opam packages available are:
+A more complete (but less easier to understand) document to describe Conduit is
+available [here][readme].
 
-- `conduit`: the main `Conduit` module
-- `conduit-lwt`: the portable Lwt implementation
-- `conduit-lwt-unix`: the Lwt/Unix implementation
-- `conduit-async` the Jane Street Async implementation
-- `conduit-mirage`: the MirageOS compatible implementation
+### Distribution
 
-### Debugging
-
-Some of the `Lwt_unix`-based modules use a non-empty `CONDUIT_DEBUG`
-environment variable to output debugging information to standard error.
-Just set this variable when running the program to see what URIs
-are being resolved to.
+Conduit comes with several packages:
+- `conduit`: the core library which has only 3 dependencies
+- `conduit-tls`: a Conduit-compatible [ocaml-tls][ocaml-tls] implementation
+- `conduit-lwt`: the library with [lwt][lwt], it provides a Conduit-compatible
+  Host's TCP/IP protocol
+- `conduit-async`: the library with [async][async], it provides a
+  Conduit-compatible Host's TCP/IP protocol
+- `conduit-lwt-{ssl,tls}` provides the Host's TCP/IP protocol with SSL (OpenSSL)
+  and TLS (`ocaml-tls`)
+- `conduit-async-{ssl,tls}` provides the Host's TCP/IP protocol with SSL
+  (OpenSSL) and TLS (`ocaml-tls`)
+- `conduit-mirage` a Conduit-compatible [mirage-tcpip][mirage-tcpip] protocol
 
 ### Further Informartion
 
-* **API Docs:** http://docs.mirage.io/
+* **API Docs:** http://mirage.github.io/ocaml-conduit/
 * **WWW:** https://github.com/mirage/ocaml-conduit
 * **E-mail:** <mirageos-devel@lists.xenproject.org>
 * **Bugs:** https://github.com/mirage/ocaml-conduit/issues
+
+[doc]: https://mirage.github.io/ocaml-conduit/conduit/index.html
+[howto]: https://mirage.github.io/ocaml-conduit/conduit/howto.html
+[readme]: https://mirage.github.io/ocaml-conduit/conduit/readme.html
+[ocaml-tls]: https://github.com/mirleft/ocaml-tls
+[lwt]: https://github.com/ocsigen/lwt
+[async]: https://github.com/janestreet/async
+[mirage-tcpip]: https://github.com/mirage/mirage-tcpip

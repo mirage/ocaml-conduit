@@ -19,9 +19,23 @@ val serve :
   service:('cfg, 'master, 'flow) service ->
   'cfg ->
   unit Async.Condition.t * (unit -> unit Async.Deferred.t)
+(** [serve ~handler ~service cfg] creates an usual infinite [service]
+    loop from the given configuration ['cfg]. It returns the {i promise}
+    to launch the loop and a condition variable to stop the loop.
+
+    {[
+      let stop, loop = serve
+        ~handler ~service:TCP.service cfg in
+      Async_unix.Signal.handle [ Core.Signal.int ]
+        ~f:(fun _sig -> Async.Condition.broadcast stop ()) ;
+      loop ()
+    ]}
+*)
 
 val reader_and_writer_of_flow :
   flow -> (Async.Reader.t * Async.Writer.t) Async.Deferred.t
+
+(** {2 Host's TCP/IP stack protocol with Async.} *)
 
 module TCP : sig
   type endpoint =

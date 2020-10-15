@@ -35,7 +35,12 @@
 
     A solution such as a {i mutex} to ensure the exclusivity between [send] and
     [recv] can be used - it does not exists at this layer where such abstraction
-    is not available. *)
+    is not available.
+
+    This design appear when you use [LWT] or [ASYNC] which can do a concurrence
+    between {i promises}. Without such {i scheduler}, the process is sequential
+    and the OCaml {i scheduler} should not re-order sub-processes of
+    [Conduit.send] and [Conduit.recv]. *)
 
 module Make
     (IO : Conduit.IO)

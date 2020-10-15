@@ -1,3 +1,5 @@
+(** SSL layer with Conduit and Async. *)
+
 open Async
 open Async_ssl
 open Conduit_async
@@ -53,6 +55,8 @@ val service_with_ssl :
   writer:('flow -> Writer.t) ->
   ('edn, 'flow with_ssl) protocol ->
   (context * 'cfg, context * 't, 'flow with_ssl) Service.service
+
+(** {2 Composition between Host's TCP/IP stack protocol and SSL.} *)
 
 module TCP : sig
   open Conduit_async.TCP

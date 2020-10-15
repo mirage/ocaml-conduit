@@ -1,17 +1,14 @@
 (** Implementation of the SSL support (according [Lwt_ssl]) with
-    [conduit-lwt-unix].
+    [conduit-lwt].
 
     This implementation assumes that underlying protocol used to compose with
-    SSL must deliver a [Lwt_unix.file_descr] - such as [Conduit_lwt_unix_tcp].
+    SSL must deliver a [Lwt_unix.file_descr] - such as [Conduit_lwt.TCP].
     From that, we are able to compose your protocol with [Lwt_ssl] such as:
 
     {[
-      let ssl_endpoint, ssl_protocol =
-        protocol_with_ssl ~key:TCP.endpoint TCP.protocol
-
-      let ssl_configuration, ssl_service =
-        service_with_ssl ~key:TCP.configuration TCP.service
-          ~file_descr:TCP.file_descr ssl_protocol
+      let ssl_protocol = protocol_with_ssl TCP.protocol
+      let ssl_service = service_with_ssl TCP.service
+        ~file_descr:TCP.file_descr ssl_protocol
     ]}
 
     Then, TCP + SSL is available as any others [conduit] protocols or services
@@ -25,7 +22,8 @@
 
     {b NOTE}: [verify] is called after a call to [flow] (which should do the
     [connect] call). So, nothing was exchanged between you and your peer at this
-    time - even the handshake. *)
+    time - even the handshake. It permits to fill the SSL socket with some
+    information such as the hostname of the peer with [Ssl.set_client_SNI_hostname]. *)
 
 open Conduit_lwt
 

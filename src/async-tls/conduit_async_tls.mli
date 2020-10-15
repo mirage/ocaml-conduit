@@ -1,3 +1,5 @@
+(** TLS layer with Conduit and Async. *)
+
 open Conduit_async
 
 type 'flow protocol_with_tls
@@ -19,6 +21,8 @@ val service_with_tls :
     't service_with_tls,
     'flow protocol_with_tls )
   Service.service
+
+(** {2 Composition between Host's TCP/IP stack protocol and TLS.} *)
 
 module TCP : sig
   open Conduit_async.TCP

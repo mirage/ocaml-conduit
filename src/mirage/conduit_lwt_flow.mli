@@ -1,5 +1,5 @@
 (** An implementation of [conduit-lwt] according the interface [Mirage_flow.S].
-    This module is deprecated when the current implementation of [read] has
+    This module is {b deprecated} when the current implementation of [read] has
     another behaviour:
 
     [conduit] provides:

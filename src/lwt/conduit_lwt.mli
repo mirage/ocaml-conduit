@@ -39,18 +39,11 @@ val serve :
         (Lwt_unix.sleep 10. >>= fun () ->
          Lwt_condition.broadcast stop () ;
          Lwt.return ())
-        loop
+        (loop ())
     ]}
 
     In your example, we want to launch a server only for 10 seconds. To help the user,
     the option [?timeout] allows us to wait less than [timeout] seconds. *)
-
-(** Common interface to properly expose a protocol.
-
-    If a protocol wants to be fully-compatible with [conduit],
-    it should expose such implementation which is an aggregate
-    of {i types witnesses}.
-*)
 
 module TCP : sig
   (** Implementation of TCP protocol as a client.

@@ -176,8 +176,6 @@ we will use them to upgrade our protocol (when the scheme is ["pgs"]):
 
 {v server.ml v}
 {[
-let () = Mirage_crypto_rng_unix.initialize ()
-
 let load_file filename =
   let ic = open_in filename in
   let ln = in_channel_length ic in
@@ -226,8 +224,6 @@ And for the client, we just need to update the function [conduit_of_uri]:
 {v client.ml v}
 {[
 let tls_config = Tls.Config.client ~authenticator:(fun ~host:_ _ -> Ok None) ()
-
-let () = Mirage_crypto_rng_unix.initialize ()
 
 let conduit_of_uri uri =
   let host = Uri.host_with_default ~default:"localhost" uri in

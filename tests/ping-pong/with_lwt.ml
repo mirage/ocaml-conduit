@@ -1,7 +1,5 @@
 open Rresult
 
-let () = Mirage_crypto_rng_unix.initialize ()
-
 let () = Printexc.record_backtrace true
 
 let () = Ssl.init ()

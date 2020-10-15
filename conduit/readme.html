@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>readme (conduit.readme)</title><link rel="stylesheet" href="../odoc.css"/><meta charset="utf-8"/><meta name="generator" content="odoc 1.5.1"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/><script src="../highlight.pack.js"></script><script>hljs.initHighlightingOnLoad();</script></head><body><div class="content"><header><nav><a href="index.html">Up</a> – <a href="index.html">conduit</a> &#x00BB; readme</nav><nav class="toc"><ul><li><a href="#conduit.">Conduit.</a><ul><li><a href="#implement-a-protocol.">Implement a protocol.</a></li><li><a href="#use-a-conduit's-protocol.">Use a Conduit's protocol.</a><ul><li><a href="#resolution.">Resolution.</a></li><li><a href="#destruction.">Destruction.</a></li></ul></li><li><a href="#conclusion.">Conclusion.</a></li></ul></li></ul></nav></header><h2 id="conduit."><a href="#conduit." class="anchor"></a>Conduit.</h2><p>Conduit is a little library to be able to abtract the protocol used to communicate with a peer.</p><h3 id="implement-a-protocol."><a href="#implement-a-protocol." class="anchor"></a>Implement a protocol.</h3><p>A Conduit's protocol can be defined as:</p><pre><code class="ml">module type S = sig
+  type flow
+  type endpoint
+
+  type error
+
+  val pp_error : error Fmt.t
+
+  val connect : endpoint -&gt; (flow, error) result
+  val send : flow -&gt; string -&gt; (int, error) result
+  val recv : flow -&gt; bytes -&gt; (int, error) result
+  val close : flow -&gt; (unit, error) result
+end</code></pre><p>This definition is pretty-close to the <code>Unix</code> module:</p><pre><code class="ml">module TCP = struct
+  type flow = Unix.file_descr
+  type endpoint = Unix.sockaddr
+
+  type error = (Unix.error * string * string)
+
+  let pp_error (error, call, _) =
+    Fmt.pf ppf &quot;%s: %s&quot; call (Unix.error_message error)
+
+  let connect sockaddr =
+    try let socket = Unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0 in
+        Unix.connect socket sockaddr ; Ok socket
+    with Unix.Unix_error (err, call, args) -&gt; Error (err, call, args)
+
+  let send socket str =
+    try
+      let rec go off len =
+        let len' = Unix.write_substring socket str off len in
+        if len' &lt; len then go (off + len') (len - len') in
+      go 0 (String.length str) ; Ok (String.length str)
+    with Unix.Unix_error (err, call, args) -&gt; Error (err, call, args)
+
+  let recv socket buf =
+    try
+      let len = Unix.read socket 0 (Bytes.length buf) in
+      if len = 0 then Ok `End_of_flow else Ok (`Input len)
+    with Unix.Unix_error (err, call, args) -&gt; Error (err, call, args)
+
+  let close socket =
+    try Unix.close socket ; Ok ()
+    with Unix.Unix_error (err, call, args) -&gt; Error (err, call, args)
+end</code></pre><p>This is an example of how to implement the TCP protocol according the Conduit's interface <a href="Conduit/module-type-S/module-type-PROTOCOL/index.html"><code>Conduit.S.PROTOCOL</code></a>. We concretely define the flow as an <code>Unix.file_descr</code> and the endpoint (the value required to create the flow) as an <code>Unix.sockaddr</code>.</p><p>Now, the protocol must be registered into <code>Conduit</code> with:</p><pre><code class="ml">let tcp = Conduit.register ~protocol:(module TCP)</code></pre><p>The registration gives to us a <i>type-witness</i> which is a small representation of our protocol. This value <b>must</b> be exposed to the user:</p><pre><code class="ml">val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol</code></pre><p>As you can see, the value keeps the type of your <code>endpoint</code> and the type of your <code>flow</code>. This value is the unique link to your implementation <code>TCP</code>.</p><h3 id="use-a-conduit's-protocol."><a href="#use-a-conduit's-protocol." class="anchor"></a>Use a Conduit's protocol.</h3><p>Now, the implementation of our protocol is reachable at any point of your code with Conduit. The library provides mainly 2 ways to start a transmission:</p><pre><code class="ml">let loopback = Unix.ADDR_INET (Unix.inet_addr_loopback, 8080)
+
+let socket : Unix.file_descr = Conduit.connect loopback My_protocol.tcp</code></pre><p>It's the usual way when you want to start a TCP transmission. However, in some cases, you want to start <i>&quot;a transmission&quot;</i> regardless the kind of the transmission. Conduit provides a <i>resolution</i> mechanism which is able to start any kind of protocols.</p><h4 id="resolution."><a href="#resolution." class="anchor"></a>Resolution.</h4><p>We consider <a href="Conduit__/Endpoint/index.html#type-t"><code>Conduit.Endpoint.t</code></a> as the most general concrete type to represent a peer. From it, we can extract the <code>Unix.sockaddr</code> such as:</p><pre><code class="ml">let http_resolv = function
+  | IP v -&gt; Some (Unix.INET_ADDR (Ipaddr_unix.to_inet_addr v, 80))
+  | Domain domain_name -&gt;
+    match Unix.gethostbyname (Domain_name.to_string domain_name) with
+    | { Unix.h_addr_list; _ } when Array.length h_addr_list &gt; 0 -&gt;
+      Some (Unix.INET_ADDR (h_addr_list.(0), 80))
+    | _ -&gt; None
+    | exception _ -&gt; None</code></pre><p>But we can extract (or decide to bind) something else such as a set of TLS certificates. More generally, the value returned by your resolution is free as long as a Conduit's protocol can use it to initialise a transmission.</p><p>Then, Conduit defines a <code>resolvers</code> which can contains your function such as <code>http_resolv</code> and let the user to bind them to a specific protocol. For example, we can bind our <code>http_resolv</code> with our TCP protocol:</p><pre><code class="ml">let my_resolvers = Conduit.add My_protocol.tcp http_resolv Conduit.empty</code></pre><p>Finally, we can use this value to start <i>&quot;a transmission&quot;</i>:</p><pre><code class="ml">let google = Conduit.Endpoint.v &quot;google.com&quot;
+
+let flow : Conduit.flow = Conduit.resolve my_resolvers google</code></pre><p>You can denote that we finally return a <span class="xref-unresolved" title="unresolved reference to &quot;Conduit.flow&quot;"><a href="Conduit/index.html"><code>Conduit</code></a>.flow</span> value which is an abstract type instead to return a concrete <code>Unix.file_descr</code> value as before. From it, you still able to use <code>send</code>/<code>recv</code> functions with:</p><pre><code class="ml">let hello (flow : Conduit.flow) =
+  Conduit.send flow &quot;Hello World!&quot;</code></pre><p>But the flow can be an usual TCP transmission or something more complex like a TLS connection. But all of this complexity is hidden by the abstract type.</p><h4 id="destruction."><a href="#destruction." class="anchor"></a>Destruction.</h4><p>A library which uses Conduit should pass the <a href="Conduit/module-type-S/index.html#type-flow"><code>Conduit.S.flow</code></a> to the user as an HTTP server should do to handle clients. In that case, the end-user who uses the library is aware about which implementation he injected into Conduit. He should be able to <i>destruct</i> the given <a href="Conduit/module-type-S/index.html#type-flow"><code>Conduit.S.flow</code></a> to its protocols <i>injected</i>. Assume that we used our TCP/IP implementation, to permit the <i>destruction</i>, we must add:</p><pre><code class="ml">let tcp = Conduit.register ~protocol:(module TCP)
+include (val Conduit.repr tcp)</code></pre><p>This snippet can be expanded to:</p><pre><code class="ml">val tcp : (Unix.sockaddr, Unix.file_descr) Conduit.protocol
+type Conduit.flow += T of Unix.file_descr Conduit.value</code></pre><p>The end user is then able to <i>destruct</i> the flow to this type:</p><pre><code class="ml">let hello (flow : Conduit.flow) = match flow with
+  | T (Value file_descr) -&gt;
+    Unix.write file_descr &quot;Hello World!&quot;
+  | flow -&gt;
+    Conduit.send flow &quot;Hello World!&quot;</code></pre><p>Of course, we can not assert that the given <code>flow</code> is, in any case, an <code>Unix.file_descr</code>, but we can prove that it can be this kind of value - it's a kind of dynamic-typing.</p><h3 id="conclusion."><a href="#conclusion." class="anchor"></a>Conclusion.</h3><p>More generally, in some context, it's useful to be abstract over the protocol used to communicate with a peer. Specially when you have several ways to communicate with your peer. An example is Git which can communicate with:</p><ul><li>TCP with a <code>git://</code> URL.</li><li>SSH with a <code>git@</code> endpoint.</li><li>HTTP with a <code>http://</code> URL.</li><li>HTTPS with a <code>https://</code> URL.</li></ul><p>However contents of the transmission is pretty the same between all of these ways. Instead to duplicate the process to communicate with our peer, it could be better to use one and a full abstract <code>flow</code> and be less-aware about the underlying protocol used - or, at least, shift this responsability to the final user.</p><p>An other case is about MirageOS which does not assert that the TCP/IP stack - and the TCP protocol - is available into your unikernel. Of course, the protocol can exists but it can be replaced by something else.</p></div></body></html>

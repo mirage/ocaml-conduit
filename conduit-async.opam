@@ -32,6 +32,6 @@ depends: [
   "ke"                {with-test}
   "fmt"               {with-test}
   "rresult"           {with-test}
-  "conduit-async-tls" {with-test}
-  "conduit-async-ssl" {with-test}
+  "conduit-async-tls" {with-test & post}
+  "conduit-async-ssl" {with-test & post}
 ]

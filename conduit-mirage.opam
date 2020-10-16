@@ -19,13 +19,13 @@ build: [
 ]
 
 depends: [
-  "ocaml" {>= "4.07.0"}
-  "dune"
-  "conduit"
+  "ocaml"       {>= "4.07.0"}
+  "dune"        {>= "2.0.0"}
+  "conduit"     {= version}
   "tcpip"
   "mirage-flow"
   "mirage-time"
-  "dns-client" {>= "4.6.0"}
+  "dns-client"  {>= "4.6.0"}
   "ke"
   "bigstringaf"
 ]

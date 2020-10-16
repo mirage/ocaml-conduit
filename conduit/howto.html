@@ -81,9 +81,7 @@ val service :
   ( configuration * Tls.Config.server,
     Service.t service_with_tls,
     Protocol.flow protocol_with_tls )
-  service</code></pre><p>So, instead to use <span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP.protocol&quot;"><span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP&quot;"><code>Conduit_lwt</code>.TCP</span>.protocol</span> and <span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP.service&quot;"><span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP&quot;"><code>Conduit_lwt</code>.TCP</span>.service</span>, we will use them to upgrade our protocol (when the scheme is <code>&quot;pgs&quot;</code>):</p><pre>server.ml</pre><pre><code class="ml">let () = Mirage_crypto_rng_unix.initialize ()
-
-let load_file filename =
+  service</code></pre><p>So, instead to use <span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP.protocol&quot;"><span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP&quot;"><code>Conduit_lwt</code>.TCP</span>.protocol</span> and <span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP.service&quot;"><span class="xref-unresolved" title="unresolved reference to &quot;Conduit_lwt.TCP&quot;"><code>Conduit_lwt</code>.TCP</span>.service</span>, we will use them to upgrade our protocol (when the scheme is <code>&quot;pgs&quot;</code>):</p><pre>server.ml</pre><pre><code class="ml">let load_file filename =
   let ic = open_in filename in
   let ln = in_channel_length ic in
   let rs = Bytes.create ln in
@@ -124,8 +122,6 @@ let fiber ~uri =
 let () =
   let uri = Uri.of_string Sys.argv.(1) in  
   Lwt_main.run (fiber ~uri)</code></pre><p>And for the client, we just need to update the function <code>conduit_of_uri</code>:</p><pre>client.ml</pre><pre><code class="ml">let tls_config = Tls.Config.client ~authenticator:(fun ~host:_ _ -&gt; Ok None) ()
-
-let () = Mirage_crypto_rng_unix.initialize ()
 
 let conduit_of_uri uri =
   let host = Uri.host_with_default ~default:&quot;localhost&quot; uri in

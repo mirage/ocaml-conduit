@@ -7,7 +7,7 @@
  (name with_lwt)
  (modules with_lwt)
  (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-lwt
-   conduit-lwt-tls conduit-lwt-ssl))
+   conduit-lwt-tls))
 
 (executable
  (name test_lwt)
@@ -16,7 +16,7 @@
 
 (rule
  (alias runtest)
- (package conduit-lwt)
+ (package conduit-lwt-tls)
  (deps
   (:test test_lwt.exe)
   with_lwt.exe
@@ -32,7 +32,7 @@
  (name with_async)
  (modules with_async)
  (libraries common fmt.tty logs.fmt mirage-crypto-rng.unix conduit-async
-   conduit-async-tls conduit-async-ssl))
+   conduit-async-tls))
 
 (executable
  (name test_async)
@@ -41,7 +41,7 @@
 
 (rule
  (alias runtest)
- (package conduit-async)
+ (package conduit-async-tls)
  (deps
   (:test test_async.exe)
   with_async.exe

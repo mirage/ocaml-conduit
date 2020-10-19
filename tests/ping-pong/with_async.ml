@@ -1,6 +1,5 @@
 open Rresult
 open Async
-open Async_ssl
 
 let () = Mirage_crypto_rng_unix.initialize ()
 
@@ -25,10 +24,6 @@ let tcp_protocol, tcp_service =
   let open Conduit_async.TCP in
   (protocol, service)
 
-let ssl_protocol, ssl_service =
-  let open Conduit_async_ssl.TCP in
-  (protocol, service)
-
 let tls_protocol, tls_service =
   let open Conduit_async_tls.TCP in
   (protocol, service)
@@ -37,12 +32,6 @@ let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
 
 let resolve_ping_pong = Conduit_async.TCP.resolve ~port:5000
 
-let resolve_ssl_ping_pong =
-  let context =
-    Conduit_async_ssl.context ~verify_modes:Ssl.Verify_mode.[ Verify_none ] ()
-  in
-  Conduit_async_ssl.TCP.resolve ~port:7000 ~context
-
 let resolve_tls_ping_pong =
   let null ~host:_ _ = Ok None in
   let config = Tls.Config.client ~authenticator:null () in
@@ -50,7 +39,6 @@ let resolve_tls_ping_pong =
 
 let resolvers =
   Conduit.empty
-  |> Conduit_async.add ~priority:10 ssl_protocol resolve_ssl_ping_pong
   |> Conduit_async.add ~priority:10 tls_protocol resolve_tls_ping_pong
   |> Conduit_async.add ~priority:20 tcp_protocol resolve_ping_pong
 
@@ -84,12 +72,6 @@ let run_with_tcp clients =
     (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 5000))
     ~protocol:tcp_protocol ~service:tcp_service clients
 
-let run_with_ssl cert key clients =
-  let ctx = Conduit_async_ssl.context ~crt_file:cert ~key_file:key () in
-  run_with
-    (ctx, Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 7000))
-    ~protocol:ssl_protocol ~service:ssl_service clients
-
 let load_file filename =
   let open Stdlib in
   let ic = open_in filename in
@@ -117,7 +99,6 @@ let run_with_tls cert key clients =
 
 let () =
   match Array.to_list Stdlib.Sys.argv with
-  | _ :: "--with-ssl" :: cert :: key :: clients -> run_with_ssl cert key clients
   | _ :: "--with-tls" :: cert :: key :: clients -> run_with_tls cert key clients
   | _ :: clients -> run_with_tcp clients
   | [] -> assert false

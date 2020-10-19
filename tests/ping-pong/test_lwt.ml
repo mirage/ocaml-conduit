@@ -26,22 +26,6 @@ let () =
     Unix.create_process_env "./with_lwt.exe"
       [|
         "./with_lwt.exe";
-        "--with-ssl";
-        "server.pem";
-        "server.key";
-        "client0";
-        "client1";
-        "client2";
-      |]
-      [||] Unix.stdin Unix.stdout Unix.stderr in
-  let _, status = Unix.waitpid [] pid in
-  res := !res && properly_exited status ;
-  Format.printf ">>> with_lwt.exe --with-ssl: %a.\n%!" pp_process_status status ;
-
-  let pid =
-    Unix.create_process_env "./with_lwt.exe"
-      [|
-        "./with_lwt.exe";
         "--with-tls";
         "server.pem";
         "server.key";

@@ -1,0 +1,33 @@
+opam-version: "2.0"
+maintainer: "anil@recoil.org"
+authors: [
+  "Anil Madhavapeddy"
+  "Thomas Leonard"
+  "Thomas Gazagnaire"
+  "Rudi Grinberg"
+  "Romain Calascibetta"
+]
+license: "ISC"
+tags: "org:mirage"
+homepage: "https://github.com/mirage/ocaml-conduit"
+doc: "https://mirage.github.io/ocaml-conduit/"
+bug-reports: "https://github.com/mirage/ocaml-conduit/issues"
+dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
+synopsis: "Conduit benchmarking suite"
+
+build: [
+  ["dune" "subst"] {pinned}
+  ["dune" "build" "-p" name "-j" jobs]
+  ["dune" "runtest" "-p" name] {with-test}
+]
+
+depends: [
+  "ocaml"        {>= "4.07.0"}
+  "dune"         {>= "2.0.0"}
+  "cmdliner"
+  "conduit"
+  "fmt"
+  "ppx_deriving_yojson"
+  "rresult"
+  "yojson"
+]

@@ -99,7 +99,42 @@ let fn_fully_abstr flow = Benchmark.V (fun () -> Tuyau.send flow hello_world)
 let fn_abstr (Tuyau.Flow (flow, (module Flow))) =
   Benchmark.V (fun () -> Flow.send flow hello_world)
 
-let run () =
+type result = {
+  with_conduit : float;
+  with_conduit_r2 : float;
+  without_conduit : float;
+  without_conduit_r2 : float;
+}
+[@@deriving to_yojson]
+
+let print_json est0 est1 r0 r1 =
+  let with_conduit = est0.(0) in
+  let with_conduit_r2 = r0 in
+  let without_conduit = est1.(0) in
+  let without_conduit_r2 = r1 in
+  let res =
+    { with_conduit; with_conduit_r2; without_conduit; without_conduit_r2 } in
+  let fmt = stdout |> Format.formatter_of_out_channel in
+  let open Yojson.Safe in
+  let obj =
+    `Assoc
+      [
+        ( "results",
+          `Assoc
+            [
+              ("name", `String "benchmarks"); ("metrics", result_to_yojson res);
+            ] );
+      ] in
+  pretty_print fmt obj
+
+let print_stdout est0 est1 r0 r1 =
+  Fmt.pr "with Conduit:\t\t%fns (r²: %f).\n%!" est0.(0) r0 ;
+  Fmt.pr "without Conduit:\t%fns (r²: %f).\n%!" est1.(0) r1 ;
+  if r0 >= 0.99 && r1 >= 0.99
+  then Fmt.pr "Overhead:\t\t%fns.\n%!" (est0.(0) -. est1.(0))
+  else Fmt.epr "Bad regression coefficients!\n%!"
+
+let run json =
   let open Rresult in
   Tuyau.connect Unix.stderr fake0 >>= fun flow ->
   Tuyau.send flow hello_world >>= fun _ ->
@@ -111,17 +146,23 @@ let run () =
       Linear_algebra.ols (fun m -> m.(1)) [| (fun m -> m.(0)) |] samples1 )
   with
   | Ok (estimate0, r0), Ok (estimate1, r1) ->
-      Fmt.pr "with Conduit:\t\t%fns (r²: %f).\n%!" estimate0.(0) r0 ;
-      Fmt.pr "without Conduit:\t%fns (r²: %f).\n%!" estimate1.(0) r1 ;
-      if r0 >= 0.99 && r1 >= 0.99
-      then Fmt.pr "Overhead:\t\t%fns.\n%!" (estimate0.(0) -. estimate1.(0))
-      else Fmt.epr "Bad regression coefficients!\n%!" ;
+      (match json with
+      | true -> print_json estimate0 estimate1 r0 r1
+      | false -> print_stdout estimate0 estimate1 r0 r1) ;
       Ok ()
   | Error err, _ -> Error err
   | _, Error err -> Error err
 
-let () =
-  match run () with
+open Cmdliner
+
+let json = Arg.(value & flag & info [ "j"; "json" ])
+
+let main json =
+  match run json with
   | Ok v -> v
   | Error (`Msg err) -> Fmt.epr "%s: %s.\n%!" Sys.argv.(0) err
   | Error `Not_found -> assert false
+
+let cmd = (Term.(const main $ json), Term.info "run benchmarks")
+
+let () = Term.(exit @@ eval cmd)

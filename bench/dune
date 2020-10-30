@@ -1,6 +1,8 @@
 (executable
  (name cost)
- (libraries conduit unix rresult fmt)
+ (preprocess
+  (pps ppx_deriving_yojson))
+ (libraries conduit unix rresult fmt cmdliner yojson ppx_deriving_yojson)
  (foreign_stubs
   (language c)
   (names rdtsc)))

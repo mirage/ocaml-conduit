@@ -24,8 +24,9 @@ jobs:
         opam pin add -n conduit-async-ssl.dev .
         opam pin add -n conduit-lwt-tls.dev .
         opam pin add -n conduit-lwt-ssl.dev .
+        opam pin add -n conduit-bench.dev .
         opam depext  -y conduit conduit-tls conduit-lwt conduit-async conduit-mirage
-        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-lwt-ssl conduit-async conduit-async-tls conduit-async-ssl conduit-mirage
+        opam install --deps-only -t conduit conduit-tls conduit-lwt conduit-lwt-tls conduit-lwt-ssl conduit-async conduit-async-tls conduit-async-ssl conduit-mirage conduit-bench
     - name: Build
       run: opam exec -- dune build
     - name: Test

@@ -1,5 +1,6 @@
 (executable
- (name cost)
+ (public_name cost)
+ (package conduit-bench)
  (preprocess
   (pps ppx_deriving_yojson))
  (libraries conduit unix rresult fmt cmdliner yojson ppx_deriving_yojson)

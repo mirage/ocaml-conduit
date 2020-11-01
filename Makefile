@@ -1,4 +1,4 @@
-.PHONY: build clean test doc
+.PHONY: build clean test doc bench
 
 build:
 	dune build
@@ -11,3 +11,6 @@ clean:
 
 doc:
 	dune build @doc
+
+bench:
+	@dune exec  -- ./bench/cost.exe --json

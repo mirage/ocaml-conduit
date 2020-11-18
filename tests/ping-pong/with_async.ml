@@ -47,12 +47,11 @@ let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 let run_with :
     type cfg service flow.
     cfg ->
-    protocol:(_, flow) Conduit_async.protocol ->
     service:(cfg, service, flow) Conduit_async.Service.service ->
     string list ->
     unit =
- fun cfg ~protocol ~service clients ->
-  let stop, server = server (* ~launched ~stop *) cfg ~protocol ~service in
+ fun cfg ~service clients ->
+  let stop, server = server (* ~launched ~stop *) cfg ~service in
   let clients =
     Async.after Core.Time.Span.(of_sec 0.5) >>= fun () ->
     (* XXX(dinosaure): [async] tries to go further and fibers
@@ -70,7 +69,7 @@ let run_with :
 let run_with_tcp clients =
   run_with
     (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 5000))
-    ~protocol:tcp_protocol ~service:tcp_service clients
+    ~service:tcp_service clients
 
 let load_file filename =
   let open Stdlib in
@@ -95,7 +94,7 @@ let run_with_tls cert key clients =
   let ctx = config cert key in
   run_with
     (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000), ctx)
-    ~protocol:tls_protocol ~service:tls_service clients
+    ~service:tls_service clients
 
 let () =
   match Array.to_list Stdlib.Sys.argv with

@@ -345,20 +345,24 @@ module type S = sig
             | _ -> assert false
         ]} *)
 
-    val register : service:('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) service
-    (** [register ~service] is the service using the implementation [service].
-       [service] must define [make] and [accept] function to be able to create
-       server-side flows.
+    val register :
+      service:('cfg, 't, 'v) impl ->
+      protocol:(_, 'v) protocol ->
+      ('cfg, 't, 'v) service
+    (** [register ~service ~protocool] is the service using the implementation [service]
+       bound with implementation of a [protocol]. [service] must define [make] and [accept]
+       function to be able to create server-side flows. 
 
          For instance:
 
         {[
-          module TCP : SERVICE with type configuration = Unix.sockaddr
-                                and type t = Unix.file_descr
-                                and type flow = Unix.file_descr
+          module TCP_service : SERVICE with type configuration = Unix.sockaddr
+                                        and type t = Unix.file_descr
+                                        and type flow = Unix.file_descr
 
+          let tcp_protocol = Conduit.register ~protocol:(module TCP_protocol)
           let tcp_service : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
-            Service.register ~service:(module TCP)
+            Conduit.Service.register ~service:(module TCP_service) ~protocol:tcp_protocol
         ]}
     *)
 
@@ -367,25 +371,49 @@ module type S = sig
     val pp_error : error Fmt.t
 
     val init :
-      'cfg -> service:('cfg, 't, 'flow) service -> ('t, [> error ]) result io
+      'cfg -> service:('cfg, 't, 'v) service -> ('t, [> error ]) result io
     (** [init cfg ~service] initialises the service with the
        configuration [cfg]. *)
 
     val accept :
-      service:('cfg, 't, 'flow) service -> 't -> ('flow, [> error ]) result io
+      service:('cfg, 't, 'v) service -> 't -> (flow, [> error ]) result io
     (** [accept service t] waits for a connection on the service [t]. The result
        is a {i flow} connected to the client. *)
 
     val close :
-      service:('cfg, 't, 'flow) service -> 't -> (unit, [> error ]) result io
+      service:('cfg, 't, 'v) service -> 't -> (unit, [> error ]) result io
     (** [close ~service t] releases the resources associated to the server [t]. *)
 
+    val pack : (_, _, 'v) service -> 'v -> flow
+    (** [pack service v] returns the abstracted value [v] as {!pack} does
+        for a given protocol {i witness} (bound with the given [service]).
+        It serves to abstract the flow created (and initialised) by the
+        service to a {!flow}.
+    
+        {[
+          let handler (flow : Conduit.flow) =
+            Conduit.send flow "Hello World!" >>= fun _ ->
+            ...
+
+          let run ~service cfg =
+            let module Service = Conduit.Service.impl service in
+            Service.init cfg >>? fun t ->
+            let rec loop t =
+              Service.accept t >>? fun flow ->
+              let flow = Conduit.Service.pack service flow in
+              async (fun () -> handler flow) ; loop t in
+            loop t
+
+          let () = run ~service:tcp_service (localhost, 8080)
+          let () = run ~service:tls_service (certs, (localhost, 8080))
+        ]} *)
+
     val impl :
-      ('cfg, 't, 'flow) service ->
+      ('cfg, 't, 'v) service ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't
-          and type flow = 'flow)
+          and type flow = 'v)
     (** [impl service] is [service]'s underlying implementation. *)
   end
 end

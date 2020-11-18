@@ -60,12 +60,11 @@ let config cert key =
 let run_with :
     type cfg service flow.
     cfg ->
-    protocol:(_, flow) Conduit_lwt.protocol ->
     service:(cfg, service, flow) Conduit_lwt.Service.service ->
     string list ->
     unit =
- fun cfg ~protocol ~service clients ->
-  let stop, server = server cfg ~protocol ~service in
+ fun cfg ~service clients ->
+  let stop, server = server cfg ~service in
   let clients = List.map (client ~resolvers) clients in
   let clients =
     Lwt.join clients >>= fun () ->
@@ -79,7 +78,7 @@ let run_with_tcp clients =
       Conduit_lwt.TCP.sockaddr = Unix.ADDR_INET (Unix.inet_addr_loopback, 4000);
       capacity = 40;
     }
-    ~protocol:Conduit_lwt.TCP.protocol ~service:Conduit_lwt.TCP.service clients
+    ~service:Conduit_lwt.TCP.service clients
 
 let run_with_tls cert key clients =
   let ctx = config cert key in
@@ -89,7 +88,7 @@ let run_with_tls cert key clients =
         capacity = 40;
       },
       ctx )
-    ~protocol:tls_protocol ~service:tls_service clients
+    ~service:tls_service clients
 
 let () =
   match Array.to_list Sys.argv with

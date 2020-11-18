@@ -22,7 +22,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   let ( >>? ) x f =
     x >>= function Ok x -> f x | Error err -> Lwt.return (Error err)
 
-  let src = Logs.Src.create "tuyau-mirage-tcpip"
+  let src = Logs.Src.create "conduit-mirage-tcpip"
 
   module Log = (val Logs.src_log src : Logs.LOG)
 
@@ -76,10 +76,15 @@ module Make (StackV4 : Mirage_stack.V4) = struct
     type nonrec endpoint = endpoint
 
     let connect { stack; keepalive; nodelay; ip; port } =
+      Log.debug (fun m ->
+          m "Start to create a connection to <%a:%d>." Ipaddr.V4.pp ip port) ;
       let tcpv4 = StackV4.tcpv4 stack in
       StackV4.TCPV4.create_connection tcpv4 ?keepalive (ip, port)
       >|= R.reword_error error
       >>? fun flow ->
+      Log.debug (fun m ->
+          let ip, port = StackV4.TCPV4.dst flow in
+          m "Connection created on <%a:%d>." Ipaddr.V4.pp ip port) ;
       let queue, _ = Ke.create ~capacity:0x1000 Bigarray.Char in
       Lwt.return (Ok { flow; nodelay; queue; closed = false })
 
@@ -269,5 +274,6 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let service = Conduit_mirage.Service.register ~service:(module Service)
+  let service =
+    Conduit_mirage.Service.register ~service:(module Service) ~protocol
 end

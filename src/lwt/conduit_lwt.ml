@@ -56,10 +56,10 @@ let io_of_flow flow =
 let ( >>? ) = Lwt_result.bind
 
 let serve :
-    type cfg service flow.
+    type cfg service v.
     ?timeout:int ->
     handler:(flow -> unit Lwt.t) ->
-    service:(cfg, service, flow) Service.service ->
+    service:(cfg, service, v) Service.service ->
     cfg ->
     unit Lwt_condition.t * (unit -> unit Lwt.t) =
  fun ?timeout ~handler ~service cfg ->
@@ -69,11 +69,12 @@ let serve :
   let main () =
     Service.init cfg ~service >>= function
     | Error err -> failwith "%a" Service.pp_error err
-    | Ok service -> (
+    | Ok t -> (
         let rec loop () =
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
-            Svc.accept service >>? fun flow -> Lwt.return_ok (`Flow flow) in
+            Svc.accept t >>? fun flow ->
+            Lwt.return_ok (`Flow (Service.pack service flow)) in
           let events =
             match timeout with
             | None -> [ stop; accept ]
@@ -87,9 +88,9 @@ let serve :
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok (`Stop | `Timeout) -> Svc.close service
+          | Ok (`Stop | `Timeout) -> Svc.close t
           | Error err0 -> (
-              Svc.close service >>= function
+              Svc.close t >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function
@@ -414,7 +415,7 @@ module TCP = struct
 
   include (val repr protocol)
 
-  let service = S.register ~service:(module Service)
+  let service = S.register ~service:(module Service) ~protocol
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

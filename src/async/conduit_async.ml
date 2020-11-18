@@ -16,10 +16,10 @@ let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 
 let serve :
-    type cfg t flow.
+    type cfg t v.
     ?timeout:int ->
     handler:(flow -> unit Async.Deferred.t) ->
-    service:(cfg, t, flow) service ->
+    service:(cfg, t, v) service ->
     cfg ->
     unit Async.Condition.t * (unit -> unit Async.Deferred.t) =
  fun ?timeout ~handler ~service cfg ->
@@ -34,7 +34,8 @@ let serve :
           let close = Async.Condition.wait stop >>| fun () -> Ok `Stop in
           let accept =
             Svc.accept t >>? fun flow ->
-            Async.(Deferred.ok (return (`Flow flow))) in
+            Async.(Deferred.ok (return (`Flow (Service.pack service flow))))
+          in
           let events =
             match timeout with
             | None -> [ close; accept ]
@@ -245,7 +246,7 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = S.register ~service:(module Service)
+  let service = S.register ~service:(module Service) ~protocol
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

@@ -24,8 +24,8 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 
 val serve :
   ?timeout:int ->
-  handler:('flow -> unit Lwt.t) ->
-  service:('cfg, 'service, 'flow) service ->
+  handler:(flow -> unit Lwt.t) ->
+  service:('cfg, 'service, 'v) service ->
   'cfg ->
   unit Lwt_condition.t * (unit -> unit Lwt.t)
 (** [serve ~handler ~service cfg] creates an usual infinite [service]

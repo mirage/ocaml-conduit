@@ -29,16 +29,15 @@ module type S = sig
 
   type flow = private ..
   (** The type for generic flows. {!PROTOCOL} implementations are extending (via
-     {!register}) this type. It allows users to extract the underlying flow
-     implementation:
+      {!register}) this type. It allows users to extract the underlying flow
+      implementation:
 
-     {[
-       Conduit.connect domain_name >>? function
-        | Conduit_lwt_unix_tcp.T Conduit.(Value (file_descr : Lwt_unix.file_descr)) -> ...
-        | Conduit_lwt_unix_tls.T Conduit.(Value (fd, (tls : Tls.Engine.state))) -> ...
-        | _ -> ... (* use flow functions for the default case *)
-     ]}
-  *)
+      {[
+        Conduit.connect domain_name >>? function
+         | Conduit_lwt_unix_tcp.T Conduit.(Value (file_descr : Lwt_unix.file_descr)) -> ...
+         | Conduit_lwt_unix_tls.T Conduit.(Value (fd, (tls : Tls.Engine.state))) -> ...
+         | _ -> ... (* use flow functions for the default case *)
+      ]} *)
 
   type error = [ `Msg of string | `Not_found ]
 
@@ -47,37 +46,38 @@ module type S = sig
   val recv :
     flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result io
   (** [recv flow input] is [Ok (`Input len)] iff [n] bytes of data has been
-     received from the flow [flow] and copied in [input]. *)
+      received from the flow [flow] and copied in [input]. *)
 
   val send : flow -> output -> (int, [> error ]) result io
   (** [send flow output] is [Ok n] iff [n] bytes of date from [output] has been
-     sent over the flow [flow]. *)
+      sent over the flow [flow]. *)
 
   val close : flow -> (unit, [> error ]) result io
   (** [close flow] closes [flow]. Subsequent calls to {!recv} will return
-     [Ok `End_of_flow]. Subsequent calls to {!send} will return an [Error]. *)
+      [Ok `End_of_flow]. Subsequent calls to {!send} will return an [Error]. *)
 
   (** {2:registration Protocol registration.} *)
 
   (** A flow is a system that allows entities to transmit {i payloads}. These
-     entities do not have to care about the underlying transport mechanism.
-     flows simply deal with routing and delivering of these payloads. That
-     abstraction allows these protocols to compose.
+      entities do not have to care about the underlying transport mechanism.
+      flows simply deal with routing and delivering of these payloads. That
+      abstraction allows these protocols to compose.
 
       For example, the Transmission Control Protocol (TCP) is representable as a
-     flow, because it is able to encapsulate some {i payloads} without
-     interpreting it. A counter-example is the Simple Mail Transfer Protocol
-     (SMTP) which needs an interpretation of its {i payloads}: tokens such as
-     [EHLO] or [QUIT] have a direct incidence over the life-cycle of the
-     connection.
+      flow, because it is able to encapsulate some {i payloads} without
+      interpreting it. A counter-example is the Simple Mail Transfer Protocol
+      (SMTP) which needs an interpretation of its {i payloads}: tokens such as
+      [EHLO] or [QUIT] have a direct incidence over the life-cycle of the
+      connection.
 
       An other protocol representable as a flow is the Transport Layer Security
-     (TLS), as it deals only with privacy and data integrity. [Conduit] is able
-     to compose flows together like [TCP ∘ TLS] to make a new flow. Higher-level
-     protocols can be built in top of these abstract flows: for instance, Secure
-     Simple Mail Transfer Protocol (SSMTP) or HyperText Transfer Protocol Secure
-     (HTTPS) can be defined on top of both TCP and TLS. Using [Conduit], these
-     can be abstracted to work over any flow implementations. *)
+      (TLS), as it deals only with privacy and data integrity. [Conduit] is able
+      to compose flows together like [TCP ∘ TLS] to make a new flow.
+      Higher-level protocols can be built in top of these abstract flows: for
+      instance, Secure Simple Mail Transfer Protocol (SSMTP) or HyperText
+      Transfer Protocol Secure (HTTPS) can be defined on top of both TCP and
+      TLS. Using [Conduit], these can be abstracted to work over any flow
+      implementations. *)
   module type FLOW =
     Sigs.FLOW
       with type input = input
@@ -97,18 +97,18 @@ module type S = sig
 
   type ('edn, 'flow) protocol
   (** The type for client protocols. ['edn] is the type for endpoint parameters.
-     ['flow] is the type for underlying flows.
+      ['flow] is the type for underlying flows.
 
       Endpoints allow users to create flows by either connecting directly to a
-     remote server or by resolving domain names (with {!connect}). *)
+      remote server or by resolving domain names (with {!connect}). *)
 
   val register : protocol:('edn, 'flow) impl -> ('edn, 'flow) protocol
   (** [register ~protocol] is the protocol using the implementation [protocol].
-     [protocol] must provide a [connect] function to allow client flows to be
-     created.
+      [protocol] must provide a [connect] function to allow client flows to be
+      created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
-     endpoints, while [Unix.file_descr] would be used for the flow transport.
+      endpoints, while [Unix.file_descr] would be used for the flow transport.
 
       {[
         module Conduit_tcp : sig
@@ -119,8 +119,8 @@ module type S = sig
       ]}
 
       Client endpoints can of course be more complex, for instance to hold TLS
-     credentials, and [Conduit] allows all these kinds of flow to be used
-     transparently:
+      credentials, and [Conduit] allows all these kinds of flow to be used
+      transparently:
 
       {[
         module Conduit_tcp_tls : sig
@@ -131,33 +131,32 @@ module type S = sig
       ]}
 
       As a protocol implementer, you must {i register} your implementation and
-     expose the {i witness} of it. Then, users will be able to use it. *)
+      expose the {i witness} of it. Then, users will be able to use it. *)
 
   (** {2 Injection and Extraction.}
 
       The goal of [Conduit] is to provide:
-      {ul
-      {- A way to manipulate a fully-abstract [flow].}
-      {- A way to manipulate a concrete and well-know [flow].}}
 
-      [Conduit] provides several mechanisms to be able to manipulate our abstract
-     type {!flow} and destruct it to a concrete value such as a [Unix.file_descr].
-     [Conduit] can assert one assumption: from a given abstracted [flow], it exists
-     one and only one {!FLOW} implementation.
+      - A way to manipulate a fully-abstract [flow].
+      - A way to manipulate a concrete and well-know [flow].
 
-      As [Conduit] determines this implementation, the user can determine the used
-     implementation when he wants to {!send} or {!recv} datas.
+      [Conduit] provides several mechanisms to be able to manipulate our
+      abstract type {!flow} and destruct it to a concrete value such as a
+      [Unix.file_descr]. [Conduit] can assert one assumption: from a given
+      abstracted [flow], it exists one and only one {!FLOW} implementation.
+
+      As [Conduit] determines this implementation, the user can determine the
+      used implementation when he wants to {!send} or {!recv} datas.
 
       So [Conduit] uses or extracts uniqely the implementation registered before
-     with {!register} and no layer can tweak or update this assertion.
+      with {!register} and no layer can tweak or update this assertion.
 
       {!repr}, {!flow}, {!impl} and {!is} can extracts in differents ways the
-     abstracted {!flow}:
-      {ul
-      {- with the {i pattern-matching}}
-      {- with {i first-class module}}
-      {- with the function {!is}}}
-  *)
+      abstracted {!flow}:
+
+      - with the {i pattern-matching}
+      - with {i first-class module}
+      - with the function {!is} *)
 
   module type REPR = sig
     type t
@@ -167,42 +166,43 @@ module type S = sig
 
   val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
   (** As a protocol implementer, you should expose the concrete type of your
-     flow (to be able users to {i destruct} {!flow}). [repr] returns a module
-     which contains extension of {!flow} from your [protocol] such as:
+      flow (to be able users to {i destruct} {!flow}). [repr] returns a module
+      which contains extension of {!flow} from your [protocol] such as:
 
       {[
         module Conduit_tcp : sig
           type t = (Unix.sockaddr, Unix.file_descr) Conduit.value
+
           type Conduit.flow += T of t
+
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
           let t = register ~protocol:(module TCP)
-          include (val (Conduit.repr t))
+
+          include (val Conduit.repr t)
         end
       ]}
 
       With this interface, users are able to {i destruct} {!flow} to your
-     concrete type:
+      concrete type:
 
       {[
         Conduit.connect domain_name >>? function
           | Conduit_tcp.T (Conduit.Value file_descr) -> ...
           | _ -> ...
-      ]}
-  *)
+      ]} *)
 
   type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
   val unpack : flow -> unpack
   (** [pack flow] projects the module implementation associated to the given
-     abstract [flow] such as:
+      abstract [flow] such as:
 
       {[
         Conduit.connect edn >>= fun flow ->
-        let Conduit.Flow (flow, (module Flow)) = Conduit.unpack flow in
+        let (Conduit.Flow (flow, (module Flow))) = Conduit.unpack flow in
         Flow.send flow "Hello World!"
-      ]}
-  *)
+      ]} *)
 
   val impl :
     ('edn, 'flow) protocol ->
@@ -211,44 +211,43 @@ module type S = sig
 
   val cast : flow -> (_, 'flow) protocol -> 'flow option
   (** [cast flow protocol] tries to {i cast} the given [flow] to the concrete
-     type described by the given [protocol].
+      type described by the given [protocol].
 
       {[
         match Conduit.is flow Conduit_tcp.t with
-        | Some (file_descr : Unix.file_descr) -> Some (Unix.getpeername file_descr)
+        | Some (file_descr : Unix.file_descr) ->
+            Some (Unix.getpeername file_descr)
         | None -> None
-      ]}
-  *)
+      ]} *)
 
   val pack : (_, 'v) protocol -> 'v -> flow
-  (** [pack protocol concrete_flow] abstracts the given [flow] into the
-     {!flow} type from a given [protocol]. It permits to use [Conduit] with a
-     concrete value created by the user.
+  (** [pack protocol concrete_flow] abstracts the given [flow] into the {!flow}
+      type from a given [protocol]. It permits to use [Conduit] with a concrete
+      value created by the user.
 
       {[
         let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
         let flow = Conduit.pack Conduit_tcp.t socket in
         Conduit.send flow "Hello World!"
-      ]}
-  *)
+      ]} *)
 
   (** {2:resolution Domain name resolvers.} *)
 
   type 'edn resolver = Endpoint.t -> 'edn option io
   (** The type for resolver functions, which resolve domain names to endpoints.
-     For instance, the DNS resolver function is:
+      For instance, the DNS resolver function is:
 
-     {[
-       let http_resolver : Unix.sockaddr resolver = function
-         | IP ip -> Some (Ipaddr_unix.to_inet_addr ip, 80)
-         | Domain domain_name -> match Unix.gethostbyname (Domain_name.to_string domain_name) with
-           | { Unix.h_addr_list; _ } ->
-             if Array.length h_addr_list > 0
-             then Some (Unix.ADDR_INET (h_addr_list.(0), 80))
-             else None
-           | exception _ -> None
-     ]}
-  *)
+      {[
+        let http_resolver : Unix.sockaddr resolver = function
+          | IP ip -> Some (Ipaddr_unix.to_inet_addr ip, 80)
+          | Domain domain_name ->
+          match Unix.gethostbyname (Domain_name.to_string domain_name) with
+          | { Unix.h_addr_list; _ } ->
+              if Array.length h_addr_list > 0
+              then Some (Unix.ADDR_INET (h_addr_list.(0), 80))
+              else None
+          | exception _ -> None
+      ]} *)
 
   type nonrec resolvers = resolvers
 
@@ -261,11 +260,11 @@ module type S = sig
     resolvers ->
     resolvers
   (** [add protocol ?priority resolver resolvers] adds a new resolver function
-     [resolver] to [resolvers].
+      [resolver] to [resolvers].
 
       When the [resolver] is able to resolve the given domain name, it will try
-     to connect to the specified client endpoint. Resolvers are iterated in
-     priority order (lower to higher).
+      to connect to the specified client endpoint. Resolvers are iterated in
+      priority order (lower to higher).
 
       {[
         let http_resolver = ...
@@ -284,9 +283,9 @@ module type S = sig
     Endpoint.t ->
     (flow, [> error ]) result io
   (** [resolve resolvers domain_name] is the flow created by connecting to the
-     domain name [domain_name], using the resolvers [resolvers]. Each resolver
-     tries to resolve the given domain-name (they are ordered by the given
-     priority). The first which connects successfully wins.
+      domain name [domain_name], using the resolvers [resolvers]. Each resolver
+      tries to resolve the given domain-name (they are ordered by the given
+      priority). The first which connects successfully wins.
 
       The resolver result is a flow connect to that winning endpoint.
 
@@ -294,7 +293,9 @@ module type S = sig
         let mirage_io = domain_name_exn "mirage.io"
 
         val resolver_on_my_private_network : Unix.sockaddr resolver
+
         val resolver_on_internet : Unix.sockaddr resolver
+
         val resolver_with_tls : (Unix.sockaddr * Tls.Config.client) resolver
 
         let resolvers =
@@ -303,14 +304,14 @@ module type S = sig
           |> add tcp ~priority:10 resolver_on_my_private_network
           |> add tcp ~priority:20 resolver_on_internet
 
-        let () = Conduit.resolve resolvers (Conduit.Endpoint.domain mirage_io) >>? function
+        let () =
+          Conduit.resolve resolvers (Conduit.Endpoint.domain mirage_io)
+          >>? function
           | TCP.T (Conduit.Value file_descr) as flow ->
-            let peer = Unix.getpeername file_descr in
-            ignore @@ Conduit.send flow ("Hello " ^ string_of_sockaddr peer)
-          | flow ->
-            ignore @@ Conduit.send flow "Hello World!"
-      ]}
-  *)
+              let peer = Unix.getpeername file_descr in
+              ignore @@ Conduit.send flow ("Hello " ^ string_of_sockaddr peer)
+          | flow -> ignore @@ Conduit.send flow "Hello World!"
+      ]} *)
 
   val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
 
@@ -327,15 +328,15 @@ module type S = sig
 
     type ('cfg, 't, 'flow) service
     (** The type for services, e.g. service-side protocols. ['cfg] is the type
-       for configuration, ['t] is the type for state states. ['flow] is the type
-       for underlying flows. *)
+        for configuration, ['t] is the type for state states. ['flow] is the
+        type for underlying flows. *)
 
     val equal :
       ('cfg0, 't0, 'flow0) service ->
       ('cfg1, 't1, 'flow1) service ->
       (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
-    (** [equal svc0 svc1 ] proves that [svc0] and [svc1] are
-       physically the same. For instance, [Conduit] asserts:
+    (** [equal svc0 svc1] proves that [svc0] and [svc1] are physically the same.
+        For instance, [Conduit] asserts:
 
         {[
           let service = Service.register ~service:(module V) ;;
@@ -349,11 +350,12 @@ module type S = sig
       service:('cfg, 't, 'v) impl ->
       protocol:(_, 'v) protocol ->
       ('cfg, 't, 'v) service
-    (** [register ~service ~protocool] is the service using the implementation [service]
-       bound with implementation of a [protocol]. [service] must define [make] and [accept]
-       function to be able to create server-side flows. 
+    (** [register ~service ~protocool] is the service using the implementation
+        [service] bound with implementation of a [protocol]. [service] must
+        define [make] and [accept] function to be able to create server-side
+        flows.
 
-         For instance:
+        For instance:
 
         {[
           module TCP_service : SERVICE with type configuration = Unix.sockaddr
@@ -363,8 +365,7 @@ module type S = sig
           let tcp_protocol = Conduit.register ~protocol:(module TCP_protocol)
           let tcp_service : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
             Conduit.Service.register ~service:(module TCP_service) ~protocol:tcp_protocol
-        ]}
-    *)
+        ]} *)
 
     type error = [ `Msg of string ]
 
@@ -372,24 +373,24 @@ module type S = sig
 
     val init :
       'cfg -> service:('cfg, 't, 'v) service -> ('t, [> error ]) result io
-    (** [init cfg ~service] initialises the service with the
-       configuration [cfg]. *)
+    (** [init cfg ~service] initialises the service with the configuration
+        [cfg]. *)
 
     val accept :
       service:('cfg, 't, 'v) service -> 't -> (flow, [> error ]) result io
     (** [accept service t] waits for a connection on the service [t]. The result
-       is a {i flow} connected to the client. *)
+        is a {i flow} connected to the client. *)
 
     val close :
       service:('cfg, 't, 'v) service -> 't -> (unit, [> error ]) result io
     (** [close ~service t] releases the resources associated to the server [t]. *)
 
     val pack : (_, _, 'v) service -> 'v -> flow
-    (** [pack service v] returns the abstracted value [v] as {!pack} does
-        for a given protocol {i witness} (bound with the given [service]).
-        It serves to abstract the flow created (and initialised) by the
-        service to a {!flow}.
-    
+    (** [pack service v] returns the abstracted value [v] as {!pack} does for a
+        given protocol {i witness} (bound with the given [service]). It serves
+        to abstract the flow created (and initialised) by the service to a
+        {!flow}.
+
         {[
           let handler (flow : Conduit.flow) =
             Conduit.send flow "Hello World!" >>= fun _ ->

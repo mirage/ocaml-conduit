@@ -8,6 +8,6 @@ include
 
 val serve :
   handler:('flow -> unit Lwt.t) ->
-  service:('cfg, 'master, 'flow) Service.service ->
+  service:('cfg, 'master, 'flow) Service.t ->
   'cfg ->
   unit Lwt_condition.t * unit Lwt.t

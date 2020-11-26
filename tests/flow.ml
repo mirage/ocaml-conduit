@@ -81,7 +81,7 @@ module Memory_flow0 = struct
     Ok ()
 end
 
-let memory0 = Conduit.register ~protocol:(module Memory_flow0)
+let memory0 = Conduit.register (module Memory_flow0)
 
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
@@ -198,7 +198,7 @@ module Memory_flow1 = struct
     Ok ()
 end
 
-let memory1 = Conduit.register ~protocol:(module Memory_flow1)
+let memory1 = Conduit.register (module Memory_flow1)
 
 let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->

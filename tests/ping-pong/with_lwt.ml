@@ -60,7 +60,7 @@ let config cert key =
 let run_with :
     type cfg service flow.
     cfg ->
-    service:(cfg, service, flow) Conduit_lwt.Service.service ->
+    service:(cfg, service, flow) Conduit_lwt.Service.t ->
     string list ->
     unit =
  fun cfg ~service clients ->

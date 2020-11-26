@@ -47,7 +47,7 @@ let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 let run_with :
     type cfg service flow.
     cfg ->
-    service:(cfg, service, flow) Conduit_async.Service.service ->
+    service:(cfg, service, flow) Conduit_async.Service.t ->
     string list ->
     unit =
  fun cfg ~service clients ->

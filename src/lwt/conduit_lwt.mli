@@ -19,7 +19,7 @@ val io_of_flow :
     these reasons, and even if {!TCP} try to the best to fit under an [Lwt_io],
     you should not use this function. *)
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 (** The type for lwt services. *)
 
 val serve :

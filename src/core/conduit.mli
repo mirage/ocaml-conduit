@@ -100,10 +100,9 @@ module type S = sig
       Endpoints allow users to create flows by either connecting directly to a
       remote server or by resolving domain names (with {!connect}). *)
 
-  val register : protocol:('edn, 'flow) impl -> ('edn, 'flow) protocol
-  (** [register ~protocol] is the protocol using the implementation [protocol].
-      [protocol] must provide a [connect] function to allow client flows to be
-      created.
+  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
+  (** [register i] is the protocol using the implementation [i]. [protocol] must
+      provide a [connect] function to allow client flows to be created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
       endpoints, while [Unix.file_descr] would be used for the flow transport.
@@ -112,7 +111,7 @@ module type S = sig
         module Conduit_tcp : sig
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let t = register ~protocol:(module TCP)
+          let t = register (module TCP)
         end
       ]}
 
@@ -124,7 +123,7 @@ module type S = sig
         module Conduit_tcp_tls : sig
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
-          let t = register ~protocol:(module TLS)
+          let t = register (module TLS)
         end
       ]}
 
@@ -175,7 +174,7 @@ module type S = sig
 
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let t = register ~protocol:(module TCP)
+          let t = register (module TCP)
 
           include (val Conduit.repr t)
         end
@@ -328,30 +327,30 @@ module type S = sig
           and type t = 't
           and type flow = 'flow)
 
-    type ('cfg, 't, 'flow) service
+    type ('cfg, 'server, 'flow) t
     (** The type for services, e.g. service-side protocols. ['cfg] is the type
-        for configuration, ['t] is the type for state states. ['flow] is the
-        type for underlying flows. *)
+        for configuration, ['server] is the type for server states. ['flow] is
+        the type for underlying flows. *)
 
     val equal :
-      ('cfg0, 't0, 'flow0) service ->
-      ('cfg1, 't1, 'flow1) service ->
+      ('cfg0, 't0, 'flow0) t ->
+      ('cfg1, 't1, 'flow1) t ->
       (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
     (** [equal svc0 svc1] proves that [svc0] and [svc1] are physically the same.
         For instance, [Conduit] asserts:
 
         {[
-          let service = Service.register ~service:(module V) ;;
+          let service = Service.register (module V) ;;
 
           let () = match Service.equal service service with
             | Some (Refl, Refl, Refl) -> ...
             | _ -> assert false
         ]} *)
 
-    val register : service:('cfg, 't, 'v) impl -> ('cfg, 't, 'v) service
-    (** [register ~service] is the service using the implementation [service].
-        [service] must define [make] and [accept] function to be able to create
-        server-side flows.
+    val register : ('cfg, 'server, 'flow) impl -> ('cfg, 'server, 'flow) t
+    (** [register i] is the service using the implementation [i]. [service] must
+        define [make] and [accept] function to be able to create server-side
+        flows.
 
         For instance:
 
@@ -360,29 +359,25 @@ module type S = sig
                                      and type t = Unix.file_descr
                                      and type flow = Unix.file_descr
 
-          let tcp : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
-            Service.register ~service:(module TCP)
+          let tcp : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) service =
+            Service.register (module TCP)
         ]} *)
 
     type error = [ `Msg of string ]
 
     val pp_error : error Fmt.t
 
-    val init :
-      'cfg -> service:('cfg, 't, 'v) service -> ('t, [> error ]) result io
-    (** [init cfg ~service] initialises the service with the configuration
-        [cfg]. *)
+    val init : 'cfg -> ('cfg, 't, 'flow) t -> ('t, [> error ]) result io
+    (** [init cfg s] initialises the service with the configuration [cfg]. *)
 
-    val accept :
-      service:('cfg, 't, 'v) service -> 't -> (flow, [> error ]) result io
-    (** [accept service t] waits for a connection on the service [t]. The result
-        is a {i flow} connected to the client. *)
+    val accept : ('cfg, 't, 'flow) t -> 't -> (flow, [> error ]) result io
+    (** [accept s t] waits for a connection on the service [t]. The result is a
+        {i flow} connected to the client. *)
 
-    val close :
-      service:('cfg, 't, 'v) service -> 't -> (unit, [> error ]) result io
-    (** [close ~service t] releases the resources associated to the server [t]. *)
+    val close : ('cfg, 't, 'flow) t -> 't -> (unit, [> error ]) result io
+    (** [close s t] releases the resources associated to the server [t]. *)
 
-    val pack : (_, _, 'v) service -> 'v -> flow
+    val pack : (_, _, 'flow) t -> 'flow -> flow
     (** [pack service v] returns the abstracted value [v] as {!pack} does for a
         given protocol {i witness} (bound with the given [service]). It serves
         to abstract the flow created (and initialised) by the service to a
@@ -393,7 +388,7 @@ module type S = sig
             Conduit.send flow "Hello World!" >>= fun _ ->
             ...
 
-          let run ~service cfg =
+          let run service cfg =
             let module Service = Conduit.Service.impl service in
             Service.init cfg >>? fun t ->
             let rec loop t =
@@ -402,12 +397,12 @@ module type S = sig
               async (fun () -> handler flow) ; loop t in
             loop t
 
-          let () = run ~service:tcp_service (localhost, 8080)
-          let () = run ~service:tls_service (certs, (localhost, 8080))
+          let () = run tcp_service (localhost, 8080)
+          let () = run tls_service (certs, (localhost, 8080))
         ]} *)
 
     val impl :
-      ('cfg, 't, 'v) service ->
+      ('cfg, 't, 'v) t ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't

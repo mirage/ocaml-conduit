@@ -6,10 +6,10 @@ module IO = struct
   let return x = Lwt.return x
 end
 
-include Conduit.Make (IO) (Cstruct) (Cstruct)
-module S = Service
+module Conduit = Conduit.Make (IO) (Cstruct) (Cstruct)
+include Conduit
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) S.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 let failwith fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
 
@@ -59,7 +59,7 @@ let serve :
     type cfg service v.
     ?timeout:int ->
     handler:(flow -> unit Lwt.t) ->
-    service:(cfg, service, v) Service.service ->
+    service:(cfg, service, v) Service.t ->
     cfg ->
     unit Lwt_condition.t * (unit -> unit Lwt.t) =
  fun ?timeout ~handler ~service cfg ->
@@ -67,7 +67,7 @@ let serve :
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
   let main () =
-    Service.init cfg ~service >>= function
+    Service.init cfg service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok t -> (
         let rec loop () =
@@ -402,11 +402,11 @@ module TCP = struct
       Lwt.return_ok ()
   end
 
-  let protocol = register ~protocol:(module Protocol)
+  let protocol = register (module Protocol)
 
   include (val repr protocol)
 
-  let service = S.register ~service:(module Service)
+  let service = Conduit.Service.register (module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

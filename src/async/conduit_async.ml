@@ -13,7 +13,7 @@ let failwith fmt = Format.kasprintf failwith fmt
 
 let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 let serve :
     type cfg t v.
@@ -27,7 +27,7 @@ let serve :
   let stop = Async.Condition.create () in
   let module Svc = (val Service.impl service) in
   let main () =
-    Service.init cfg ~service >>= function
+    Service.init cfg service >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok t -> (
         let rec loop () =
@@ -184,7 +184,7 @@ module TCP = struct
       | Error exn -> Async.return (Error (Core.Error.of_exn exn))
   end
 
-  let protocol = register ~protocol:(module Protocol)
+  let protocol = register (module Protocol)
 
   type configuration =
     | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
@@ -238,7 +238,7 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = S.register ~service:(module Service)
+  let service = S.register (module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

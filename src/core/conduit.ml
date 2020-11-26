@@ -93,7 +93,7 @@ module type S = sig
 
   type ('edn, 'flow) protocol
 
-  val register : protocol:('edn, 'flow) impl -> ('edn, 'flow) protocol
+  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
 
   module type REPR = sig
     type t
@@ -149,32 +149,29 @@ module type S = sig
           and type t = 't
           and type flow = 'flow)
 
-    type ('cfg, 't, 'flow) service
+    type ('cfg, 't, 'flow) t
 
     val equal :
-      ('cfg0, 't0, 'flow0) service ->
-      ('cfg1, 't1, 'flow1) service ->
+      ('cfg0, 't0, 'flow0) t ->
+      ('cfg1, 't1, 'flow1) t ->
       (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
 
-    val register : service:('cfg, 't, 'v) impl -> ('cfg, 't, 'v) service
+    val register : ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) t
 
     type error = [ `Msg of string ]
 
     val pp_error : error Fmt.t
 
-    val init :
-      'cfg -> service:('cfg, 't, 'v) service -> ('t, [> error ]) result io
+    val init : 'cfg -> ('cfg, 't, 'flow) t -> ('t, [> error ]) result io
 
-    val accept :
-      service:('cfg, 't, 'v) service -> 't -> (flow, [> error ]) result io
+    val accept : ('cfg, 't, 'flow) t -> 't -> (flow, [> error ]) result io
 
-    val close :
-      service:('cfg, 't, 'v) service -> 't -> (unit, [> error ]) result io
+    val close : ('cfg, 't, 'flow) t -> 't -> (unit, [> error ]) result io
 
-    val pack : (_, _, 'v) service -> 'v -> flow
+    val pack : (_, _, 'flow) t -> 'flow -> flow
 
     val impl :
-      ('cfg, 't, 'v) service ->
+      ('cfg, 't, 'v) t ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't
@@ -317,9 +314,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     flow : 'flow Flw.s;
   }
 
-  let register :
-      type edn flow. protocol:(edn, flow) impl -> (edn, flow) protocol =
-   fun ~protocol ->
+  let register : type edn flow. (edn, flow) impl -> (edn, flow) protocol =
+   fun protocol ->
     let key s = Map.Key.create s in
     let module Flow = (val protocol) in
     let keyp = key "protocol" in
@@ -519,14 +515,13 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     module Svc = E0.Make (S)
 
-    type ('cfg, 't, 'flow) service = {
+    type ('cfg, 't, 'flow) t = {
       service : ('cfg, 't, 'flow) thd Svc.s;
       flow : 'flow Flw.s;
     }
 
-    let register :
-        type cfg t flow. service:(cfg, t, flow) impl -> (cfg, t, flow) service =
-     fun ~service ->
+    let register : type cfg s flow. (cfg, s, flow) impl -> (cfg, s, flow) t =
+     fun service ->
       let key s = Map.Key.create s in
       let module Flow = (val service) in
       let keys = key "service" in
@@ -541,48 +536,45 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     let equal :
         type a b c d e f.
-        (a, b, c) service ->
-        (d, e, f) service ->
+        (a, b, c) t ->
+        (d, e, f) t ->
         ((a, d) refl * (b, e) refl * (c, f) refl) option =
      fun { service = (module A); _ } { service = (module B); _ } ->
       match A.Id with B.Id -> Some (Refl, Refl, Refl) | _ -> None
 
     let init :
-        type cfg t flow.
-        cfg -> service:(cfg, t, flow) service -> (t, [> error ]) result io =
-     fun edn ~service:{ service = (module Witness); _ } ->
+        type cfg s flow. cfg -> (cfg, s, flow) t -> (s, [> error ]) result io =
+     fun edn { service = (module Witness); _ } ->
       let (Service (_, (module Service))) = Witness.witness in
       Service.init edn >>= function
       | Ok t -> return (Ok t)
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let accept :
-        type cfg t v.
-        service:(cfg, t, v) service -> t -> (flow, [> error ]) result io =
-     fun ~service:{ service = (module Witness); flow = (module F) } t ->
+        type cfg s v. (cfg, s, v) t -> s -> (flow, [> error ]) result io =
+     fun { service = (module Witness); flow = (module F) } t ->
       let (Service (_, (module Service))) = Witness.witness in
       Service.accept t >>= function
       | Ok flow -> return (Ok (F.T flow))
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let close :
-        type cfg t flow.
-        service:(cfg, t, flow) service -> t -> (unit, [> error ]) result io =
-     fun ~service:{ service = (module Witness); _ } t ->
+        type cfg s flow. (cfg, s, flow) t -> s -> (unit, [> error ]) result io =
+     fun { service = (module Witness); _ } t ->
       let (Service (_, (module Service))) = Witness.witness in
       Service.stop t >>= function
       | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
-    let pack : type v. (_, _, v) service -> v -> flow =
+    let pack : type v. (_, _, v) t -> v -> flow =
      fun { flow = (module Flow); _ } flow -> Flow.T flow
 
     let impl :
-        type cfg t flow.
-        (cfg, t, flow) service ->
+        type cfg s flow.
+        (cfg, s, flow) t ->
         (module SERVICE
            with type configuration = cfg
-            and type t = t
+            and type t = s
             and type flow = flow) =
      fun { service = (module S); _ } ->
       let (Service (_, (module Service))) = S.witness in

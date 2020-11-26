@@ -320,7 +320,7 @@ struct
    fun protocol ->
     let module P = (val Conduit.impl protocol) in
     let module M = Protocol (P) in
-    Conduit.register ~protocol:(module M)
+    Conduit.register (module M)
 
   type 'service service_with_tls = {
     service : 'service;
@@ -352,13 +352,13 @@ struct
 
   let service_with_tls :
       type cfg t flow.
-      (cfg, t, flow) Conduit.Service.service ->
+      (cfg, t, flow) Conduit.Service.t ->
       ( cfg * Tls.Config.server,
         t service_with_tls,
         flow protocol_with_tls )
-      Conduit.Service.service =
+      Conduit.Service.t =
    fun service ->
     let module S = (val Conduit.Service.impl service) in
     let module M = Service (S) in
-    Conduit.Service.register ~service:(module M)
+    Conduit.Service.register (module M)
 end

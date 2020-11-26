@@ -76,7 +76,7 @@ let protocol_with_ssl :
  fun protocol ->
   let module Flow = (val Conduit_lwt.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt.register ~protocol:(module M)
+  Conduit_lwt.register (module M)
 
 type 't service = { service : 't; context : Ssl.context }
 
@@ -109,9 +109,9 @@ end
 
 let service_with_ssl :
     type cfg t flow.
-    (cfg, t, flow) Conduit_lwt.Service.service ->
+    (cfg, t, flow) Conduit_lwt.Service.t ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
-    (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.service =
+    (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.t =
  fun service ~file_descr ->
   let module S = (val Conduit_lwt.Service.impl service) in
   let module M = Service (struct
@@ -119,7 +119,7 @@ let service_with_ssl :
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt.Service.register ~service:(module M)
+  Conduit_lwt.Service.register (module M)
 
 module TCP = struct
   let resolve ~port ~context ?verify domain_name =

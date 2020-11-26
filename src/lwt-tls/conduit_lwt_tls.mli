@@ -25,11 +25,11 @@ val protocol_with_tls :
 type 'service service_with_tls
 
 val service_with_tls :
-  ('cfg, 't, 'flow) Service.service ->
+  ('cfg, 't, 'flow) Service.t ->
   ( 'cfg * Tls.Config.server,
     't service_with_tls,
     'flow protocol_with_tls )
-  Service.service
+  Service.t
 
 module TCP : sig
   open Conduit_lwt.TCP

@@ -25,29 +25,22 @@ let endpoint ~file_descr ~context ?verify endpoint =
 
 let pf = Format.fprintf
 
-module Protocol (Flow : Conduit_lwt.PROTOCOL) = struct
+module Flow (Flow : Conduit_lwt.FLOW) = struct
   type input = Cstruct.t
 
   type output = Cstruct.t
 
   type +'a io = 'a Lwt.t
 
-  type error = [ `Flow of Flow.error | `Verify of string ]
+  type error = [ `Error of Flow.error | `Verify of string ]
+
+  let error x = reword_error (fun e -> `Error e) x
 
   let pp_error ppf = function
-    | `Flow err -> Flow.pp_error ppf err
+    | `Error err -> Flow.pp_error ppf err
     | `Verify err -> pf ppf "%s" err
 
   type flow = Lwt_ssl.socket
-
-  type nonrec endpoint = (Flow.endpoint, Flow.flow) endpoint
-
-  let connect { context; endpoint; verify } =
-    Flow.connect endpoint >|= reword_error (fun err -> `Flow err)
-    >>? fun flow ->
-    verify context flow >>= function
-    | Ok _ as v -> Lwt.return v
-    | Error (`Verify _ as err) -> Lwt.return (Error err)
 
   let recv socket raw =
     let { Cstruct.buffer; off; len } = raw in
@@ -62,6 +55,18 @@ module Protocol (Flow : Conduit_lwt.PROTOCOL) = struct
   let close socket =
     Lwt_ssl.ssl_shutdown socket >>= fun () ->
     Lwt_ssl.close socket >>= fun () -> Lwt.return_ok ()
+end
+
+module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
+  include Flow (Protocol)
+
+  type nonrec endpoint = (Protocol.endpoint, Protocol.flow) endpoint
+
+  let connect { context; endpoint; verify } =
+    Protocol.connect endpoint >|= error >>? fun flow ->
+    verify context flow >|= function
+    | Ok _ as v -> v
+    | Error (`Verify _ as err) -> Error err
 end
 
 let protocol_with_ssl :
@@ -81,49 +86,40 @@ module Service (Service : sig
   val file_descr : flow -> Lwt_unix.file_descr
 end) =
 struct
-  type +'a io = 'a Lwt.t
+  include Flow (Service)
 
   type configuration = Ssl.context * Service.configuration
 
   type t = Service.t service
 
-  type flow = Lwt_ssl.socket
-
-  type error = [ `Service of Service.error ]
-
-  let pp_error ppf (`Service err) = Service.pp_error ppf err
-
   let init (context, edn) =
-    Service.init edn >|= reword_error (fun err -> `Service err)
-    >>? fun service -> Lwt.return_ok { service; context }
+    Service.init edn >|= error >>? fun service ->
+    Lwt.return_ok { service; context }
 
   let accept { service; context } =
-    Service.accept service >|= reword_error (fun err -> `Service err)
-    >>? fun flow ->
+    Service.accept service >|= error >>? fun flow ->
     let accept () = Lwt_ssl.ssl_accept (Service.file_descr flow) context in
     let process socket = Lwt.return_ok socket in
     let error exn =
       Lwt_unix.close (Service.file_descr flow) >>= fun () -> Lwt.fail exn in
     Lwt.try_bind accept process error
 
-  let close { service; _ } =
-    Service.close service >|= reword_error (fun err -> `Service err)
+  let stop { service; _ } = Service.stop service >|= error
 end
 
 let service_with_ssl :
-    type cfg edn t flow.
+    type cfg t flow.
     (cfg, t, flow) Conduit_lwt.Service.service ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
-    (edn, Lwt_ssl.socket) Conduit_lwt.protocol ->
     (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.service =
- fun service ~file_descr protocol ->
+ fun service ~file_descr ->
   let module S = (val Conduit_lwt.Service.impl service) in
   let module M = Service (struct
     include S
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt.Service.register ~service:(module M) ~protocol
+  Conduit_lwt.Service.register ~service:(module M)
 
 module TCP = struct
   let resolve ~port ~context ?verify domain_name =
@@ -141,8 +137,7 @@ module TCP = struct
 
   let protocol = protocol_with_ssl protocol
 
-  let service =
-    service_with_ssl service ~file_descr:Protocol.file_descr protocol
+  let service = service_with_ssl service ~file_descr:Protocol.file_descr
 
   include (val Conduit_lwt.repr protocol)
 end

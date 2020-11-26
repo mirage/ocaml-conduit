@@ -8,8 +8,6 @@ type resolvers
 val empty : resolvers
 (** [empty] is an empty {!resolvers} map. *)
 
-type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
-
 module type S = sig
   module Endpoint : module type of Endpoint
 
@@ -164,7 +162,7 @@ module type S = sig
     type flow += T of t
   end
 
-  val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
+  val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
   (** As a protocol implementer, you should expose the concrete type of your
       flow (to be able users to {i destruct} {!flow}). [repr] returns a module
       which contains extension of {!flow} from your [protocol] such as:
@@ -317,7 +315,11 @@ module type S = sig
 
   (** {2:service Server-side conduits.} *)
 
-  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
+  module type SERVICE =
+    Sigs.SERVICE
+      with type +'a io = 'a io
+       and type input = input
+       and type output = output
 
   module Service : sig
     type ('cfg, 't, 'flow) impl =
@@ -346,25 +348,20 @@ module type S = sig
             | _ -> assert false
         ]} *)
 
-    val register :
-      service:('cfg, 't, 'v) impl ->
-      protocol:(_, 'v) protocol ->
-      ('cfg, 't, 'v) service
-    (** [register ~service ~protocool] is the service using the implementation
-        [service] bound with implementation of a [protocol]. [service] must
-        define [make] and [accept] function to be able to create server-side
-        flows.
+    val register : service:('cfg, 't, 'v) impl -> ('cfg, 't, 'v) service
+    (** [register ~service] is the service using the implementation [service].
+        [service] must define [make] and [accept] function to be able to create
+        server-side flows.
 
         For instance:
 
         {[
-          module TCP_service : SERVICE with type configuration = Unix.sockaddr
-                                        and type t = Unix.file_descr
-                                        and type flow = Unix.file_descr
+          module TCP : SERVICE with type configuration = Unix.sockaddr
+                                     and type t = Unix.file_descr
+                                     and type flow = Unix.file_descr
 
-          let tcp_protocol = Conduit.register ~protocol:(module TCP_protocol)
-          let tcp_service : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
-            Conduit.Service.register ~service:(module TCP_service) ~protocol:tcp_protocol
+          let tcp : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
+            Service.register ~service:(module TCP)
         ]} *)
 
     type error = [ `Msg of string ]

@@ -9,7 +9,7 @@ module TCP = struct
 
   include (val Conduit_lwt.repr protocol)
 
-  let service = service_with_tls service protocol
+  let service = service_with_tls service
 
   let resolve ~port ~config domain_name =
     let open Lwt.Infix in

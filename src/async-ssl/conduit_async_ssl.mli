@@ -53,7 +53,6 @@ val service_with_ssl :
   ('cfg, 't, 'flow) Service.service ->
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
-  ('edn, 'flow with_ssl) protocol ->
   (context * 'cfg, context * 't, 'flow with_ssl) Service.service
 
 (** {2 Composition between Host's TCP/IP stack protocol and SSL.} *)

@@ -48,9 +48,9 @@ let serve :
           | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Ok (`Stop | `Timeout) -> Svc.stop t
           | Error err0 -> (
-              Svc.close t >>= function
+              Svc.stop t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in
         loop () >>= function
@@ -99,12 +99,16 @@ module TCP = struct
     | Inet of Socket.Address.Inet.t
     | Unix of Socket.Address.Unix.t
 
-  module Protocol = struct
+  module Flow = struct
     type input = Cstruct.t
 
     type output = Cstruct.t
 
     type +'a io = 'a Async.Deferred.t
+
+    type error = Core.Error.t
+
+    let pp_error = Core.Error.pp
 
     type flow =
       | Socket : {
@@ -114,35 +118,6 @@ module TCP = struct
           writer : Async.Writer.t;
         }
           -> flow
-
-    let address (Socket { address; _ }) =
-      match address with #Socket.Address.t as addr -> addr
-
-    let reader (Socket { reader; _ }) = reader
-
-    let writer (Socket { writer; _ }) = writer
-
-    type nonrec endpoint = endpoint =
-      | Inet of Socket.Address.Inet.t
-      | Unix of Socket.Address.Unix.t
-
-    type error = Core.Error.t
-
-    let pp_error = Core.Error.pp
-
-    let connect edn =
-      let connect = function
-        | Inet address ->
-            Tcp.connect (Tcp.Where_to_connect.of_inet_address address)
-            >>| fun (socket, reader, writer) ->
-            Socket { address; socket; reader; writer }
-        | Unix address ->
-            Tcp.connect (Tcp.Where_to_connect.of_unix_address address)
-            >>| fun (socket, reader, writer) ->
-            Socket { address; socket; reader; writer } in
-      Monitor.try_with (fun () -> connect edn) >>= function
-      | Ok _ as v -> Async.return v
-      | Error exn -> Async.return (Error (Core.Error.of_exn exn))
 
     let of_cstruct raw =
       let { Cstruct.buffer; off; len } = raw in
@@ -180,26 +155,42 @@ module TCP = struct
         Writer.close writer >>= fun () -> Async.return (Ok ()))
   end
 
+  module Protocol = struct
+    include Flow
+
+    let address (Socket { address; _ }) =
+      match address with #Socket.Address.t as addr -> addr
+
+    let reader (Socket { reader; _ }) = reader
+
+    let writer (Socket { writer; _ }) = writer
+
+    type nonrec endpoint = endpoint =
+      | Inet of Socket.Address.Inet.t
+      | Unix of Socket.Address.Unix.t
+
+    let connect edn =
+      let connect = function
+        | Inet address ->
+            Tcp.connect (Tcp.Where_to_connect.of_inet_address address)
+            >>| fun (socket, reader, writer) ->
+            Socket { address; socket; reader; writer }
+        | Unix address ->
+            Tcp.connect (Tcp.Where_to_connect.of_unix_address address)
+            >>| fun (socket, reader, writer) ->
+            Socket { address; socket; reader; writer } in
+      Monitor.try_with (fun () -> connect edn) >>= function
+      | Ok _ as v -> Async.return v
+      | Error exn -> Async.return (Error (Core.Error.of_exn exn))
+  end
+
   let protocol = register ~protocol:(module Protocol)
 
   type configuration =
     | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
 
   module Service = struct
-    type +'a io = 'a Async.Deferred.t
-
-    type flow = Protocol.flow
-
-    type error = Exn of [ `Make | `Accept ] * exn | Socket_closed
-
-    let pp_error ppf = function
-      | Exn (`Make, exn) ->
-          Format.fprintf ppf "Got an exception while making socket: %s"
-            (Printexc.to_string exn)
-      | Exn (`Accept, exn) ->
-          Format.fprintf ppf "Got an exception while accepting socket: %s"
-            (Printexc.to_string exn)
-      | Socket_closed -> Format.fprintf ppf "Socket closed"
+    include Flow
 
     type nonrec configuration = configuration
 
@@ -208,12 +199,12 @@ module TCP = struct
           ([ `Passive ], ([< Socket.Address.t ] as 'a)) Socket.t * 'a
           -> t
 
-    let close_socket_on_error ~process socket ~f =
+    let close_socket_on_error socket ~f =
       Monitor.try_with f >>| function
       | Ok v -> Ok v
-      | Error exn ->
+      | Error e ->
           Async.don't_wait_for (Unix.close (Socket.fd socket)) ;
-          Error (Exn (process, exn))
+          Error (Core.Error.of_exn e)
 
     type socket_type =
       | Socket_type :
@@ -230,7 +221,7 @@ module TCP = struct
         | `Unix _ as addr -> Socket_type (Socket.Type.unix, addr) in
       let socket = Socket.create socket_type in
       let f () = Socket.bind socket addr >>| Socket.listen ?backlog in
-      close_socket_on_error ~process:`Make socket ~f >>? fun socket ->
+      close_socket_on_error socket ~f >>? fun socket ->
       Async.return (Ok (Socket (socket, addr)))
 
     let accept (Socket (socket, _)) =
@@ -240,13 +231,14 @@ module TCP = struct
           let writer = Writer.create (Socket.fd socket) in
           let flow = Protocol.Socket { socket; reader; writer; address } in
           Async.return (Ok flow)
-      | `Socket_closed -> Async.return (Error Socket_closed)
+      | `Socket_closed ->
+          Async.return (Error (Core.Error.of_string "Socket closed"))
 
-    let close (Socket (socket, _)) =
+    let stop (Socket (socket, _)) =
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = S.register ~service:(module Service) ~protocol
+  let service = S.register ~service:(module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

@@ -6,7 +6,7 @@ module TCP = struct
 
   let protocol = protocol_with_tls protocol
 
-  let service = service_with_tls service protocol
+  let service = service_with_tls service
 
   let resolve ~port ~config domain_name =
     resolve ~port domain_name >>| function

@@ -1,14 +1,14 @@
-(** Implementation of the SSL support (according [Lwt_ssl]) with
-    [conduit-lwt].
+(** Implementation of the SSL support (according [Lwt_ssl]) with [conduit-lwt].
 
     This implementation assumes that underlying protocol used to compose with
-    SSL must deliver a [Lwt_unix.file_descr] - such as [Conduit_lwt.TCP].
-    From that, we are able to compose your protocol with [Lwt_ssl] such as:
+    SSL must deliver a [Lwt_unix.file_descr] - such as [Conduit_lwt.TCP]. From
+    that, we are able to compose your protocol with [Lwt_ssl] such as:
 
     {[
       let ssl_protocol = protocol_with_ssl TCP.protocol
-      let ssl_service = service_with_ssl TCP.service
-        ~file_descr:TCP.file_descr ssl_protocol
+
+      let ssl_service =
+        service_with_ssl TCP.service ~file_descr:TCP.file_descr ssl_protocol
     ]}
 
     Then, TCP + SSL is available as any others [conduit] protocols or services
@@ -23,7 +23,8 @@
     {b NOTE}: [verify] is called after a call to [flow] (which should do the
     [connect] call). So, nothing was exchanged between you and your peer at this
     time - even the handshake. It permits to fill the SSL socket with some
-    information such as the hostname of the peer with [Ssl.set_client_SNI_hostname]. *)
+    information such as the hostname of the peer with
+    [Ssl.set_client_SNI_hostname]. *)
 
 open Conduit_lwt
 
@@ -49,8 +50,8 @@ val endpoint :
     [Lwt_unix.file_descr] from it.
 
     [verify] is the function called just after the initialization of the
-    underlying ['flow]. It permits to request a verification such as the {i
-    hostname} with your peer. *)
+    underlying ['flow]. It permits to request a verification such as the
+    {i hostname} with your peer. *)
 
 val protocol_with_ssl :
   ('edn, 'flow) protocol -> (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
@@ -63,12 +64,9 @@ type 't service
 val service_with_ssl :
   ('cfg, 't, 'flow) Service.service ->
   file_descr:('flow -> Lwt_unix.file_descr) ->
-  ('edn, Lwt_ssl.socket) protocol ->
   (Ssl.context * 'cfg, 't service, Lwt_ssl.socket) Service.service
-(** [service_with_ssl ~key service ~file_descr ssl_protocol] returns a
-    representation of the given service with SSL. The service deliver an SSL
-    flow which must be described by a [Lwt_ssl.socket Witness.protocol] (eg.
-    {!protocol_with_ssl}).
+(** [service_with_ssl ~key service ~file_descr] returns a representation of the
+    given service with SSL.
 
     [file_descr] is used to extract from the given ['flow] delivered by our
     service a [Lwt_unix.file_descr] needed to create a [Lwt_ssl.socket]. *)
@@ -96,10 +94,5 @@ module TCP : sig
     ?verify:verify ->
     (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
 
-  type t =
-    ( (Lwt_unix.sockaddr, Conduit_lwt.TCP.Protocol.flow) endpoint,
-      Lwt_ssl.socket )
-    Conduit.value
-
-  type Conduit_lwt.flow += T of t
+  type Conduit_lwt.flow += T of Lwt_ssl.socket
 end

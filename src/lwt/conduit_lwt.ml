@@ -88,9 +88,9 @@ let serve :
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Ok (`Stop | `Timeout) -> Svc.stop t
           | Error err0 -> (
-              Svc.close t >>= function
+              Svc.stop t >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function
@@ -108,14 +108,33 @@ module TCP = struct
     | Unix.ADDR_INET (inet_addr, port) ->
         pf ppf "<%s:%d>" (Unix.string_of_inet_addr inet_addr) port
 
-  module Protocol = struct
+  type error =
+    [ `Closed_by_peer
+    | `Address_already_in_use of Unix.sockaddr
+    | `Cannot_assign_requested_address of Unix.sockaddr
+    | `Address_family_not_supported_by_protocol of Unix.sockaddr
+    | `Operation_already_in_progress
+    | `Bad_address
+    | `Network_is_unreachable
+    | `Connection_timed_out
+    | `Connection_refused
+    | `Transport_endpoint_is_not_connected
+    | `Address_is_protected of Unix.sockaddr
+    | `Operation_not_permitted of Unix.sockaddr
+    | `Address_is_not_valid of Unix.sockaddr
+    | `Too_many_symbolic_links of Unix.sockaddr
+    | `Name_too_long of Unix.sockaddr
+    | `Operation_not_supported
+    | `Limit_reached
+    | `Protocol_error
+    | `Firewall_rules_forbid_connection ]
+
+  module Flow = struct
     type input = Cstruct.t
 
     type output = Cstruct.t
 
     type +'a io = 'a Lwt.t
-
-    type endpoint = Lwt_unix.sockaddr
 
     type flow = {
       socket : Lwt_unix.file_descr;
@@ -124,82 +143,39 @@ module TCP = struct
       mutable closed : bool;
     }
 
-    let peer { sockaddr; _ } = sockaddr
-
-    let sock { socket; _ } = Lwt_unix.getsockname socket
-
-    let file_descr { socket; _ } = socket
-
-    type error =
-      [ `Closed_by_peer
-      | `Operation_not_permitted
-      | `Address_already_in_use of Unix.sockaddr
-      | `Cannot_assign_requested_address of Unix.sockaddr
-      | `Address_family_not_supported_by_protocol of Unix.sockaddr
-      | `Operation_already_in_progress
-      | `Bad_address
-      | `Network_is_unreachable
-      | `Connection_timed_out
-      | `Connection_refused
-      | `Transport_endpoint_is_not_connected ]
+    type nonrec error = error
 
     let pp_error ppf = function
-      | `Closed_by_peer -> pf ppf "Connection closed by peer"
-      | `Operation_not_permitted -> pf ppf "Operation not permitted"
+      | `Address_is_protected sockaddr ->
+          pf ppf "Address %a is protected" pp_sockaddr sockaddr
+      | `Operation_not_permitted sockaddr ->
+          pf ppf "Operation on %a is not permitted" pp_sockaddr sockaddr
       | `Address_already_in_use sockaddr ->
           pf ppf "Address %a already in use" pp_sockaddr sockaddr
+      | `Address_is_not_valid sockaddr ->
+          pf ppf "Address %a is not valid" pp_sockaddr sockaddr
       | `Cannot_assign_requested_address sockaddr ->
           pf ppf "Cannot assign request address %a" pp_sockaddr sockaddr
+      | `Bad_address -> pf ppf "Bad address"
+      | `Too_many_symbolic_links sockaddr ->
+          pf ppf "Too many symbolic links on %a" pp_sockaddr sockaddr
+      | `Name_too_long sockaddr ->
+          pf ppf "Name %a too long" pp_sockaddr sockaddr
+      | `Operation_not_supported -> pf ppf "Operation not supported"
+      | `Limit_reached -> pf ppf "Limit of file-descriptors reached"
+      | `Protocol_error -> pf ppf "Protocol error"
+      | `Firewall_rules_forbid_connection ->
+          pf ppf "Firewill rules forbid connection"
+      | `Closed_by_peer -> pf ppf "Connection closed by peer"
       | `Address_family_not_supported_by_protocol sockaddr ->
           pf ppf "Address family %a not supported by protocol" pp_sockaddr
             sockaddr
       | `Operation_already_in_progress -> pf ppf "Operation already in progress"
-      | `Bad_address -> pf ppf "Bad address"
       | `Network_is_unreachable -> pf ppf "Network is unreachable"
       | `Connection_timed_out -> pf ppf "Connection timed out"
       | `Connection_refused -> pf ppf "Connection refused"
       | `Transport_endpoint_is_not_connected ->
           pf ppf "Transport endpoint is not connected"
-
-    let io_buffer_size = 65536
-
-    let connect sockaddr =
-      let socket =
-        Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
-      in
-      let linger = Bytes.create io_buffer_size in
-      let rec go () =
-        let process () =
-          Lwt_unix.connect socket sockaddr >>= fun () ->
-          Lwt.return_ok { socket; sockaddr; linger; closed = false } in
-        Lwt.catch process @@ function
-        | Unix.(Unix_error ((EACCES | EPERM), _, _)) ->
-            Lwt.return_error `Operation_not_permitted
-        | Unix.(Unix_error (EADDRINUSE, _, _)) ->
-            Lwt.return_error (`Address_already_in_use sockaddr)
-        | Unix.(Unix_error (EADDRNOTAVAIL, _, _)) ->
-            Lwt.return_error (`Cannot_assign_requested_address sockaddr)
-        | Unix.(Unix_error (EAFNOSUPPORT, _, _)) ->
-            Lwt.return_error
-              (`Address_family_not_supported_by_protocol sockaddr)
-        | Unix.(Unix_error (EALREADY, _, _)) ->
-            Lwt.return_error `Operation_already_in_progress
-        | Unix.(Unix_error (EFAULT, _, _)) -> Lwt.return_error `Bad_address
-        | Unix.(Unix_error (ENETUNREACH, _, _)) ->
-            Lwt.return_error `Network_is_unreachable
-        | Unix.(Unix_error (ETIMEDOUT, _, _)) ->
-            Lwt.return_error `Connection_timed_out
-        | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> go ()
-        | Unix.(Unix_error (EINTR, _, _)) -> go ()
-        | Unix.(Unix_error (ECONNREFUSED, _, _)) ->
-            Lwt.return_error `Connection_refused
-        | exn -> Lwt.fail exn
-        (* | EPROTOTYPE: impossible *)
-        (* | EISCONN: impossible *)
-        (* | ENOTSOCK: impossible *)
-        (* | EBADF: impossible *)
-        (* | EINPROGRESS: TODO *) in
-      go ()
 
     (* XXX(dinosaure): [recv] wants to fill [raw] as much as possible until
        it has reached [`End_of_file]. *)
@@ -249,7 +225,7 @@ module TCP = struct
        the process and return how many byte(s) we sended.
 
        Try to send into a closed socket is an error. *)
-    let rec send ({ socket; closed; _ } as t) raw =
+    let rec send ({ socket; closed; _ } as t) raw : (_, error) result io =
       if closed
       then Lwt.return_error `Closed_by_peer
       else
@@ -268,7 +244,8 @@ module TCP = struct
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> send t raw
         | Unix.(Unix_error (EINTR, _, _)) -> send t raw
         | Unix.(Unix_error (EACCES, _, _)) ->
-            Lwt.return_error `Operation_not_permitted
+            let sockaddr = Lwt_unix.getsockname socket in
+            Lwt.return_error (`Operation_not_permitted sockaddr)
         | Unix.(Unix_error (ECONNRESET, _, _)) ->
             Lwt_unix.shutdown t.socket Unix.SHUTDOWN_ALL ;
             t.closed <- true ;
@@ -301,10 +278,62 @@ module TCP = struct
       | exn -> Lwt.fail exn
   end
 
+  module Protocol = struct
+    include Flow
+
+    type endpoint = Lwt_unix.sockaddr
+
+    let peer { sockaddr; _ } = sockaddr
+
+    let sock { socket; _ } = Lwt_unix.getsockname socket
+
+    let file_descr { socket; _ } = socket
+
+    let io_buffer_size = 65536
+
+    let connect sockaddr : (_, error) result io =
+      let socket =
+        Lwt_unix.socket (Unix.domain_of_sockaddr sockaddr) Unix.SOCK_STREAM 0
+      in
+      let linger = Bytes.create io_buffer_size in
+      let rec go () =
+        let process () =
+          Lwt_unix.connect socket sockaddr >>= fun () ->
+          Lwt.return_ok { socket; sockaddr; linger; closed = false } in
+        Lwt.catch process @@ function
+        | Unix.(Unix_error ((EACCES | EPERM), _, _)) ->
+            Lwt.return_error (`Operation_not_permitted sockaddr)
+        | Unix.(Unix_error (EADDRINUSE, _, _)) ->
+            Lwt.return_error (`Address_already_in_use sockaddr)
+        | Unix.(Unix_error (EADDRNOTAVAIL, _, _)) ->
+            Lwt.return_error (`Cannot_assign_requested_address sockaddr)
+        | Unix.(Unix_error (EAFNOSUPPORT, _, _)) ->
+            Lwt.return_error
+              (`Address_family_not_supported_by_protocol sockaddr)
+        | Unix.(Unix_error (EALREADY, _, _)) ->
+            Lwt.return_error `Operation_already_in_progress
+        | Unix.(Unix_error (EFAULT, _, _)) -> Lwt.return_error `Bad_address
+        | Unix.(Unix_error (ENETUNREACH, _, _)) ->
+            Lwt.return_error `Network_is_unreachable
+        | Unix.(Unix_error (ETIMEDOUT, _, _)) ->
+            Lwt.return_error `Connection_timed_out
+        | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> go ()
+        | Unix.(Unix_error (EINTR, _, _)) -> go ()
+        | Unix.(Unix_error (ECONNREFUSED, _, _)) ->
+            Lwt.return_error `Connection_refused
+        | exn -> Lwt.fail exn
+        (* | EPROTOTYPE: impossible *)
+        (* | EISCONN: impossible *)
+        (* | ENOTSOCK: impossible *)
+        (* | EBADF: impossible *)
+        (* | EINPROGRESS: TODO *) in
+      go ()
+  end
+
   type configuration = { sockaddr : Lwt_unix.sockaddr; capacity : int }
 
   module Service = struct
-    type +'a io = 'a Lwt.t
+    include Flow
 
     type nonrec configuration = configuration = {
       sockaddr : Lwt_unix.sockaddr;
@@ -312,44 +341,6 @@ module TCP = struct
     }
 
     type t = Lwt_unix.file_descr
-
-    type flow = Protocol.flow
-
-    type error =
-      [ `Address_is_protected of Unix.sockaddr
-      | `Operation_not_permitted of Unix.sockaddr
-      | `Address_already_in_use of Unix.sockaddr
-      | `Address_is_not_valid of Unix.sockaddr
-      | `Cannot_assign_requested_address of Unix.sockaddr
-      | `Bad_address
-      | `Too_many_symbolic_links of Unix.sockaddr
-      | `Name_too_long of Unix.sockaddr
-      | `Operation_not_supported
-      | `Limit_reached
-      | `Protocol_error
-      | `Firewall_rules_forbid_connection ]
-
-    let pp_error ppf = function
-      | `Address_is_protected sockaddr ->
-          pf ppf "Address %a is protected" pp_sockaddr sockaddr
-      | `Operation_not_permitted sockaddr ->
-          pf ppf "Operation on %a is not permitted" pp_sockaddr sockaddr
-      | `Address_already_in_use sockaddr ->
-          pf ppf "Address %a already in use" pp_sockaddr sockaddr
-      | `Address_is_not_valid sockaddr ->
-          pf ppf "Address %a is not valid" pp_sockaddr sockaddr
-      | `Cannot_assign_requested_address sockaddr ->
-          pf ppf "Cannot assign request address %a" pp_sockaddr sockaddr
-      | `Bad_address -> pf ppf "Bad address"
-      | `Too_many_symbolic_links sockaddr ->
-          pf ppf "Too many symbolic links on %a" pp_sockaddr sockaddr
-      | `Name_too_long sockaddr ->
-          pf ppf "Name %a too long" pp_sockaddr sockaddr
-      | `Operation_not_supported -> pf ppf "Operation not supported"
-      | `Limit_reached -> pf ppf "Limit of file-descriptors reached"
-      | `Protocol_error -> pf ppf "Protocol error"
-      | `Firewall_rules_forbid_connection ->
-          pf ppf "Firewill rules forbid connection"
 
     let is_addr_inet = function
       | Unix.ADDR_INET _ -> true
@@ -405,7 +396,7 @@ module TCP = struct
           Lwt.return_error `Firewall_rules_forbid_connection
       | exn -> Lwt.fail exn
 
-    let close _service =
+    let stop _service =
       (* XXX(dinosaure): it seems that on MacOS, try to close the [master]
          socket raises an error. *)
       Lwt.return_ok ()
@@ -415,7 +406,7 @@ module TCP = struct
 
   include (val repr protocol)
 
-  let service = S.register ~service:(module Service) ~protocol
+  let service = S.register ~service:(module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

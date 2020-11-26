@@ -2,8 +2,8 @@
     [conduit-lwt].
 
     This implementation is a {i specialization} of [conduit-tls] with
-    [conduit-lwt]. Underlying protocol or service can be anything into the
-    scope of [conduit-lwt].
+    [conduit-lwt]. Underlying protocol or service can be anything into the scope
+    of [conduit-lwt].
 
     For more details about behaviours, you should look into [conduit-tls]. *)
 
@@ -26,7 +26,6 @@ type 'service service_with_tls
 
 val service_with_tls :
   ('cfg, 't, 'flow) Service.service ->
-  ('edn, 'flow protocol_with_tls) protocol ->
   ( 'cfg * Tls.Config.server,
     't service_with_tls,
     'flow protocol_with_tls )
@@ -40,12 +39,7 @@ module TCP : sig
       Protocol.flow protocol_with_tls )
     protocol
 
-  type t =
-    ( Lwt_unix.sockaddr * Tls.Config.client,
-      Protocol.flow protocol_with_tls )
-    Conduit.value
-
-  type Conduit_lwt.flow += T of t
+  type Conduit_lwt.flow += T of Protocol.flow protocol_with_tls
 
   val service :
     ( configuration * Tls.Config.server,

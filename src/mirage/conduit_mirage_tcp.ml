@@ -37,22 +37,25 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
   type nonrec endpoint = (StackV4.t, Ipaddr.V4.t) endpoint
 
-  module Protocol = struct
+  type error =
+    | Input_too_large
+    | TCP_error of StackV4.TCPV4.error
+    | Write_error of StackV4.TCPV4.write_error
+    | Exn of exn
+    (* XXX(dinosaure): it appears that [Tcpip_stack_socket] can raise
+       exception. We should handle them and consider our fd ressource
+       as close. *)
+    | Closed_by_peer
+    | Connection_aborted
+
+  module Flow = struct
     type input = Conduit_mirage.input
 
     type output = Conduit_mirage.output
 
     type +'a io = 'a Conduit_mirage.io
 
-    type error =
-      | Input_too_large
-      | TCP_error of StackV4.TCPV4.error
-      | Write_error of StackV4.TCPV4.write_error
-      | Exn of exn
-      (* XXX(dinosaure): it appears that [Tcpip_stack_socket] can raise
-         exception. We should handle them and consider our fd ressource
-         as close. *)
-      | Closed_by_peer
+    type nonrec error = error
 
     let pp_error ppf = function
       | Input_too_large -> Fmt.string ppf "Input too large"
@@ -60,6 +63,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
       | Write_error err -> StackV4.TCPV4.pp_write_error ppf err
       | Exn exn -> Fmt.pf ppf "Exception: %s" (Printexc.to_string exn)
       | Closed_by_peer -> Fmt.pf ppf "Closed by peer"
+      | Connection_aborted -> Fmt.string ppf "Connection aborted"
 
     let error : StackV4.TCPV4.error -> error = fun err -> TCP_error err
 
@@ -73,21 +77,6 @@ module Make (StackV4 : Mirage_stack.V4) = struct
       mutable closed : bool;
     }
 
-    type nonrec endpoint = endpoint
-
-    let connect { stack; keepalive; nodelay; ip; port } =
-      Log.debug (fun m ->
-          m "Start to create a connection to <%a:%d>." Ipaddr.V4.pp ip port) ;
-      let tcpv4 = StackV4.tcpv4 stack in
-      StackV4.TCPV4.create_connection tcpv4 ?keepalive (ip, port)
-      >|= R.reword_error error
-      >>? fun flow ->
-      Log.debug (fun m ->
-          let ip, port = StackV4.TCPV4.dst flow in
-          m "Connection created on <%a:%d>." Ipaddr.V4.pp ip port) ;
-      let queue, _ = Ke.create ~capacity:0x1000 Bigarray.Char in
-      Lwt.return (Ok { flow; nodelay; queue; closed = false })
-
     let length = Cstruct.len
 
     let blit src src_off dst dst_off len =
@@ -100,9 +89,11 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           if not t.closed
           then (
             Log.debug (fun m -> m "<- Read the TCP flow.")
-            (* XXX(dinosaure): with [Tcpip_stack_socket], [read] can raise [Lwt.Canceled]
-               if the ressource take a time (a [Timeout] is returned by [select]). To prevent
-               that, we decide to protect [StackV4.TCPV4.read] with [Lwt.no_cancel]. *) ;
+            (* XXX(dinosaure): with [Tcpip_stack_socket], [read] can
+               raise [Lwt.Canceled] if the ressource take a time (a
+               [Timeout] is returned by [select]). To prevent that, we
+               decide to protect [StackV4.TCPV4.read] with
+               [Lwt.no_cancel]. *) ;
             Lwt.catch
               (fun () ->
                 Lwt.no_cancel (StackV4.TCPV4.read t.flow)
@@ -120,9 +111,10 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                 Lwt.return (Ok `End_of_flow)
             | Ok (`Data buf) ->
                 Log.debug (fun m -> m "<- Got %d byte(s)." (Cstruct.len buf)) ;
-                (* XXX(dinosaure): [telnet] send '\004' (End Of Transmission) to ask
-                   the service to close the connection. [mirage-tcpip] does not handle
-                   this _opcode_ so we handle it in this place. *)
+                (* XXX(dinosaure): [telnet] send '\004' (End Of
+                   Transmission) to ask the service to close the
+                   connection. [mirage-tcpip] does not handle this
+                   _opcode_ so we handle it in this place. *)
                 if Cstruct.len buf = 1 && Cstruct.get_char buf 0 = '\004'
                 then (
                   StackV4.TCPV4.close t.flow >>= fun () ->
@@ -152,12 +144,15 @@ module Make (StackV4 : Mirage_stack.V4) = struct
                 Log.debug (fun m -> m "<- Shift %d bytes." consumed) ;
                 Ke.N.shift_exn t.queue consumed ;
 
-                (* XXX(dinosaure): it's important to return what we can instead
-                   to fill [raw] as much as we can. Into details, it's pretty close to the TLS
-                   stack when [Tls.Engine.state] expects to terminate the handshake as soon as
-                   possible. In this case, pending payload can serve the end of the handshake
-                   and ask then to [Tls.Engine.state] to send something and go to the next
-                   action (according the underlying server logic) when the client side, at
+                (* XXX(dinosaure): it's important to return what we
+                   can instead to fill [raw] as much as we can. Into
+                   details, it's pretty close to the TLS stack when
+                   [Tls.Engine.state] expects to terminate the
+                   handshake as soon as possible. In this case,
+                   pending payload can serve the end of the handshake
+                   and ask then to [Tls.Engine.state] to send
+                   something and go to the next action (according the
+                   underlying server logic) when the client side, at
                    this step expect to read some bytes. *)
                 Lwt.return (Ok (`Input consumed))
             | x :: r ->
@@ -204,6 +199,25 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         StackV4.TCPV4.close t.flow >>= fun () -> Lwt.return_ok ())
   end
 
+  module Protocol = struct
+    include Flow
+
+    type nonrec endpoint = endpoint
+
+    let connect { stack; keepalive; nodelay; ip; port } =
+      Log.debug (fun m ->
+          m "Start to create a connection to <%a:%d>." Ipaddr.V4.pp ip port) ;
+      let tcpv4 = StackV4.tcpv4 stack in
+      StackV4.TCPV4.create_connection tcpv4 ?keepalive (ip, port)
+      >|= R.reword_error error
+      >>? fun flow ->
+      Log.debug (fun m ->
+          let ip, port = StackV4.TCPV4.dst flow in
+          m "Connection created on <%a:%d>." Ipaddr.V4.pp ip port) ;
+      let queue, _ = Ke.create ~capacity:0x1000 Bigarray.Char in
+      Lwt.return (Ok { flow; nodelay; queue; closed = false })
+  end
+
   let protocol = Conduit_mirage.register ~protocol:(module Protocol)
 
   type nonrec configuration = StackV4.t configuration
@@ -218,15 +232,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   }
 
   module Service = struct
-    type +'a io = 'a Conduit_mirage.io
-
-    type error = Connection_aborted
-
-    let pp_error : error Fmt.t =
-     fun ppf -> function
-      | Connection_aborted -> Fmt.string ppf "Connection aborted"
-
-    type flow = protocol
+    include Flow
 
     type nonrec configuration = configuration
 
@@ -267,13 +273,12 @@ module Make (StackV4 : Mirage_stack.V4) = struct
             Lwt_mutex.unlock mutex ;
             accept t)
 
-    let close ({ stack; mutex; _ } as t) =
+    let stop ({ stack; mutex; _ } as t) =
       Lwt_mutex.with_lock mutex (fun () ->
           StackV4.disconnect stack >>= fun () ->
           t.closed <- true ;
           Lwt.return (Ok ()))
   end
 
-  let service =
-    Conduit_mirage.Service.register ~service:(module Service) ~protocol
+  let service = Conduit_mirage.Service.register ~service:(module Service)
 end

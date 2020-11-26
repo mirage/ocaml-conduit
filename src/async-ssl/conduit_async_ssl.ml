@@ -77,6 +77,43 @@ type 'flow with_ssl = {
   underlying : 'flow;
 }
 
+module Flow (Flow : Conduit_async.FLOW) = struct
+  type input = Cstruct.t
+
+  type output = Cstruct.t
+
+  type +'a io = 'a Async.Deferred.t
+
+  type flow = Flow.flow with_ssl
+
+  type error = Core of Core.Error.t | Err of Flow.error | Missing_crt_or_key
+
+  let pp_error ppf = function
+    | Core err -> Core.Error.pp ppf err
+    | Err err -> Flow.pp_error ppf err
+    | Missing_crt_or_key ->
+        Format.fprintf ppf "Missing crt of key values into context"
+
+  let error x = reword_error (fun e -> Err e) x
+
+  let of_cstruct raw =
+    let { Cstruct.buffer; off; len } = raw in
+    Core.Bigsubstring.create ~pos:off ~len buffer
+
+  let recv { reader; _ } raw =
+    Reader.read_bigsubstring reader (of_cstruct raw) >>= function
+    | `Eof -> Async.return (Ok `End_of_flow)
+    | `Ok n -> Async.return (Ok (`Input n))
+
+  let send { writer; _ } raw =
+    Writer.write_bigsubstring writer (of_cstruct raw) ;
+    Async.return (Ok (Cstruct.len raw))
+
+  let close { reader; writer; _ } =
+    Reader.close reader >>= fun () ->
+    Writer.close writer >>= fun () -> Async.return (Ok ())
+end
+
 module Protocol (Protocol : sig
   include Conduit_async.PROTOCOL
 
@@ -85,23 +122,11 @@ module Protocol (Protocol : sig
   val writer : flow -> Writer.t
 end) =
 struct
-  type input = Cstruct.t
-
-  type output = Cstruct.t
-
-  type +'a io = 'a Async.Deferred.t
+  include Flow (Protocol)
 
   type endpoint = context * Protocol.endpoint
 
-  type flow = Protocol.flow with_ssl
-
   exception Invalid_connection
-
-  type error = Core of Core.Error.t | Protocol of Protocol.error
-
-  let pp_error ppf = function
-    | Core err -> Core.Error.pp ppf err
-    | Protocol err -> Protocol.pp_error ppf err
 
   let connect
       ( {
@@ -119,8 +144,7 @@ struct
           verify;
         },
         edn ) =
-    Protocol.connect edn >>| reword_error (fun err -> Protocol err)
-    >>? fun underlying ->
+    Protocol.connect edn >>| error >>? fun underlying ->
     let reader = Protocol.reader underlying in
     let writer = Protocol.writer underlying in
 
@@ -154,23 +178,6 @@ struct
         | false ->
             teardown_connection reader writer >>= fun () ->
             Async.return (Error (Core (Core.Error.of_exn Invalid_connection))))
-
-  let of_cstruct raw =
-    let { Cstruct.buffer; off; len } = raw in
-    Core.Bigsubstring.create ~pos:off ~len buffer
-
-  let recv { reader; _ } raw =
-    Reader.read_bigsubstring reader (of_cstruct raw) >>= function
-    | `Eof -> Async.return (Ok `End_of_flow)
-    | `Ok n -> Async.return (Ok (`Input n))
-
-  let send { writer; _ } raw =
-    Writer.write_bigsubstring writer (of_cstruct raw) ;
-    Async.return (Ok (Cstruct.len raw))
-
-  let close { reader; writer; _ } =
-    Reader.close reader >>= fun () ->
-    Writer.close writer >>= fun () -> Async.return (Ok ())
 end
 
 let protocol_with_ssl :
@@ -191,7 +198,7 @@ let protocol_with_ssl :
   let module M = Protocol (Flow) in
   Conduit_async.register ~protocol:(module M)
 
-module Make (Service : sig
+module Service (Service : sig
   include Conduit_async.SERVICE
 
   val reader : flow -> Reader.t
@@ -199,18 +206,9 @@ module Make (Service : sig
   val writer : flow -> Writer.t
 end) =
 struct
+  include Flow (Service)
+
   type +'a io = 'a Async.Deferred.t
-
-  type error =
-    | Service of Service.error
-    | Core of Core.Error.t
-    | Missing_crt_or_key
-
-  let pp_error ppf = function
-    | Service err -> Service.pp_error ppf err
-    | Core err -> Core.Error.pp ppf err
-    | Missing_crt_or_key ->
-        Format.fprintf ppf "Missing crt of key values into context"
 
   type configuration = context * Service.configuration
 
@@ -225,7 +223,7 @@ struct
     | _ -> (
         Service.init edn >>= function
         | Ok t -> Async.return (Ok (context, t))
-        | Error err -> Async.return (Error (Service err)))
+        | Error err -> Async.return (Error (Err err)))
 
   let accept
       ( {
@@ -242,7 +240,7 @@ struct
         },
         service ) =
     Service.accept service >>= function
-    | Error err -> Async.return (Error (Service err))
+    | Error err -> Async.return (Error (Err err))
     | Ok flow -> (
         let crt_file, key_file =
           match (crt_file, key_file) with
@@ -271,30 +269,26 @@ struct
                 connection = conn;
               })
 
-  let close (_, t) =
-    Service.close t >>= function
-    | Error err -> Async.return (Error (Service err))
-    | Ok _ as v -> Async.return v
+  let stop (_, t) =
+    Service.stop t >>| function Error err -> Error (Err err) | Ok _ as v -> v
 end
 
 let service_with_ssl :
-    type cfg edn t flow.
+    type cfg t flow.
     (cfg, t, flow) Conduit_async.Service.service ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
-    (edn, flow with_ssl) Conduit_async.protocol ->
     (context * cfg, context * t, flow with_ssl) Conduit_async.Service.service =
- fun service ~reader ~writer protocol ->
-  let module S = (val Conduit_async.Service.impl service) in
-  let module Service = struct
-    include S
+ fun service ~reader ~writer ->
+  let module S = struct
+    include (val Conduit_async.Service.impl service)
 
     let reader = reader
 
     let writer = writer
   end in
-  let module M = Make (Service) in
-  Conduit_async.Service.register ~service:(module M) ~protocol
+  let module M = Service (S) in
+  Conduit_async.Service.register ~service:(module M)
 
 module TCP = struct
   open Conduit_async.TCP
@@ -304,7 +298,6 @@ module TCP = struct
 
   let service =
     service_with_ssl service ~reader:Protocol.reader ~writer:Protocol.writer
-      protocol
 
   let resolve ~port ~context domain_name =
     resolve ~port domain_name >>| function

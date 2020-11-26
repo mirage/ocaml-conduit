@@ -46,31 +46,29 @@ struct
     | Some tls -> Tls.Engine.handshake_in_progress tls
     | None -> false
 
-  module Make_protocol (Flow : Conduit.PROTOCOL) = struct
+  module Flow (Flow : Conduit.FLOW) = struct
     type input = Conduit.input
 
     type output = Conduit.output
 
     type +'a io = 'a Conduit.io
 
-    type endpoint = Flow.endpoint * Tls.Config.client
-
     type flow = Flow.flow protocol_with_tls
 
     type error =
       [ `Msg of string
-      | `Flow of Flow.error
+      | `Error of Flow.error
       | `TLS of Tls.Engine.failure
       | `Closed_by_peer ]
 
     let pp_error : error Fmt.t =
      fun ppf -> function
       | `Msg err -> Fmt.string ppf err
-      | `Flow err -> Flow.pp_error ppf err
+      | `Error err -> Flow.pp_error ppf err
       | `TLS failure -> Fmt.string ppf (Tls.Engine.string_of_failure failure)
       | `Closed_by_peer -> Fmt.string ppf "Closed by peer"
 
-    let flow_error err = `Flow err
+    let error x = reword_error (fun e -> `Error e) x
 
     let flow_wr_opt :
         Flow.flow -> Cstruct.t option -> (unit, error) result Conduit.io =
@@ -79,7 +77,7 @@ struct
       | Some raw ->
           Log.debug (fun m -> m "~> Send %d bytes" (Cstruct.len raw)) ;
           let rec go raw =
-            Flow.send flow raw >>| reword_error flow_error >>? fun len ->
+            Flow.send flow raw >>| error >>? fun len ->
             let raw = Cstruct.shift raw len in
             if Cstruct.len raw = 0 then return (Ok ()) else go raw in
           go raw
@@ -153,7 +151,7 @@ struct
                 then (
                   Log.debug (fun m ->
                       m "<- Read the TLS flow (while handshake).") ;
-                  Flow.recv flow raw0 >>| reword_error flow_error >>? function
+                  Flow.recv flow raw0 >>| error >>? function
                   | `End_of_flow ->
                       Log.warn (fun m ->
                           m
@@ -192,20 +190,6 @@ struct
       in
       go tls raw0
 
-    let connect (edn, config) =
-      Flow.connect edn >>| reword_error flow_error >>? fun flow ->
-      let raw = Cstruct.create 0x1000 in
-      let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
-      let tls, buf = Tls.Engine.client config in
-      let rec go buf =
-        Log.debug (fun m -> m "Start handshake.") ;
-        Flow.send flow buf >>| reword_error flow_error >>? fun len ->
-        let buf = Cstruct.shift buf len in
-        if Cstruct.len buf = 0
-        then return (Ok { tls = Some tls; closed = false; raw; queue; flow })
-        else go buf in
-      go buf
-
     let blit src src_off dst dst_off len =
       let dst = Cstruct.to_bigarray dst in
       Bigstringaf.blit src ~src_off dst ~dst_off ~len
@@ -221,7 +205,7 @@ struct
               return (Ok `End_of_flow)
           | Some tls -> (
               Log.debug (fun m -> m "<- Read the TLS flow.") ;
-              Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
+              Flow.recv t.flow t.raw >>| error >>? function
               | `End_of_flow ->
                   Log.warn (fun m ->
                       m "<- Connection closed by underlying protocol.") ;
@@ -266,7 +250,7 @@ struct
               return (Ok (Cstruct.lenv raw))
           | None -> return (Ok (Cstruct.lenv raw)))
       | Some tls -> (
-          Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
+          Flow.recv t.flow t.raw >>| error >>? function
           | `End_of_flow ->
               Log.debug (fun m -> m "[-] Underlying flow already closed.") ;
               t.tls <- None ;
@@ -294,7 +278,7 @@ struct
         | None ->
             Log.debug (fun m ->
                 m "!- TLS state already reached EOF, close the connection.") ;
-            Flow.close t.flow >>| reword_error flow_error >>= fun res ->
+            Flow.close t.flow >>| error >>= fun res ->
             Log.debug (fun m -> m "!- Underlying flow properly closed.") ;
             t.closed <- true ;
             return res
@@ -303,10 +287,30 @@ struct
             t.tls <- None ;
             Log.debug (fun m -> m "!- Close the connection.") ;
             flow_wr_opt t.flow (Some resp) >>? fun () ->
-            Flow.close t.flow >>| reword_error flow_error >>? fun () ->
+            Flow.close t.flow >>| error >>? fun () ->
             t.closed <- true ;
             return (Ok ()))
       else return (Ok ())
+  end
+
+  module Protocol (Protocol : Conduit.PROTOCOL) = struct
+    include Flow (Protocol)
+
+    type endpoint = Protocol.endpoint * Tls.Config.client
+
+    let connect (edn, config) =
+      Protocol.connect edn >>| error >>? fun flow ->
+      let raw = Cstruct.create 0x1000 in
+      let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
+      let tls, buf = Tls.Engine.client config in
+      let rec go buf =
+        Log.debug (fun m -> m "Start handshake.") ;
+        Protocol.send flow buf >>| error >>? fun len ->
+        let buf = Cstruct.shift buf len in
+        if Cstruct.len buf = 0
+        then return (Ok { tls = Some tls; closed = false; raw; queue; flow })
+        else go buf in
+      go buf
   end
 
   let protocol_with_tls :
@@ -314,8 +318,8 @@ struct
       (edn, flow) Conduit.protocol ->
       (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
    fun protocol ->
-    let module Protocol = (val Conduit.impl protocol) in
-    let module M = Make_protocol (Protocol) in
+    let module P = (val Conduit.impl protocol) in
+    let module M = Protocol (P) in
     Conduit.register ~protocol:(module M)
 
   type 'service service_with_tls = {
@@ -323,49 +327,38 @@ struct
     tls : Tls.Config.server;
   }
 
-  module Make_server (Service : Conduit.SERVICE) = struct
-    type +'a io = 'a Conduit.io
+  module Service (Service : Conduit.SERVICE) = struct
+    include Flow (Service)
 
     type configuration = Service.configuration * Tls.Config.server
-
-    type flow = Service.flow protocol_with_tls
-
-    type error = [ `Service of Service.error ]
-
-    let pp_error : error Fmt.t =
-     fun ppf -> function `Service err -> Service.pp_error ppf err
-
-    let service_error err = `Service err
 
     type t = Service.t service_with_tls
 
     let init (edn, tls) =
-      Service.init edn >>| reword_error service_error >>? fun service ->
+      Service.init edn >>| error >>? fun service ->
       Log.info (fun m -> m "Start a TLS service.") ;
       return (Ok { service; tls })
 
     let accept { service; tls } =
-      Service.accept service >>| reword_error service_error >>? fun flow ->
+      Service.accept service >>| error >>? fun flow ->
       let tls = Tls.Engine.server tls in
       let raw = Cstruct.create 0x1000 in
       let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
       Log.info (fun m -> m "A TLS flow is coming.") ;
       return (Ok { tls = Some tls; closed = false; raw; queue; flow })
 
-    let close { service; _ } =
-      Service.close service >>| reword_error service_error
+    let stop { service; _ } = Service.stop service >>| error
   end
 
   let service_with_tls :
-      type cfg edn t flow.
+      type cfg t flow.
       (cfg, t, flow) Conduit.Service.service ->
-      (edn, flow protocol_with_tls) Conduit.protocol ->
       ( cfg * Tls.Config.server,
         t service_with_tls,
         flow protocol_with_tls )
       Conduit.Service.service =
-   fun service protocol ->
-    let module Service = (val Conduit.Service.impl service) in
-    let module M = Make_server (Service) in
-    Conduit.Service.register ~service:(module M) ~protocol
+   fun service ->
+    let module S = (val Conduit.Service.impl service) in
+    let module M = Service (S) in
+    Conduit.Service.register ~service:(module M)
 end

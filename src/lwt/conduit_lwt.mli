@@ -25,7 +25,7 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 val serve :
   ?timeout:int ->
   handler:(flow -> unit Lwt.t) ->
-  service:('cfg, 'service, 'v) service ->
+  service:('cfg, 'service, 'flow) service ->
   'cfg ->
   unit Lwt_condition.t * (unit -> unit Lwt.t)
 (** [serve ~handler ~service cfg] creates an usual infinite [service] loop from

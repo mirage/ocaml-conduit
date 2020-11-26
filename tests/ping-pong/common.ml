@@ -6,7 +6,7 @@ module type S = sig
   val serve :
     ?timeout:int ->
     handler:(flow -> unit io) ->
-    service:('cfg, 'master, 'v) Service.t ->
+    service:('cfg, 'master, 'flow) Service.t ->
     'cfg ->
     unit condition * (unit -> unit io)
 end

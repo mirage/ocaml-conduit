@@ -16,7 +16,7 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 val serve :
   ?timeout:int ->
   handler:(flow -> unit Async.Deferred.t) ->
-  service:('cfg, 't, 'v) service ->
+  service:('cfg, 't, 'flow) service ->
   'cfg ->
   unit Async.Condition.t * (unit -> unit Async.Deferred.t)
 (** [serve ~handler ~service cfg] creates an usual infinite [service] loop from

@@ -101,7 +101,7 @@ module type S = sig
     type flow += T of t
   end
 
-  val repr : ('edn, 'v) protocol -> (module REPR with type t = 'v)
+  val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
 
   type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
@@ -113,7 +113,7 @@ module type S = sig
 
   val cast : flow -> ('edn, 'flow) protocol -> 'flow option
 
-  val pack : ('edn, 'v) protocol -> 'v -> flow
+  val pack : ('edn, 'flow) protocol -> 'flow -> flow
 
   type 'edn resolver = Endpoint.t -> 'edn option io
 
@@ -130,7 +130,7 @@ module type S = sig
 
   val resolve :
     resolvers ->
-    ?protocol:('edn, 'v) protocol ->
+    ?protocol:('edn, 'flow) protocol ->
     Endpoint.t ->
     (flow, [> error ]) result io
 
@@ -171,11 +171,11 @@ module type S = sig
     val pack : (_, _, 'flow) t -> 'flow -> flow
 
     val impl :
-      ('cfg, 't, 'v) t ->
+      ('cfg, 't, 'flow) t ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't
-          and type flow = 'v)
+          and type flow = 'flow)
   end
 end
 

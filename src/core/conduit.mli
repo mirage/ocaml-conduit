@@ -217,7 +217,7 @@ module type S = sig
         | None -> None
       ]} *)
 
-  val pack : (_, 'v) protocol -> 'v -> flow
+  val pack : (_, 'flow) protocol -> 'flow -> flow
   (** [pack protocol concrete_flow] abstracts the given [flow] into the {!flow}
       type from a given [protocol]. It permits to use [Conduit] with a concrete
       value created by the user.
@@ -276,7 +276,7 @@ module type S = sig
 
   val resolve :
     resolvers ->
-    ?protocol:('edn, 'v) protocol ->
+    ?protocol:('edn, 'flow) protocol ->
     Endpoint.t ->
     (flow, [> error ]) result io
   (** [resolve resolvers domain_name] is the flow created by connecting to the
@@ -402,11 +402,11 @@ module type S = sig
         ]} *)
 
     val impl :
-      ('cfg, 't, 'v) t ->
+      ('cfg, 't, 'flow) t ->
       (module SERVICE
          with type configuration = 'cfg
           and type t = 't
-          and type flow = 'v)
+          and type flow = 'flow)
     (** [impl service] is [service]'s underlying implementation. *)
   end
 end

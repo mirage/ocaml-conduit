@@ -332,6 +332,8 @@ module type S = sig
         for configuration, ['server] is the type for server states. ['flow] is
         the type for underlying flows. *)
 
+    val repr : ('cfg, 't, 'flow) t -> (module REPR with type t = 'flow)
+
     val equal :
       ('cfg0, 't0, 'flow0) t ->
       ('cfg1, 't1, 'flow1) t ->

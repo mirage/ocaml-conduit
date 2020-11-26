@@ -151,6 +151,8 @@ module type S = sig
 
     type ('cfg, 't, 'flow) t
 
+    val repr : ('cfg, 't, 'flow) t -> (module REPR with type t = 'flow)
+
     val equal :
       ('cfg0, 't0, 'flow0) t ->
       ('cfg1, 't1, 'flow1) t ->
@@ -315,13 +317,12 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   }
 
   let register : type edn flow. (edn, flow) impl -> (edn, flow) protocol =
-   fun protocol ->
+   fun (module Protocol) ->
     let key s = Map.Key.create s in
-    let module Flow = (val protocol) in
     let keyp = key "protocol" in
     let keyf = key "flow" in
-    let flow = Flw.inj (Flow (keyf, (module Flow))) in
-    let protocol = Ptr.inj (Protocol (keyp, keyf, protocol)) in
+    let flow = Flw.inj (Flow (keyf, (module Protocol))) in
+    let protocol = Ptr.inj (Protocol (keyp, keyf, (module Protocol))) in
     { flow; protocol }
 
   module type REPR = sig
@@ -533,6 +534,16 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     type error = [ `Msg of string ]
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
+
+    let repr :
+        type cfg s flow. (cfg, s, flow) t -> (module REPR with type t = flow) =
+     fun { flow = (module Witness); _ } ->
+      let module M = struct
+        include Witness
+
+        type t = x
+      end in
+      (module M)
 
     let equal :
         type a b c d e f.

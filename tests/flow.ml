@@ -247,6 +247,55 @@ let test_output_strings =
     (String.concat "" (List.map Bytes.to_string bufs))
     "Hello World!"
 
+(* XXX(dinosaure): ensure type equality. *)
+
+module Dummy_flow = struct
+  type input = bytes
+  type output = string
+  type +'a io = 'a
+
+  type flow = Flow
+
+  type error = |
+
+  let pp_error : Format.formatter -> error -> unit = fun _ -> function _ -> .
+
+  let recv Flow _ = Ok `End_of_flow
+  let send Flow _ = Ok 0
+  let close Flow = Ok ()
+end
+
+module Dummy_protocol = struct
+  include Dummy_flow
+
+  type endpoint = |
+
+  let connect : endpoint -> (flow, error) result io = function _ -> .
+end
+
+module Dummy_service = struct
+  include Dummy_flow
+
+  type configuration = Configuration
+  type t = T
+
+  let init Configuration = Ok T
+  let accept T = Ok Flow
+  let stop T = Ok ()
+end
+
+let dummy_protocol = Conduit.register (module Dummy_protocol)
+let dummy_service = Conduit.Service.register (module Dummy_service)
+
+let test_type_equality =
+  Alcotest.test_case "type equality" `Quick @@ fun () ->
+  let[@warning "-8"] Ok t = Conduit.Service.init Dummy_service.Configuration dummy_service in
+  let module Repr = (val Conduit.repr dummy_protocol) in
+  match Conduit.Service.accept dummy_service t with
+  | Ok (Repr.T Dummy_flow.Flow) ->
+    Alcotest.(check pass) "type equality" () ()
+  | _ -> Alcotest.failf "Invalid flow value"
+
 let tests =
   [
     ( "flow",
@@ -255,5 +304,6 @@ let tests =
         test_output_string;
         test_input_strings;
         test_output_strings;
+        test_type_equality;
       ] );
   ]

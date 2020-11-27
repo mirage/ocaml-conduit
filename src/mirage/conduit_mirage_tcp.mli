@@ -16,14 +16,16 @@ type 'stack configuration = {
 }
 
 module Make (StackV4 : Mirage_stack.V4) : sig
-  type protocol
+  type flow
+
+  val flow : flow t
 
   val protocol :
-    ((StackV4.t, Ipaddr.V4.t) endpoint, protocol) Conduit_mirage.protocol
+    ((StackV4.t, Ipaddr.V4.t) endpoint, flow) Conduit_mirage.protocol
 
-  val dst : protocol -> Ipaddr.V4.t * int
+  val dst : flow -> Ipaddr.V4.t * int
 
   type service
 
-  val service : (StackV4.t configuration, service, protocol) Service.t
+  val service : (StackV4.t configuration, service, flow) Service.t
 end

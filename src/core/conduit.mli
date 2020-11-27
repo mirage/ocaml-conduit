@@ -37,7 +37,15 @@ module type S = sig
          | _ -> ... (* use flow functions for the default case *)
       ]} *)
 
+  (** [REPR] allows users to extract concrete representation of {!flow} values. *)
+  module type REPR = sig
+    type t
+
+    type flow += T of t
+  end
+
   type error = [ `Msg of string | `Not_found ]
+  (** The type for flow errors. *)
 
   val pp_error : error Fmt.t
 
@@ -82,6 +90,26 @@ module type S = sig
        and type output = output
        and type +'a io = 'a io
 
+  module Flow : sig
+    type 'flow impl = (module FLOW with type flow = 'flow)
+    (** The type to represent {!FLOW} module implementations. *)
+
+    type 'flow t
+    (** The type for flows. *)
+
+    val register : 'flow impl -> 'flow t
+    (** [register i] is a represenation of the flow implementation [i]. *)
+
+    val impl : 'flow t -> 'flow impl
+    (** [impl t] is the module implementation associated to [t]. *)
+
+    val repr : 'flow t -> (module REPR with type t = 'flow)
+    (** [repr t] is the concrete represenation of the [t]. *)
+  end
+
+  type 'a t = 'a Flow.t
+  (** The type for flow representations. *)
+
   (** A protocol is a {!FLOW} plus [connect]. *)
   module type PROTOCOL =
     Sigs.PROTOCOL
@@ -91,7 +119,18 @@ module type S = sig
 
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-  (** The type to represent a module {!PROTOCOL}. *)
+  (** The type to represent {!PROTOCOL} module implementations.
+
+      For instance, on Unix, [Conduit] clients will use [Unix.file_descr] as
+      flow transport:
+
+      {[
+        module Conduit_fd : sig
+          val t : Unix.file_descr Flow.t
+        end = struct
+          let t = Flow.register (module Unix_fd)
+        end
+      ]} *)
 
   type ('edn, 'flow) protocol
   (** The type for client protocols. ['edn] is the type for endpoint parameters.
@@ -100,9 +139,10 @@ module type S = sig
       Endpoints allow users to create flows by either connecting directly to a
       remote server or by resolving domain names (with {!connect}). *)
 
-  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
-  (** [register i] is the protocol using the implementation [i]. [protocol] must
-      provide a [connect] function to allow client flows to be created.
+  val register : 'flow t -> ('edn, 'flow) impl -> ('edn, 'flow) protocol
+  (** [register f i] is the protocol using the flow representation [f] and
+      protocol implementation [i]. [i] must provide a [connect] function to
+      allow client flows to be created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
       endpoints, while [Unix.file_descr] would be used for the flow transport.
@@ -111,7 +151,7 @@ module type S = sig
         module Conduit_tcp : sig
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let t = register (module TCP)
+          let t = register Conduit_fd.t (module TCP)
         end
       ]}
 
@@ -123,12 +163,42 @@ module type S = sig
         module Conduit_tcp_tls : sig
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
-          let t = register (module TLS)
+          let t = register Conduit_fd.t (module TLS)
         end
       ]}
 
       As a protocol implementer, you must {i register} your implementation and
       expose the {i witness} of it. Then, users will be able to use it. *)
+
+  val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
+  (** Same as {!Flow.repr} but for protocols.
+
+      It allows a protocol implementers to expose the concrete type of flows and
+      let users to {i destruct} {!flow}. [repr] returns a module which contains
+      extension of {!flow} from your [protocol] such as:
+
+      {[
+        module Conduit_tcp : sig
+          type t = (Unix.sockaddr, Unix.file_descr) Conduit.value
+
+          type Conduit.flow += T of t
+
+          val t : (Unix.sockaddr, Unix.file_descr) protocol
+        end = struct
+          let t = register Conduit_fd.t (module TCP)
+
+          include (val Conduit.repr t)
+        end
+      ]}
+
+      With this interface, users are able to {i destruct} {!flow} to your
+      concrete type:
+
+      {[
+        Conduit.connect domain_name >>? function
+          | Conduit_tcp.T (Conduit.Value file_descr) -> ...
+          | _ -> ...
+      ]} *)
 
   (** {2 Injection and Extraction.}
 
@@ -151,43 +221,9 @@ module type S = sig
       {!repr}, {!flow}, {!impl} and {!is} can extracts in differents ways the
       abstracted {!flow}:
 
-      - with the {i pattern-matching}
+      - with {i pattern-matching}
       - with {i first-class module}
       - with the function {!is} *)
-
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
-
-  val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
-  (** As a protocol implementer, you should expose the concrete type of your
-      flow (to be able users to {i destruct} {!flow}). [repr] returns a module
-      which contains extension of {!flow} from your [protocol] such as:
-
-      {[
-        module Conduit_tcp : sig
-          type t = (Unix.sockaddr, Unix.file_descr) Conduit.value
-
-          type Conduit.flow += T of t
-
-          val t : (Unix.sockaddr, Unix.file_descr) protocol
-        end = struct
-          let t = register (module TCP)
-
-          include (val Conduit.repr t)
-        end
-      ]}
-
-      With this interface, users are able to {i destruct} {!flow} to your
-      concrete type:
-
-      {[
-        Conduit.connect domain_name >>? function
-          | Conduit_tcp.T (Conduit.Value file_descr) -> ...
-          | _ -> ...
-      ]} *)
 
   type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
 
@@ -342,17 +378,18 @@ module type S = sig
         For instance, [Conduit] asserts:
 
         {[
-          let service = Service.register (module V) ;;
+          let service = Service.register flow (module V) ;;
 
           let () = match Service.equal service service with
             | Some (Refl, Refl, Refl) -> ...
             | _ -> assert false
         ]} *)
 
-    val register : ('cfg, 'server, 'flow) impl -> ('cfg, 'server, 'flow) t
-    (** [register i] is the service using the implementation [i]. [service] must
-        define [make] and [accept] function to be able to create server-side
-        flows.
+    val register :
+      'flow Flow.t -> ('cfg, 'server, 'flow) impl -> ('cfg, 'server, 'flow) t
+    (** [register f i] is the service using the implementation [i] using the
+        flow representation [f]. [service] must define [make] and [accept]
+        function to be able to create server-side flows.
 
         For instance:
 
@@ -362,7 +399,7 @@ module type S = sig
                                      and type flow = Unix.file_descr
 
           let tcp : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) service =
-            Service.register (module TCP)
+            Service.register Conduit_fd.t (module TCP)
         ]} *)
 
     type error = [ `Msg of string ]

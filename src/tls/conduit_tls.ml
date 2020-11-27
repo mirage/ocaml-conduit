@@ -31,7 +31,7 @@ struct
 
   module Log = (val Logs.src_log src : Logs.LOG)
 
-  type 'flow protocol_with_tls = {
+  type 'flow with_tls = {
     mutable tls : Tls.Engine.state option;
     mutable closed : bool;
     raw : Cstruct.t;
@@ -53,7 +53,7 @@ struct
 
     type +'a io = 'a Conduit.io
 
-    type flow = Flow.flow protocol_with_tls
+    type flow = Flow.flow with_tls
 
     type error =
       [ `Msg of string
@@ -313,14 +313,21 @@ struct
       go buf
   end
 
+  let flow_with_tls : type flow. flow Conduit.t -> flow with_tls Conduit.t =
+   fun flow ->
+    let module F = (val Conduit.Flow.impl flow) in
+    let module M = Flow (F) in
+    Conduit.Flow.register (module M)
+
   let protocol_with_tls :
       type edn flow.
+      flow with_tls Conduit.t ->
       (edn, flow) Conduit.protocol ->
-      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
-   fun protocol ->
+      (edn * Tls.Config.client, flow with_tls) Conduit.protocol =
+   fun flow protocol ->
     let module P = (val Conduit.impl protocol) in
     let module M = Protocol (P) in
-    Conduit.register (module M)
+    Conduit.register flow (module M)
 
   type 'service service_with_tls = {
     service : 'service;
@@ -352,13 +359,14 @@ struct
 
   let service_with_tls :
       type cfg t flow.
+      flow with_tls Conduit.t ->
       (cfg, t, flow) Conduit.Service.t ->
       ( cfg * Tls.Config.server,
         t service_with_tls,
-        flow protocol_with_tls )
+        flow with_tls )
       Conduit.Service.t =
-   fun service ->
+   fun flow service ->
     let module S = (val Conduit.Service.impl service) in
     let module M = Service (S) in
-    Conduit.Service.register (module M)
+    Conduit.Service.register flow (module M)
 end

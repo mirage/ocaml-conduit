@@ -25,20 +25,16 @@ let endpoint ~file_descr ~context ?verify endpoint =
 
 let pf = Format.fprintf
 
-module Flow (Flow : Conduit_lwt.FLOW) = struct
+module Flow = struct
   type input = Cstruct.t
 
   type output = Cstruct.t
 
   type +'a io = 'a Lwt.t
 
-  type error = [ `Error of Flow.error | `Verify of string ]
+  type error = |
 
-  let error x = reword_error (fun e -> `Error e) x
-
-  let pp_error ppf = function
-    | `Error err -> Flow.pp_error ppf err
-    | `Verify err -> pf ppf "%s" err
+  let pp_error _ _ = ()
 
   type flow = Lwt_ssl.socket
 
@@ -58,9 +54,23 @@ module Flow (Flow : Conduit_lwt.FLOW) = struct
 end
 
 module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
-  include Flow (Protocol)
+  include Flow
+
+  type error = [ `Error of Protocol.error | `Verify of string ]
+
+  let pp_error ppf = function
+    | `Error err -> Flow.pp_error ppf err
+    | `Verify err -> pf ppf "%s" err
+
+  let error x = reword_error (fun e -> `Error e) x
 
   type nonrec endpoint = (Protocol.endpoint, Protocol.flow) endpoint
+
+  let recv x y = recv x y >|= error
+
+  let send x y = send x y >|= error
+
+  let close x = close x >|= error
 
   let connect { context; endpoint; verify } =
     Protocol.connect endpoint >|= error >>? fun flow ->
@@ -69,6 +79,8 @@ module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
     | Error (`Verify _ as err) -> Error err
 end
 
+let flow = Conduit_lwt.Flow.register (module Flow)
+
 let protocol_with_ssl :
     type edn flow.
     (edn, flow) Conduit_lwt.protocol ->
@@ -76,7 +88,7 @@ let protocol_with_ssl :
  fun protocol ->
   let module Flow = (val Conduit_lwt.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt.register (module M)
+  Conduit_lwt.register flow (module M)
 
 type 't service = { service : 't; context : Ssl.context }
 
@@ -86,7 +98,21 @@ module Service (Service : sig
   val file_descr : flow -> Lwt_unix.file_descr
 end) =
 struct
-  include Flow (Service)
+  include Flow
+
+  type error = [ `Error of Service.error ]
+
+  let pp_error ppf = function
+    | `Error err -> Flow.pp_error ppf err
+    | `Verify err -> pf ppf "%s" err
+
+  let error x = reword_error (fun e -> `Error e) x
+
+  let recv x y = recv x y >|= error
+
+  let send x y = send x y >|= error
+
+  let close x = close x >|= error
 
   type configuration = Ssl.context * Service.configuration
 
@@ -119,7 +145,7 @@ let service_with_ssl :
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt.Service.register (module M)
+  Conduit_lwt.Service.register flow (module M)
 
 module TCP = struct
   let resolve ~port ~context ?verify domain_name =

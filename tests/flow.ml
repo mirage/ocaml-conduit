@@ -81,7 +81,9 @@ module Memory_flow0 = struct
     Ok ()
 end
 
-let memory0 = Conduit.register (module Memory_flow0)
+let flow0 = Conduit.Flow.register (module Memory_flow0)
+
+let memory0 = Conduit.register flow0 (module Memory_flow0)
 
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
@@ -198,7 +200,9 @@ module Memory_flow1 = struct
     Ok ()
 end
 
-let memory1 = Conduit.register (module Memory_flow1)
+let flow1 = Conduit.Flow.register (module Memory_flow1)
+
+let memory1 = Conduit.register flow1 (module Memory_flow1)
 
 let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->
@@ -283,7 +287,9 @@ module Dummy_service = struct
   let stop T = Ok ()
 end
 
-let dummy_service = Conduit.Service.register (module Dummy_service)
+let dummy_flow = Conduit.Flow.register (module Dummy_flow)
+
+let dummy_service = Conduit.Service.register dummy_flow (module Dummy_service)
 
 let test_type_equality =
   Alcotest.test_case "type equality" `Quick @@ fun () ->

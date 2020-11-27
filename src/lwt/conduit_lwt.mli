@@ -106,6 +106,8 @@ module TCP : sig
        and type flow = Protocol.flow
        and type error = error
 
+  val flow : Protocol.flow t
+
   val protocol : (Lwt_unix.sockaddr, Protocol.flow) protocol
 
   type flow += T of Protocol.flow

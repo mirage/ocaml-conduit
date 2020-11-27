@@ -114,6 +114,13 @@ module Flow (Flow : Conduit_async.FLOW) = struct
     Writer.close writer >>= fun () -> Async.return (Ok ())
 end
 
+let flow_with_ssl :
+    type flow. flow Conduit_async.t -> flow with_ssl Conduit_async.t =
+ fun flow ->
+  let module F = (val Conduit_async.Flow.impl flow) in
+  let module M = Flow (F) in
+  Conduit_async.Flow.register (module M)
+
 module Protocol (Protocol : sig
   include Conduit_async.PROTOCOL
 
@@ -184,9 +191,10 @@ let protocol_with_ssl :
     type edn flow.
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
+    flow with_ssl Conduit_async.t ->
     (edn, flow) Conduit_async.protocol ->
     (context * edn, flow with_ssl) Conduit_async.protocol =
- fun ~reader ~writer protocol ->
+ fun ~reader ~writer flow protocol ->
   let module F = (val Conduit_async.impl protocol) in
   let module Flow = struct
     include F
@@ -196,7 +204,7 @@ let protocol_with_ssl :
     let writer = writer
   end in
   let module M = Protocol (Flow) in
-  Conduit_async.register (module M)
+  Conduit_async.register flow (module M)
 
 module Service (Service : sig
   include Conduit_async.SERVICE
@@ -275,11 +283,12 @@ end
 
 let service_with_ssl :
     type cfg t flow.
+    flow with_ssl Conduit_async.t ->
     (cfg, t, flow) Conduit_async.Service.t ->
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
     (context * cfg, context * t, flow with_ssl) Conduit_async.Service.t =
- fun service ~reader ~writer ->
+ fun flow service ~reader ~writer ->
   let module S = struct
     include (val Conduit_async.Service.impl service)
 
@@ -288,16 +297,20 @@ let service_with_ssl :
     let writer = writer
   end in
   let module M = Service (S) in
-  Conduit_async.Service.register (module M)
+  Conduit_async.Service.register flow (module M)
 
 module TCP = struct
   open Conduit_async.TCP
 
+  let flow = flow_with_ssl flow
+
   let protocol =
-    protocol_with_ssl ~reader:Protocol.reader ~writer:Protocol.writer protocol
+    protocol_with_ssl ~reader:Protocol.reader ~writer:Protocol.writer flow
+      protocol
 
   let service =
-    service_with_ssl service ~reader:Protocol.reader ~writer:Protocol.writer
+    service_with_ssl flow service ~reader:Protocol.reader
+      ~writer:Protocol.writer
 
   let resolve ~port ~context domain_name =
     resolve ~port domain_name >>| function

@@ -26,7 +26,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
 
   module Log = (val Logs.src_log src : Logs.LOG)
 
-  type protocol = {
+  type flow = {
     flow : StackV4.TCPV4.flow;
     nodelay : bool;
     queue : (char, Bigarray.int8_unsigned_elt) Ke.t;
@@ -70,7 +70,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
     let write_error : StackV4.TCPV4.write_error -> error =
      fun err -> Write_error err
 
-    type flow = protocol = {
+    type nonrec flow = flow = {
       flow : StackV4.TCPV4.flow;
       nodelay : bool;
       queue : (char, Bigarray.int8_unsigned_elt) Ke.t;
@@ -218,7 +218,9 @@ module Make (StackV4 : Mirage_stack.V4) = struct
       Lwt.return (Ok { flow; nodelay; queue; closed = false })
   end
 
-  let protocol = Conduit_mirage.register (module Protocol)
+  let flow = Conduit_mirage.Flow.register (module Flow)
+
+  let protocol = Conduit_mirage.register flow (module Protocol)
 
   type nonrec configuration = StackV4.t configuration
 
@@ -280,5 +282,5 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let service = Conduit_mirage.Service.register (module Service)
+  let service = Conduit_mirage.Service.register flow (module Service)
 end

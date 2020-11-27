@@ -48,26 +48,30 @@ module Make
                  with type input = Cstruct.t
                   and type output = Cstruct.t
                   and type +'a io = 'a IO.t) : sig
-  type 'flow protocol_with_tls
+  type 'flow with_tls
 
-  val underlying : 'flow protocol_with_tls -> 'flow
+  val underlying : 'flow with_tls -> 'flow
   (** [underlying flow] returns underlying flow used by the TLS flow. *)
 
-  val handshake : 'flow protocol_with_tls -> bool
+  val handshake : 'flow with_tls -> bool
   (** [handshake flow] returns [true] if {i handshake} is processing. *)
 
+  val flow_with_tls : 'flow Conduit.t -> 'flow with_tls Conduit.t
+
   val protocol_with_tls :
+    'flow with_tls Conduit.t ->
     ('edn, 'flow) Conduit.protocol ->
-    ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol
+    ('edn * Tls.Config.client, 'flow with_tls) Conduit.protocol
   (** From a given protocol [witness], it creates a new {i witness} of the
       protocol layered with TLS. *)
 
   type 'service service_with_tls
 
   val service_with_tls :
+    'flow with_tls Conduit.t ->
     ('cfg, 't, 'flow) Conduit.Service.t ->
     ( 'cfg * Tls.Config.server,
       't service_with_tls,
-      'flow protocol_with_tls )
+      'flow with_tls )
     Conduit.Service.t
 end

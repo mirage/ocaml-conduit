@@ -402,11 +402,13 @@ module TCP = struct
       Lwt.return_ok ()
   end
 
-  let protocol = register (module Protocol)
+  let flow = Conduit.Flow.register (module Flow)
+
+  let protocol = register flow (module Protocol)
 
   include (val repr protocol)
 
-  let service = Conduit.Service.register (module Service)
+  let service = Conduit.Service.register flow (module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

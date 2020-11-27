@@ -82,6 +82,26 @@ module type S = sig
        and type output = output
        and type +'a io = 'a io
 
+  module type REPR = sig
+    type t
+
+    type flow += T of t
+  end
+
+  module Flow : sig
+    type 'flow impl = (module FLOW with type flow = 'flow)
+
+    type 'flow t
+
+    val register : 'flow impl -> 'flow t
+
+    val impl : 'flow t -> 'flow impl
+
+    val repr : 'flow t -> (module REPR with type t = 'flow)
+  end
+
+  type 'a t = 'a Flow.t
+
   module type PROTOCOL =
     Sigs.PROTOCOL
       with type input = input
@@ -93,13 +113,7 @@ module type S = sig
 
   type ('edn, 'flow) protocol
 
-  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
-
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
+  val register : 'flow t -> ('edn, 'flow) impl -> ('edn, 'flow) protocol
 
   val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
 
@@ -158,7 +172,7 @@ module type S = sig
       ('cfg1, 't1, 'flow1) t ->
       (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
 
-    val register : ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) t
+    val register : 'flow Flow.t -> ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) t
 
     type error = [ `Msg of string ]
 
@@ -269,6 +283,39 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   type flow = Flw.t = private ..
 
+  module type REPR = sig
+    type t
+
+    type flow += T of t
+  end
+
+  module Flow = struct
+    type 'a impl = (module FLOW with type flow = 'a)
+
+    type 'a t = 'a Flw.s
+
+    let register : type flow. flow impl -> flow t =
+     fun flow ->
+      let key = Map.Key.create "" in
+      Flw.inj (Flow (key, flow))
+
+    let impl : type flow. flow t -> flow impl =
+     fun (module Flow) ->
+      let (Flow (_, m)) = Flow.witness in
+      m
+
+    let repr : type flow. flow t -> (module REPR with type t = flow) =
+     fun (module Witness) ->
+      let module M = struct
+        include Witness
+
+        type t = x
+      end in
+      (module M)
+  end
+
+  type 'a t = 'a Flow.t
+
   (* XXX(dinosaure): note about performance, [Ptr.prj] can cost where
    * it's a lookup into the global [hashtbl] (created by [Ptr]). However,
    * the usual pattern of [Conduit] is multiple calls of [send]/[recv] with
@@ -305,7 +352,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   module P = struct
     type _ t =
       | Protocol :
-          'edn key * 'flow key * ('edn, 'flow) impl
+          'edn key * 'flow Flow.t * ('edn, 'flow) impl
           -> ('edn, 'flow) value t
   end
 
@@ -316,29 +363,14 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     flow : 'flow Flw.s;
   }
 
-  let register : type edn flow. (edn, flow) impl -> (edn, flow) protocol =
-   fun (module Protocol) ->
-    let key s = Map.Key.create s in
-    let keyp = key "protocol" in
-    let keyf = key "flow" in
-    let flow = Flw.inj (Flow (keyf, (module Protocol))) in
-    let protocol = Ptr.inj (Protocol (keyp, keyf, (module Protocol))) in
+  let register :
+      type edn flow. flow t -> (edn, flow) impl -> (edn, flow) protocol =
+   fun flow protocol ->
+    let key = Map.Key.create "" in
+    let protocol = Ptr.inj (Protocol (key, flow, protocol)) in
     { flow; protocol }
 
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
-
-  let repr : type edn v. (edn, v) protocol -> (module REPR with type t = v) =
-   fun { flow = (module Witness); _ } ->
-    let module M = struct
-      include Witness
-
-      type t = x
-    end in
-    (module M)
+  let repr t = Flow.repr t.flow
 
   let ( <.> ) f g x = f (g x)
 
@@ -371,15 +403,12 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
    fun key edn ->
     let rec go = function
       | [] -> return (Error `Not_found)
-      | Ptr.Key (Protocol (kp, kf, (module Protocol))) :: r ->
-      match Map.Key.(key == kp) with
+      | Ptr.Key (Protocol (k, (module Flow), (module Protocol))) :: r ->
+      match Map.Key.(key == k) with
       | None -> go r
       | Some E1.Refl.Refl -> (
           Protocol.connect edn >>= function
-          | Ok flow ->
-              let ((module Witness) : Protocol.flow Flw.s) =
-                Flw.inj (Flow (kf, (module Protocol))) in
-              return (Ok (Witness.T flow))
+          | Ok flow -> return (Ok (Flow.T flow))
           | Error _err -> go r) in
     go (Ptr.bindings ())
 
@@ -487,8 +516,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       (edn, flow) protocol ->
       (module PROTOCOL with type endpoint = edn and type flow = flow) =
    fun { protocol = (module Witness); _ } ->
-    let (Protocol (_, _, (module Protocol))) = Witness.witness in
-    (module Protocol)
+    let (Protocol (_, _, m)) = Witness.witness in
+    m
 
   let cast : type edn v. flow -> (edn, v) protocol -> v option =
    fun flow witness ->
@@ -511,7 +540,11 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     module S = struct
       type 't t =
-        | Service : 'cfg key * ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) thd t
+        | Service :
+            'cfg key * 'flow Flow.t * ('cfg, 't, 'flow) impl
+            -> ('cfg, 't, 'flow) thd t
+
+      let impl (Service (_, _, i)) = i
     end
 
     module Svc = E0.Make (S)
@@ -521,29 +554,19 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       flow : 'flow Flw.s;
     }
 
-    let register : type cfg s flow. (cfg, s, flow) impl -> (cfg, s, flow) t =
-     fun service ->
-      let key s = Map.Key.create s in
-      let module Flow = (val service) in
-      let keys = key "service" in
-      let keyf = key "flow" in
-      let flow = Flw.inj (Flow (keyf, (module Flow))) in
-      let service = Svc.inj (Service (keys, service)) in
+    let register :
+        type cfg s flow. flow Flow.t -> (cfg, s, flow) impl -> (cfg, s, flow) t
+        =
+     fun flow service ->
+      let key = Map.Key.create "" in
+      let service = Svc.inj (Service (key, flow, service)) in
       { service; flow }
 
     type error = [ `Msg of string ]
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
 
-    let repr :
-        type cfg s flow. (cfg, s, flow) t -> (module REPR with type t = flow) =
-     fun { flow = (module Witness); _ } ->
-      let module M = struct
-        include Witness
-
-        type t = x
-      end in
-      (module M)
+    let repr t = Flow.repr t.flow
 
     let equal :
         type a b c d e f.
@@ -556,7 +579,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let init :
         type cfg s flow. cfg -> (cfg, s, flow) t -> (s, [> error ]) result io =
      fun edn { service = (module Witness); _ } ->
-      let (Service (_, (module Service))) = Witness.witness in
+      let (module Service) = S.impl Witness.witness in
       Service.init edn >>= function
       | Ok t -> return (Ok t)
       | Error err -> return (error_msgf "%a" Service.pp_error err)
@@ -564,7 +587,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let accept :
         type cfg s v. (cfg, s, v) t -> s -> (flow, [> error ]) result io =
      fun { service = (module Witness); flow = (module F) } t ->
-      let (Service (_, (module Service))) = Witness.witness in
+      let (module Service) = S.impl Witness.witness in
       Service.accept t >>= function
       | Ok flow -> return (Ok (F.T flow))
       | Error err -> return (error_msgf "%a" Service.pp_error err)
@@ -572,7 +595,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let close :
         type cfg s flow. (cfg, s, flow) t -> s -> (unit, [> error ]) result io =
      fun { service = (module Witness); _ } t ->
-      let (Service (_, (module Service))) = Witness.witness in
+      let (module Service) = S.impl Witness.witness in
       Service.stop t >>= function
       | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
@@ -587,8 +610,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
            with type configuration = cfg
             and type t = s
             and type flow = flow) =
-     fun { service = (module S); _ } ->
-      let (Service (_, (module Service))) = S.witness in
-      (module Service)
+     fun { service = (module Service); _ } -> S.impl Service.witness
   end
 end

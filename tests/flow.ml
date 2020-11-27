@@ -21,16 +21,7 @@ let recv =
 
 let send = Alcotest.int
 
-let error =
-  let pp ppf = function
-    | #Rresult.R.msg as v -> Rresult.R.pp_msg ppf v
-    | `Not_found -> Fmt.string ppf "`Not_found" in
-  let equal a b =
-    match (a, b) with
-    | `Msg a, `Msg b -> a = b
-    | `Not_found, `Not_found -> true
-    | _ -> false in
-  Alcotest.testable pp equal
+let error = Alcotest.testable Conduit.pp_error ( = )
 
 module Memory_flow0 = struct
   type input = bytes
@@ -88,7 +79,7 @@ let memory0 = Conduit.register flow0 (module Memory_flow0)
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
   let open Rresult in
-  let flow = Conduit.connect ("Hello World!", Bytes.empty) memory0 in
+  let flow = Conduit.connect memory0 ("Hello World!", Bytes.empty) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let buf0 = Bytes.create 12 in
@@ -107,7 +98,7 @@ let test_output_string =
   Alcotest.test_case "output string" `Quick @@ fun () ->
   let open Rresult in
   let buf = Bytes.create 12 in
-  let flow = Conduit.connect ("", buf) memory0 in
+  let flow = Conduit.connect memory0 ("", buf) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let res0 = Conduit.send flow "Hell" in
@@ -208,7 +199,7 @@ let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->
   let open Rresult in
   let flow =
-    Conduit.connect ([ ""; "123"; "45"; "6789"; "0" ], [ Bytes.empty ]) memory1
+    Conduit.connect memory1 ([ ""; "123"; "45"; "6789"; "0" ], [ Bytes.empty ])
   in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
@@ -233,7 +224,7 @@ let test_output_strings =
   Alcotest.test_case "output strings" `Quick @@ fun () ->
   let open Rresult in
   let bufs = [ Bytes.create 4; Bytes.empty; Bytes.create 2; Bytes.create 6 ] in
-  let flow = Conduit.connect ([], bufs) memory1 in
+  let flow = Conduit.connect memory1 ([], bufs) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let res0 = Conduit.send flow "Hello" in
@@ -294,7 +285,7 @@ let dummy_service = Conduit.Service.register dummy_flow (module Dummy_service)
 let test_type_equality =
   Alcotest.test_case "type equality" `Quick @@ fun () ->
   let[@warning "-8"] (Ok t) =
-    Conduit.Service.init Dummy_service.Configuration dummy_service in
+    Conduit.Service.init dummy_service Dummy_service.Configuration in
   let module Repr = (val Conduit.Service.repr dummy_service) in
   match Conduit.Service.accept dummy_service t with
   | Ok (Repr.T Dummy_flow.Flow) -> Alcotest.(check pass) "type equality" () ()

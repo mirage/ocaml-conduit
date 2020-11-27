@@ -53,10 +53,11 @@ val endpoint :
     underlying ['flow]. It permits to request a verification such as the
     {i hostname} with your peer. *)
 
+val flow : Lwt_ssl.socket t
+
 val protocol_with_ssl :
   ('edn, 'flow) protocol -> (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
-(** [protocol_with_ssl ~key protocol] returns a representation of the given
-    protocol with SSL. *)
+(** [protocol_with_ssl p] is [p] over SSL. *)
 
 type 't service
 (** The type for SSL services. *)
@@ -73,6 +74,8 @@ val service_with_ssl :
 
 module TCP : sig
   open Conduit_lwt.TCP
+
+  val flow : Lwt_ssl.socket t
 
   val protocol :
     ((Lwt_unix.sockaddr, Protocol.flow) endpoint, Lwt_ssl.socket) protocol

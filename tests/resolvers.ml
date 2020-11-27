@@ -158,9 +158,7 @@ let only_one =
     |> Conduit.add dummy_int int
     |> Conduit.add dummy_string string
     |> Conduit.add dummy_unit unit in
-  let _ =
-    Conduit.resolve resolvers ~protocol:dummy_string
-      (Conduit.Endpoint.domain localhost) in
+  let _ = Conduit.resolve resolvers (Conduit.Endpoint.domain localhost) in
   Alcotest.(check bool) "call int" !int_called true ;
   Alcotest.(check bool) "call string" !string_called true ;
   Alcotest.(check bool) "call unit" !unit_called true

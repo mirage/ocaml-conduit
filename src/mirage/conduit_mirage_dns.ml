@@ -1,4 +1,5 @@
 open Lwt.Infix
+open Conduit_mirage
 
 module Make
     (R : Mirage_random.S)
@@ -15,9 +16,9 @@ struct
       t ->
       ?nameserver:Transport.ns_addr ->
       port:int ->
-      (S.t, Ipaddr.V4.t) Conduit_mirage_tcp.endpoint Conduit_mirage.resolver =
+      (S.t, Ipaddr.V4.t) Conduit_mirage_tcp.endpoint resolver =
    fun stack ?keepalive ?(nodelay = false) t ?nameserver ~port -> function
-    | Conduit.Endpoint.IP (Ipaddr.V6 _) -> Lwt.return_none
+    | Endpoint.IP (Ipaddr.V6 _) -> Lwt.return_none
     | IP (Ipaddr.V4 ip) ->
         Lwt.return_some
           { Conduit_mirage_tcp.stack; keepalive; nodelay; ip; port }

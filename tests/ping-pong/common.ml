@@ -143,8 +143,7 @@ struct
     close_in ic ;
     client ~resolvers (Conduit.Endpoint.domain localhost) responses >>= function
     | Ok () -> IO.return ()
-    | Error `Closed_by_peer -> IO.return ()
-    | Error (#Conduit.error as err) ->
+    | Error err ->
         Fmt.epr "client: %a.\n%!" Conduit.pp_error err ;
         IO.return ()
 end

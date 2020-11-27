@@ -88,6 +88,8 @@ end
 
 let fake_fd = Tuyau.Flow.register (module Fake_protocol0)
 
+include (val Tuyau.Flow.repr fake_fd)
+
 let fake0 = Tuyau.register fake_fd (module Fake_protocol0)
 
 let fake1 = Tuyau.register fake_fd (module Fake_protocol1)
@@ -96,10 +98,11 @@ let fake2 = Tuyau.register fake_fd (module Fake_protocol2)
 
 let hello_world = "Hello World!\n"
 
-let fn_fully_abstr flow = Benchmark.V (fun () -> Tuyau.send flow hello_world)
+let fn_abstr flow = Benchmark.V (fun () -> Tuyau.send flow hello_world)
 
-let fn_abstr (Tuyau.Flow (flow, (module Flow))) =
-  Benchmark.V (fun () -> Flow.send flow hello_world)
+let fn_concrete = function
+  | T flow -> Benchmark.V (fun () -> Fake_protocol0.send flow hello_world)
+  | _ -> assert false
 
 type result = {
   with_conduit : float;
@@ -138,11 +141,10 @@ let print_stdout est0 est1 r0 r1 =
 
 let run json =
   let open Rresult in
-  Tuyau.connect Unix.stderr fake0 >>= fun flow ->
+  Tuyau.connect fake0 Unix.stderr >>= fun flow ->
   Tuyau.send flow hello_world >>= fun _ ->
-  let samples0 = Benchmark.run (fn_fully_abstr flow) in
-  let samples1 = Benchmark.run (fn_abstr (Tuyau.unpack flow)) in
-
+  let samples0 = Benchmark.run (fn_abstr flow) in
+  let samples1 = Benchmark.run (fn_concrete flow) in
   match
     ( Linear_algebra.ols (fun m -> m.(1)) [| (fun m -> m.(0)) |] samples0,
       Linear_algebra.ols (fun m -> m.(1)) [| (fun m -> m.(0)) |] samples1 )
@@ -163,7 +165,7 @@ let main json =
   match run json with
   | Ok v -> v
   | Error (`Msg err) -> Fmt.epr "%s: %s.\n%!" Sys.argv.(0) err
-  | Error `Not_found -> assert false
+  | _ -> assert false
 
 let cmd = (Term.(const main $ json), Term.info "run benchmarks")
 

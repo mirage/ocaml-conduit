@@ -1,8 +1,6 @@
 module Endpoint = Endpoint
 module Sigs = Sigs
 
-type ('a, 'b) refl = Refl : ('a, 'a) refl
-
 let strf = Format.asprintf
 
 type _ witness = ..
@@ -16,10 +14,6 @@ type _ resolver =
       witness : 's witness;
     }
       -> ('edn * 's) resolver
-
-let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
-
-let msgf fmt = Fmt.kstrf (fun err -> `Msg err) fmt
 
 let src = Logs.Src.create "conduit"
 
@@ -52,148 +46,7 @@ type resolvers = Map.t
 
 let empty = Map.empty
 
-module type S = sig
-  module Endpoint : module type of Endpoint
-
-  type input
-
-  type output
-
-  type +'a io
-
-  type scheduler
-
-  type flow = private ..
-
-  type error = [ `Msg of string | `Not_found ]
-
-  val pp_error : error Fmt.t
-
-  val recv :
-    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result io
-
-  val send : flow -> output -> (int, [> error ]) result io
-
-  val close : flow -> (unit, [> error ]) result io
-
-  module type FLOW =
-    Sigs.FLOW
-      with type input = input
-       and type output = output
-       and type +'a io = 'a io
-
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
-
-  module Flow : sig
-    type 'flow impl = (module FLOW with type flow = 'flow)
-
-    type 'flow t
-
-    val register : 'flow impl -> 'flow t
-
-    val impl : 'flow t -> 'flow impl
-
-    val repr : 'flow t -> (module REPR with type t = 'flow)
-  end
-
-  type 'a t = 'a Flow.t
-
-  module type PROTOCOL =
-    Sigs.PROTOCOL
-      with type input = input
-       and type output = output
-       and type +'a io = 'a io
-
-  type ('edn, 'flow) impl =
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  type ('edn, 'flow) protocol
-
-  val register : 'flow t -> ('edn, 'flow) impl -> ('edn, 'flow) protocol
-
-  val repr : ('edn, 'flow) protocol -> (module REPR with type t = 'flow)
-
-  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
-
-  val unpack : flow -> unpack
-
-  val impl :
-    ('edn, 'flow) protocol ->
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  val cast : flow -> ('edn, 'flow) protocol -> 'flow option
-
-  val pack : ('edn, 'flow) protocol -> 'flow -> flow
-
-  type 'edn resolver = Endpoint.t -> 'edn option io
-
-  type nonrec resolvers = resolvers
-
-  val empty : resolvers
-
-  val add :
-    ('edn, 'flow) protocol ->
-    ?priority:int ->
-    'edn resolver ->
-    resolvers ->
-    resolvers
-
-  val resolve :
-    resolvers ->
-    ?protocol:('edn, 'flow) protocol ->
-    Endpoint.t ->
-    (flow, [> error ]) result io
-
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
-
-  module type SERVICE =
-    Sigs.SERVICE
-      with type +'a io = 'a io
-       and type input = input
-       and type output = output
-
-  module Service : sig
-    type ('cfg, 't, 'flow) impl =
-      (module SERVICE
-         with type configuration = 'cfg
-          and type t = 't
-          and type flow = 'flow)
-
-    type ('cfg, 't, 'flow) t
-
-    val repr : ('cfg, 't, 'flow) t -> (module REPR with type t = 'flow)
-
-    val equal :
-      ('cfg0, 't0, 'flow0) t ->
-      ('cfg1, 't1, 'flow1) t ->
-      (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
-
-    val register : 'flow Flow.t -> ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) t
-
-    type error = [ `Msg of string ]
-
-    val pp_error : error Fmt.t
-
-    val init : 'cfg -> ('cfg, 't, 'flow) t -> ('t, [> error ]) result io
-
-    val accept : ('cfg, 't, 'flow) t -> 't -> (flow, [> error ]) result io
-
-    val close : ('cfg, 't, 'flow) t -> 't -> (unit, [> error ]) result io
-
-    val pack : (_, _, 'flow) t -> 'flow -> flow
-
-    val impl :
-      ('cfg, 't, 'flow) t ->
-      (module SERVICE
-         with type configuration = 'cfg
-          and type t = 't
-          and type flow = 'flow)
-  end
-end
+module type S = Conduit_impl.S
 
 module type IO = Sigs.IO
 
@@ -241,9 +94,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   let ( >>| ) x f = x >>= fun x -> return (f x)
 
-  let ( >>? ) x f =
-    x >>= function Ok x -> f x | Error err -> return (Error err)
-
   type +'a io = 'a IO.t
 
   type _ witness += Witness : scheduler witness
@@ -288,6 +138,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     type flow += T of t
   end
+
+  type 'a repr = (module REPR with type t = 'a)
 
   module Flow = struct
     type 'a impl = (module FLOW with type flow = 'a)
@@ -354,6 +206,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       | Protocol :
           'edn key * 'flow Flow.t * ('edn, 'flow) impl
           -> ('edn, 'flow) value t
+
+    let impl (Protocol (_, _, m)) = m
   end
 
   module Ptr = E0.Make (P)
@@ -370,7 +224,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let protocol = Ptr.inj (Protocol (key, flow, protocol)) in
     { flow; protocol }
 
-  let repr t = Flow.repr t.flow
+  let impl : type edn flow. (edn, flow) protocol -> (edn, flow) impl =
+   fun { protocol = (module Witness); _ } -> P.impl Witness.witness
 
   let ( <.> ) f g x = f (g x)
 
@@ -398,8 +253,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     | `Msg err -> pf ppf "%s" err
     | `Not_found -> pf ppf "Not found"
 
-  let flow_of_endpoint :
-      type edn. edn key -> edn -> (flow, [> error ]) result io =
+  let flow_of_endpoint : type edn. edn key -> edn -> (flow, error) result io =
    fun key edn ->
     let rec go = function
       | [] -> return (Error `Not_found)
@@ -411,15 +265,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
           | Ok flow -> return (Ok (Flow.T flow))
           | Error _err -> go r) in
     go (Ptr.bindings ())
-
-  let flow_of_protocol :
-      type edn flow. (edn, flow) protocol -> edn -> (flow, [> error ]) result io
-      =
-   fun { protocol = (module Witness); _ } edn ->
-    let (Protocol (_, _, (module Protocol))) = Witness.witness in
-    Protocol.connect edn >>= function
-    | Ok flow -> return (Ok flow)
-    | Error err -> return (error_msgf "%a" Protocol.pp_error err)
 
   type endpoint = Endpoint : 'edn key * 'edn -> endpoint
 
@@ -435,7 +280,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   and sup = 1
 
-  let resolve : resolvers -> Endpoint.t -> endpoint list io =
+  let resolve_to_endpoints : resolvers -> Endpoint.t -> endpoint list io =
    fun m domain_name ->
     let rec go acc = function
       | [] -> return (List.rev acc) (* XXX(dinosaure): keep order. *)
@@ -460,9 +305,9 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     Log.debug (fun m -> m "Start to resolve %a." Endpoint.pp domain_name) ;
     go [] (List.sort compare (Map.bindings m))
 
-  let create : resolvers -> Endpoint.t -> (flow, [> error ]) result io =
+  let resolve : resolvers -> Endpoint.t -> (flow, error) result io =
    fun m domain_name ->
-    resolve m domain_name >>= fun l ->
+    resolve_to_endpoints m domain_name >>= fun l ->
     let rec go = function
       | [] -> return (Error `Not_found)
       | Endpoint (key, edn) :: r -> (
@@ -471,59 +316,15 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
           | Error _err -> go r) in
     go l
 
-  let pack : type edn v. (edn, v) protocol -> v -> flow =
-   fun { flow = (module Witness); _ } flow -> Witness.T flow
-
-  let resolve :
-      type edn v.
-      resolvers ->
-      ?protocol:(edn, v) protocol ->
-      Endpoint.t ->
-      (flow, [> error ]) result io =
-   fun m ?protocol domain_name ->
-    match protocol with
-    | None -> create m domain_name
-    | Some ({ protocol = (module P); flow = (module F) } as f) ->
-        let (Protocol (key', _, _)) = P.witness in
-        resolve m domain_name >>= fun l ->
-        let rec go = function
-          | [] -> return (Error `Not_found)
-          | Endpoint (key, edn) :: r ->
-          match Map.Key.(key == key') with
-          | None -> go r
-          | Some E1.Refl.Refl -> (
-              flow_of_protocol f edn >>= function
-              | Ok flow -> return (Ok (F.T flow))
-              | Error _err -> go r) in
-        go l
-
-  let connect :
-      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result io =
-   fun edn { protocol = (module P); flow = (module F) } ->
+  let connect : type edn v. (edn, v) protocol -> edn -> (flow, error) result io
+      =
+   fun { protocol = (module P); flow = (module F) } edn ->
     let (Protocol (_, _, (module Protocol))) = P.witness in
-    Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
-    >>? fun flow -> return (Ok (F.T flow))
-
-  type unpack = Flow : 'flow * 'flow flow_impl -> unpack
-
-  let unpack : flow -> unpack =
-   fun flow ->
-    let (Value (flow, Flow (_, (module Flow)))) = Flw.prj flow in
-    Flow (flow, (module Flow))
-
-  let impl :
-      type edn flow.
-      (edn, flow) protocol ->
-      (module PROTOCOL with type endpoint = edn and type flow = flow) =
-   fun { protocol = (module Witness); _ } ->
-    let (Protocol (_, _, m)) = Witness.witness in
-    m
-
-  let cast : type edn v. flow -> (edn, v) protocol -> v option =
-   fun flow witness ->
-    match Flw.extract flow witness.flow with
-    | Some flow -> Some flow
-    | None -> None
+    Protocol.connect edn >>= function
+    | Ok flow -> return (Ok (F.T flow))
+    | Error e ->
+        let err = Fmt.str "%a" Protocol.pp_error e in
+        return (Error (`Msg err))
 
   module type SERVICE =
     Sigs.SERVICE
@@ -562,54 +363,36 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       let service = Svc.inj (Service (key, flow, service)) in
       { service; flow }
 
+    let impl : type cfg s flow. (cfg, s, flow) t -> (cfg, s, flow) impl =
+     fun { service = (module Witness); _ } -> S.impl Witness.witness
+
     type error = [ `Msg of string ]
 
     let pp_error ppf = function `Msg err -> Fmt.string ppf err
 
     let repr t = Flow.repr t.flow
 
-    let equal :
-        type a b c d e f.
-        (a, b, c) t ->
-        (d, e, f) t ->
-        ((a, d) refl * (b, e) refl * (c, f) refl) option =
-     fun { service = (module A); _ } { service = (module B); _ } ->
-      match A.Id with B.Id -> Some (Refl, Refl, Refl) | _ -> None
-
-    let init :
-        type cfg s flow. cfg -> (cfg, s, flow) t -> (s, [> error ]) result io =
-     fun edn { service = (module Witness); _ } ->
+    let init : type cfg s flow. (cfg, s, flow) t -> cfg -> (s, error) result io
+        =
+     fun { service = (module Witness); _ } edn ->
       let (module Service) = S.impl Witness.witness in
       Service.init edn >>= function
       | Ok t -> return (Ok t)
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
-    let accept :
-        type cfg s v. (cfg, s, v) t -> s -> (flow, [> error ]) result io =
+    let accept : type cfg s v. (cfg, s, v) t -> s -> (flow, error) result io =
      fun { service = (module Witness); flow = (module F) } t ->
       let (module Service) = S.impl Witness.witness in
       Service.accept t >>= function
       | Ok flow -> return (Ok (F.T flow))
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
-    let close :
-        type cfg s flow. (cfg, s, flow) t -> s -> (unit, [> error ]) result io =
+    let stop : type cfg s flow. (cfg, s, flow) t -> s -> (unit, error) result io
+        =
      fun { service = (module Witness); _ } t ->
       let (module Service) = S.impl Witness.witness in
       Service.stop t >>= function
       | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
-
-    let pack : type v. (_, _, v) t -> v -> flow =
-     fun { flow = (module Flow); _ } flow -> Flow.T flow
-
-    let impl :
-        type cfg s flow.
-        (cfg, s, flow) t ->
-        (module SERVICE
-           with type configuration = cfg
-            and type t = s
-            and type flow = flow) =
-     fun { service = (module Service); _ } -> S.impl Service.witness
   end
 end

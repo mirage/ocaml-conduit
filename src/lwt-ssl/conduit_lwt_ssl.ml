@@ -53,6 +53,8 @@ module Flow = struct
     Lwt_ssl.close socket >>= fun () -> Lwt.return_ok ()
 end
 
+let flow = Conduit_lwt.Flow.register (module Flow)
+
 module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
   include Flow
 
@@ -78,8 +80,6 @@ module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
     | Ok _ as v -> v
     | Error (`Verify _ as err) -> Error err
 end
-
-let flow = Conduit_lwt.Flow.register (module Flow)
 
 let protocol_with_ssl :
     type edn flow.
@@ -154,6 +154,8 @@ module TCP = struct
     | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
     | None -> None
 
+  let f = flow
+
   open Conduit_lwt.TCP
 
   type verify =
@@ -165,5 +167,7 @@ module TCP = struct
 
   let service = service_with_ssl service ~file_descr:Protocol.file_descr
 
-  include (val Conduit_lwt.repr protocol)
+  let flow = f
+
+  include (val Conduit_lwt.Flow.repr f)
 end

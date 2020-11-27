@@ -9,7 +9,7 @@ module TCP = struct
 
   let protocol = protocol_with_tls flow protocol
 
-  include (val Conduit_lwt.repr protocol)
+  include (val Conduit_lwt.Flow.repr flow)
 
   let service = service_with_tls flow service
 

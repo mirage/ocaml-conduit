@@ -23,7 +23,7 @@ let serve :
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
   let main =
-    Service.init cfg service >>= function
+    Service.init service cfg >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok service -> (
         let rec loop () =

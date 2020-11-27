@@ -60,75 +60,13 @@ module type S = sig
   (** [close flow] closes [flow]. Subsequent calls to {!recv} will return
       [Ok `End_of_flow]. Subsequent calls to {!send} will return an [Error]. *)
 
-  (** {2:registration Flow extensions.} *)
-
-  (** [REPR] allows users to extract concrete representation of {!flow} values. *)
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
-
-  type 'a repr = (module REPR with type t = 'a)
-
   module type FLOW =
     Sigs.FLOW
       with type input = input
        and type output = output
        and type +'a io = 'a io
 
-  module Flow : sig
-    type 'flow impl = (module FLOW with type flow = 'flow)
-    (** The type to represent {!FLOW} module implementations. *)
-
-    type 'flow t
-    (** The type for flows. *)
-
-    val register : 'flow impl -> 'flow t
-    (** [register i] is a represenation of the flow implementation [i].
-
-        For instance, [Conduit] can use [Unix.file_descr] as flow transport:
-
-        {[
-          module Unix_fd : FLOW with type flow = Unix.file_descr = <...>
-
-          module Conduit_fd : sig
-            val t : Unix.file_descr Flow.t
-          end = struct
-            let t = Flow.register (module Unix_fd)
-          end
-        ]}*)
-
-    val impl : 'flow t -> 'flow impl
-    (** [impl t] is the module implementation associated to [t]. *)
-
-    val repr : 'flow t -> 'flow repr
-    (** [repr t] is the concrete represenation of the [t].
-
-        It can then be used to destruct {!flow} values, via pattern-matching.
-        For instance, to set the underlying file-decriptor as non-blocking, one
-        can do:
-
-        {[
-          module Unix_fd : FLOW with type flow = Unix.file_descr = <...>
-
-          module Conduit_fd : sig
-            type flow += T of Unix.file_descr
-          end = struct
-            let t = Flow.register (module Unix_fd)
-            include (val (repr t))
-          end
-
-          let set_nonblock : flow -> unit = function
-            | Conduit_fd.T fd -> Unix.set_nonblock fd
-            | _ -> ()
-        ]} *)
-  end
-
-  type 'a t = 'a Flow.t
-  (** The type for flow representations. *)
-
-  (** {2:resolution Client-side resolvers.} *)
+  (** {2:connect Connections.} *)
 
   (** A protocol is a {!FLOW} with a [connect] function. *)
   module type PROTOCOL =
@@ -152,21 +90,18 @@ module type S = sig
   (** [connect p e] is the flow connected to the endpoint [e], using the connect
       function defined by [p]. *)
 
-  val register : 'flow t -> ('edn, 'flow) impl -> ('edn, 'flow) protocol
-  (** [register f i] is the protocol using the flow representation [f] and
-      protocol implementation [i]. [i] must provide a [connect] function to
-      allow client flows to be created.
+  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
+  (** [register i] is the representation of the protocol [i]. [i] must provide a
+      [connect] function to allow client flows to be created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
       endpoints, while [Unix.file_descr] would be used for the flow transport.
 
       {[
-        module Unix_fd : FLOW with type flow = Unix.file_descr = <...>
-
         module Conduit_tcp : sig
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let t = register Conduit_fd.t (module TCP)
+          let t = register (module TCP)
         end
       ]}
 
@@ -187,6 +122,52 @@ module type S = sig
 
   val impl : ('edn, 'flow) protocol -> ('edn, 'flow) impl
   (** [impl t] is the protocol implementation associated to [t]. *)
+
+  (** {2:registration Flow extensions.} *)
+
+  (** [REPR] allows users to extract concrete representation of {!flow} values. *)
+  module type REPR = sig
+    type t
+
+    type flow += T of t
+  end
+
+  type 'a repr = (module REPR with type t = 'a)
+
+  val repr : (_, 'flow) protocol -> 'flow repr
+  (** [repr t] is the concrete represenation of the [t].
+
+      It can then be used to destruct {!flow} values, via pattern-matching. For
+      instance, to set the underlying file-decriptor as non-blocking, one can
+      do:
+
+      {[
+        module TCP: Conduit.PROTOCOL with type flow = Unix.file_descr
+                                      and type endpoint = Unix.sockaddr
+
+          module Conduit_tcp : sig
+            type t = (Unix.sockaddr, Unix.file_descr) Conduit.value
+
+            type Conduit.flow += T of t
+
+            val t : (Unix.sockaddr, Unix.file_descr) protocol
+          end = struct
+            let t = register (module TCP)
+
+            include (val Conduit.repr t)
+          end
+      ]}
+
+      With this interface, users are able to {i destruct} {!flow} to your
+      concrete type:
+
+      {[
+        Conduit.connect domain_name >>? function
+          | Conduit_tcp.T (file_descr : Unix.file_descr) -> ...
+          | _ -> ...
+      ]} *)
+
+  (** {2:resolution Resolvers} *)
 
   module Endpoint : module type of Endpoint
 
@@ -288,7 +269,9 @@ module type S = sig
     val repr : ('cfg, 't, 'flow) t -> 'flow repr
 
     val register :
-      'flow Flow.t -> ('cfg, 'server, 'flow) impl -> ('cfg, 'server, 'flow) t
+      (_, 'flow) protocol ->
+      ('cfg, 'server, 'flow) impl ->
+      ('cfg, 'server, 'flow) t
     (** [register f i] is the service using the implementation [i] using the
         flow representation [f]. [service] must define [make] and [accept]
         function to be able to create server-side flows.

@@ -50,8 +50,6 @@ module TCP : sig
     val writer : flow -> Writer.t
   end
 
-  val flow : Protocol.flow t
-
   val protocol : (Protocol.endpoint, Protocol.flow) protocol
 
   type configuration =

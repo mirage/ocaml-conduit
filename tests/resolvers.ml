@@ -47,13 +47,11 @@ module Dummy_unit = Dummy (struct
   type t = unit
 end)
 
-let dummy_flow = Conduit.Flow.register (module Dummy_int)
+let dummy_int = Conduit.register (module Dummy_int)
 
-let dummy_int = Conduit.register dummy_flow (module Dummy_int)
+let dummy_string = Conduit.register (module Dummy_string)
 
-let dummy_string = Conduit.register dummy_flow (module Dummy_string)
-
-let dummy_unit = Conduit.register dummy_flow (module Dummy_unit)
+let dummy_unit = Conduit.register (module Dummy_unit)
 
 let ( <.> ) f g x = f (g x)
 

@@ -86,22 +86,20 @@ module Fake_protocol2 = struct
   let close _ = Ok ()
 end
 
-let fake_fd = Tuyau.Flow.register (module Fake_protocol0)
+let fake0 = Tuyau.register (module Fake_protocol0)
 
-include (val Tuyau.Flow.repr fake_fd)
+let fake1 = Tuyau.register (module Fake_protocol1)
 
-let fake0 = Tuyau.register fake_fd (module Fake_protocol0)
+let fake2 = Tuyau.register (module Fake_protocol2)
 
-let fake1 = Tuyau.register fake_fd (module Fake_protocol1)
-
-let fake2 = Tuyau.register fake_fd (module Fake_protocol2)
+module T0 = (val Tuyau.repr fake0)
 
 let hello_world = "Hello World!\n"
 
 let fn_abstr flow = Benchmark.V (fun () -> Tuyau.send flow hello_world)
 
 let fn_concrete = function
-  | T flow -> Benchmark.V (fun () -> Fake_protocol0.send flow hello_world)
+  | T0.T flow -> Benchmark.V (fun () -> Fake_protocol0.send flow hello_world)
   | _ -> assert false
 
 type result = {

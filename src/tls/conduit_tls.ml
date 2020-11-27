@@ -313,21 +313,14 @@ struct
       go buf
   end
 
-  let flow_with_tls : type flow. flow Conduit.t -> flow with_tls Conduit.t =
-   fun flow ->
-    let module F = (val Conduit.Flow.impl flow) in
-    let module M = Flow (F) in
-    Conduit.Flow.register (module M)
-
   let protocol_with_tls :
       type edn flow.
-      flow with_tls Conduit.t ->
       (edn, flow) Conduit.protocol ->
       (edn * Tls.Config.client, flow with_tls) Conduit.protocol =
-   fun flow protocol ->
+   fun protocol ->
     let module P = (val Conduit.impl protocol) in
     let module M = Protocol (P) in
-    Conduit.register flow (module M)
+    Conduit.register (module M)
 
   type 'service service_with_tls = {
     service : 'service;
@@ -358,15 +351,15 @@ struct
   end
 
   let service_with_tls :
-      type cfg t flow.
-      flow with_tls Conduit.t ->
+      type edn cfg t flow.
+      (edn, flow with_tls) Conduit.protocol ->
       (cfg, t, flow) Conduit.Service.t ->
       ( cfg * Tls.Config.server,
         t service_with_tls,
         flow with_tls )
       Conduit.Service.t =
-   fun flow service ->
+   fun protocol service ->
     let module S = (val Conduit.Service.impl service) in
     let module M = Service (S) in
-    Conduit.Service.register flow (module M)
+    Conduit.Service.register protocol (module M)
 end

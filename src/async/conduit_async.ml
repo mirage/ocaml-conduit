@@ -182,9 +182,7 @@ module TCP = struct
       | Error exn -> Async.return (Error (Core.Error.of_exn exn))
   end
 
-  let flow = Conduit.Flow.register (module Flow)
-
-  let protocol = register flow (module Protocol)
+  let protocol = register (module Protocol)
 
   type configuration =
     | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
@@ -238,7 +236,7 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = Conduit.Service.register flow (module Service)
+  let service = Conduit.Service.register protocol (module Service)
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

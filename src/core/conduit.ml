@@ -151,11 +151,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       let key = Map.Key.create "" in
       Flw.inj (Flow (key, flow))
 
-    let impl : type flow. flow t -> flow impl =
-     fun (module Flow) ->
-      let (Flow (_, m)) = Flow.witness in
-      m
-
     let repr : type flow. flow t -> (module REPR with type t = flow) =
      fun (module Witness) ->
       let module M = struct
@@ -165,8 +160,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       end in
       (module M)
   end
-
-  type 'a t = 'a Flow.t
 
   (* XXX(dinosaure): note about performance, [Ptr.prj] can cost where
    * it's a lookup into the global [hashtbl] (created by [Ptr]). However,
@@ -217,15 +210,17 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     flow : 'flow Flw.s;
   }
 
-  let register :
-      type edn flow. flow t -> (edn, flow) impl -> (edn, flow) protocol =
-   fun flow protocol ->
+  let register : type edn flow. (edn, flow) impl -> (edn, flow) protocol =
+   fun (module Protocol) ->
     let key = Map.Key.create "" in
-    let protocol = Ptr.inj (Protocol (key, flow, protocol)) in
+    let flow = Flow.register (module Protocol) in
+    let protocol = Ptr.inj (Protocol (key, flow, (module Protocol))) in
     { flow; protocol }
 
   let impl : type edn flow. (edn, flow) protocol -> (edn, flow) impl =
    fun { protocol = (module Witness); _ } -> P.impl Witness.witness
+
+  let repr t = Flow.repr t.flow
 
   let ( <.> ) f g x = f (g x)
 
@@ -356,10 +351,11 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     }
 
     let register :
-        type cfg s flow. flow Flow.t -> (cfg, s, flow) impl -> (cfg, s, flow) t
-        =
-     fun flow service ->
+        type edn cfg s flow.
+        (edn, flow) protocol -> (cfg, s, flow) impl -> (cfg, s, flow) t =
+     fun { protocol = (module Witness); _ } service ->
       let key = Map.Key.create "" in
+      let (Protocol (_, flow, _)) = Witness.witness in
       let service = Svc.inj (Service (key, flow, service)) in
       { service; flow }
 

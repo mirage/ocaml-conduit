@@ -56,10 +56,7 @@ module Make
   val handshake : 'flow with_tls -> bool
   (** [handshake flow] returns [true] if {i handshake} is processing. *)
 
-  val flow_with_tls : 'flow Conduit.t -> 'flow with_tls Conduit.t
-
   val protocol_with_tls :
-    'flow with_tls Conduit.t ->
     ('edn, 'flow) Conduit.protocol ->
     ('edn * Tls.Config.client, 'flow with_tls) Conduit.protocol
   (** From a given protocol [witness], it creates a new {i witness} of the
@@ -68,7 +65,7 @@ module Make
   type 'service service_with_tls
 
   val service_with_tls :
-    'flow with_tls Conduit.t ->
+    (_, 'flow with_tls) Conduit.protocol ->
     ('cfg, 't, 'flow) Conduit.Service.t ->
     ( 'cfg * Tls.Config.server,
       't service_with_tls,

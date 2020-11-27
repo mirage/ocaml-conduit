@@ -4,11 +4,9 @@ include Conduit_tls.Make (Conduit_async.IO) (Conduit_async)
 module TCP = struct
   open Conduit_async.TCP
 
-  let flow = flow_with_tls flow
+  let protocol = protocol_with_tls protocol
 
-  let protocol = protocol_with_tls flow protocol
-
-  let service = service_with_tls flow service
+  let service = service_with_tls protocol service
 
   let resolve ~port ~config domain_name =
     resolve ~port domain_name >>| function

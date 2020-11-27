@@ -43,17 +43,14 @@ val context :
   unit ->
   context
 
-val flow_with_ssl : 'flow t -> 'flow with_ssl t
-
 val protocol_with_ssl :
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
-  'flow with_ssl t ->
   ('edn, 'flow) protocol ->
   (context * 'edn, 'flow with_ssl) protocol
 
 val service_with_ssl :
-  'flow with_ssl t ->
+  (_, 'flow with_ssl) protocol ->
   ('cfg, 't, 'flow) Service.t ->
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
@@ -63,8 +60,6 @@ val service_with_ssl :
 
 module TCP : sig
   open Conduit_async.TCP
-
-  val flow : Protocol.flow with_ssl t
 
   val protocol : (context * endpoint, Protocol.flow with_ssl) protocol
 

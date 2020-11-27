@@ -218,9 +218,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
       Lwt.return (Ok { flow; nodelay; queue; closed = false })
   end
 
-  let flow = Conduit_mirage.Flow.register (module Flow)
-
-  let protocol = Conduit_mirage.register flow (module Protocol)
+  let protocol = Conduit_mirage.register (module Protocol)
 
   type nonrec configuration = StackV4.t configuration
 
@@ -282,5 +280,5 @@ module Make (StackV4 : Mirage_stack.V4) = struct
           Lwt.return (Ok ()))
   end
 
-  let service = Conduit_mirage.Service.register flow (module Service)
+  let service = Conduit_mirage.Service.register protocol (module Service)
 end

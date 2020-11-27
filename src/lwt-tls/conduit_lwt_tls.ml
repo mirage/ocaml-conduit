@@ -5,13 +5,11 @@ let () = Mirage_crypto_rng_lwt.initialize ()
 module TCP = struct
   open Conduit_lwt.TCP
 
-  let flow = flow_with_tls flow
+  let protocol = protocol_with_tls protocol
 
-  let protocol = protocol_with_tls flow protocol
+  include (val Conduit_lwt.repr protocol)
 
-  include (val Conduit_lwt.Flow.repr flow)
-
-  let service = service_with_tls flow service
+  let service = service_with_tls protocol service
 
   let resolve ~port ~config domain_name =
     let open Lwt.Infix in

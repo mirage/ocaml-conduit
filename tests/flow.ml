@@ -72,9 +72,7 @@ module Memory_flow0 = struct
     Ok ()
 end
 
-let flow0 = Conduit.Flow.register (module Memory_flow0)
-
-let memory0 = Conduit.register flow0 (module Memory_flow0)
+let memory0 = Conduit.register (module Memory_flow0)
 
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
@@ -191,9 +189,7 @@ module Memory_flow1 = struct
     Ok ()
 end
 
-let flow1 = Conduit.Flow.register (module Memory_flow1)
-
-let memory1 = Conduit.register flow1 (module Memory_flow1)
+let memory1 = Conduit.register (module Memory_flow1)
 
 let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->
@@ -244,7 +240,7 @@ let test_output_strings =
 
 (* XXX(dinosaure): ensure type equality. *)
 
-module Dummy_flow = struct
+module Dummy_protocol = struct
   type input = bytes
 
   type output = string
@@ -252,6 +248,8 @@ module Dummy_flow = struct
   type +'a io = 'a
 
   type flow = Flow
+
+  type endpoint = unit
 
   type error = |
 
@@ -262,10 +260,12 @@ module Dummy_flow = struct
   let send Flow _ = Ok 0
 
   let close Flow = Ok ()
+
+  let connect () = Ok Flow
 end
 
 module Dummy_service = struct
-  include Dummy_flow
+  include Dummy_protocol
 
   type configuration = Configuration
 
@@ -278,9 +278,10 @@ module Dummy_service = struct
   let stop T = Ok ()
 end
 
-let dummy_flow = Conduit.Flow.register (module Dummy_flow)
+let dummy_protocol = Conduit.register (module Dummy_protocol)
 
-let dummy_service = Conduit.Service.register dummy_flow (module Dummy_service)
+let dummy_service =
+  Conduit.Service.register dummy_protocol (module Dummy_service)
 
 let test_type_equality =
   Alcotest.test_case "type equality" `Quick @@ fun () ->
@@ -288,7 +289,7 @@ let test_type_equality =
     Conduit.Service.init dummy_service Dummy_service.Configuration in
   let module Repr = (val Conduit.Service.repr dummy_service) in
   match Conduit.Service.accept dummy_service t with
-  | Ok (Repr.T Dummy_flow.Flow) -> Alcotest.(check pass) "type equality" () ()
+  | Ok (Repr.T Flow) -> Alcotest.(check pass) "type equality" () ()
   | _ -> Alcotest.failf "Invalid flow value"
 
 let tests =

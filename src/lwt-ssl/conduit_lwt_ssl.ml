@@ -32,10 +32,6 @@ module Flow = struct
 
   type +'a io = 'a Lwt.t
 
-  type error = |
-
-  let pp_error _ _ = ()
-
   type flow = Lwt_ssl.socket
 
   let recv socket raw =
@@ -53,15 +49,13 @@ module Flow = struct
     Lwt_ssl.close socket >>= fun () -> Lwt.return_ok ()
 end
 
-let flow = Conduit_lwt.Flow.register (module Flow)
-
 module Protocol (Protocol : Conduit_lwt.PROTOCOL) = struct
   include Flow
 
   type error = [ `Error of Protocol.error | `Verify of string ]
 
   let pp_error ppf = function
-    | `Error err -> Flow.pp_error ppf err
+    | `Error err -> Protocol.pp_error ppf err
     | `Verify err -> pf ppf "%s" err
 
   let error x = reword_error (fun e -> `Error e) x
@@ -88,7 +82,7 @@ let protocol_with_ssl :
  fun protocol ->
   let module Flow = (val Conduit_lwt.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt.register flow (module M)
+  Conduit_lwt.register (module M)
 
 type 't service = { service : 't; context : Ssl.context }
 
@@ -102,9 +96,7 @@ struct
 
   type error = [ `Error of Service.error ]
 
-  let pp_error ppf = function
-    | `Error err -> Flow.pp_error ppf err
-    | `Verify err -> pf ppf "%s" err
+  let pp_error ppf = function `Error err -> Service.pp_error ppf err
 
   let error x = reword_error (fun e -> `Error e) x
 
@@ -134,18 +126,19 @@ struct
 end
 
 let service_with_ssl :
-    type cfg t flow.
+    type edn cfg t flow.
+    (edn, Lwt_ssl.socket) Conduit_lwt.protocol ->
     (cfg, t, flow) Conduit_lwt.Service.t ->
     file_descr:(flow -> Lwt_unix.file_descr) ->
     (Ssl.context * cfg, t service, Lwt_ssl.socket) Conduit_lwt.Service.t =
- fun service ~file_descr ->
+ fun protocol service ~file_descr ->
   let module S = (val Conduit_lwt.Service.impl service) in
   let module M = Service (struct
     include S
 
     let file_descr = file_descr
   end) in
-  Conduit_lwt.Service.register flow (module M)
+  Conduit_lwt.Service.register protocol (module M)
 
 module TCP = struct
   let resolve ~port ~context ?verify domain_name =
@@ -153,8 +146,6 @@ module TCP = struct
     Conduit_lwt.TCP.resolve ~port domain_name >|= function
     | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
     | None -> None
-
-  let f = flow
 
   open Conduit_lwt.TCP
 
@@ -165,9 +156,8 @@ module TCP = struct
 
   let protocol = protocol_with_ssl protocol
 
-  let service = service_with_ssl service ~file_descr:Protocol.file_descr
+  let service =
+    service_with_ssl protocol service ~file_descr:Protocol.file_descr
 
-  let flow = f
-
-  include (val Conduit_lwt.Flow.repr f)
+  include (val Conduit_lwt.repr protocol)
 end

@@ -8,17 +8,13 @@ val underlying : 'flow with_tls -> 'flow
 
 val handshake : 'flow with_tls -> bool
 
-val flow_with_tls : 'flow t -> 'flow with_tls t
-
 val protocol_with_tls :
-  'flow with_tls t ->
-  ('edn, 'flow) protocol ->
-  ('edn * Tls.Config.client, 'flow with_tls) protocol
+  ('edn, 'flow) protocol -> ('edn * Tls.Config.client, 'flow with_tls) protocol
 
 type 'service service_with_tls
 
 val service_with_tls :
-  'flow with_tls t ->
+  (_, 'flow with_tls) protocol ->
   ('cfg, 't, 'flow) Service.t ->
   ('cfg * Tls.Config.server, 't service_with_tls, 'flow with_tls) Service.t
 
@@ -26,8 +22,6 @@ val service_with_tls :
 
 module TCP : sig
   open Conduit_async.TCP
-
-  val flow : Protocol.flow with_tls t
 
   val protocol : (endpoint * Tls.Config.client, Protocol.flow with_tls) protocol
 

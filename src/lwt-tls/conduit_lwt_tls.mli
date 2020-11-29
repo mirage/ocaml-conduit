@@ -2,8 +2,8 @@
     [conduit-lwt].
 
     This implementation is a {i specialization} of [conduit-tls] with
-    [conduit-lwt]. Underlying protocol or service can be anything into the
-    scope of [conduit-lwt].
+    [conduit-lwt]. Underlying protocol or service can be anything into the scope
+    of [conduit-lwt].
 
     For more details about behaviours, you should look into [conduit-tls]. *)
 

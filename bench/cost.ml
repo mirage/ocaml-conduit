@@ -145,7 +145,7 @@ let print_stdout est0 est1 r0 r1 =
 
 let run json =
   let open Rresult in
-  Tuyau.connect Unix.stderr fake0 >>= fun flow ->
+  Tuyau.connect fake0 Unix.stderr >>= fun flow ->
   Tuyau.send flow hello_world >>= fun _ ->
   let samples0 = Benchmark.run (fn_fully_abstr flow) in
   let samples1 = Benchmark.run (fn_abstr flow) in

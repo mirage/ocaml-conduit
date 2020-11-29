@@ -398,7 +398,7 @@ module type S = sig
           | flow -> ignore @@ send flow "Hello World!"
       ]} *)
 
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
+  val connect : ('edn, _) protocol -> 'edn -> (flow, [> error ]) result io
 
   (** {2:service Server-side conduits.} *)
 

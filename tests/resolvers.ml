@@ -47,11 +47,11 @@ module Dummy_unit = Dummy (struct
   type t = unit
 end)
 
-let dummy_int = Conduit.register ~protocol:(module Dummy_int)
+let dummy_int = Conduit.register (module Dummy_int)
 
-let dummy_string = Conduit.register ~protocol:(module Dummy_string)
+let dummy_string = Conduit.register (module Dummy_string)
 
-let dummy_unit = Conduit.register ~protocol:(module Dummy_unit)
+let dummy_unit = Conduit.register (module Dummy_unit)
 
 let ( <.> ) f g x = f (g x)
 

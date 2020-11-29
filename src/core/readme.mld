@@ -68,7 +68,7 @@ interface {!Conduit.S.PROTOCOL}. We concretely define the flow as an
 Now, the protocol must be registered into [Conduit] with:
 
 {[
-let tcp = Conduit.register ~protocol:(module TCP)
+let tcp = Conduit.register (module TCP)
 ]}
 
 The registration gives to us a {i type-witness} which is a small representation
@@ -155,7 +155,7 @@ injected}. Assume that we used our TCP/IP implementation, to permit the {i
 destruction}, we must add:
 
 {[
-let tcp = Conduit.register ~protocol:(module TCP)
+let tcp = Conduit.register (module TCP)
 include (val Conduit.repr tcp)
 ]}
 

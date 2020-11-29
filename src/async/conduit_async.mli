@@ -10,21 +10,21 @@ include
      and type output = Cstruct.t
      and type +'a io = 'a Async.Deferred.t
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 (** The type for async services. *)
 
 val serve :
   ?timeout:int ->
   handler:(flow -> unit Async.Deferred.t) ->
-  service:('cfg, 't, 'v) service ->
+  ('cfg, 't, 'v) service ->
   'cfg ->
   unit Async.Condition.t * (unit -> unit Async.Deferred.t)
-(** [serve ~handler ~service cfg] creates an usual infinite [service] loop from
-    the given configuration ['cfg]. It returns the {i promise} to launch the
-    loop and a condition variable to stop the loop.
+(** [serve ~handler t cfg] creates an infinite service loop from the given
+    configuration ['cfg]. It returns the {i promise} to launch the loop and a
+    condition variable to stop the loop.
 
     {[
-      let stop, loop = serve ~handler ~service:TCP.service cfg in
+      let stop, loop = serve ~handler TCP.service cfg in
       Async_unix.Signal.handle [ Core.Signal.int ] ~f:(fun _sig ->
           Async.Condition.broadcast stop ()) ;
       loop ()

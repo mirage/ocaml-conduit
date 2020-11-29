@@ -89,13 +89,11 @@ let fiber ~uri =
   let cfg : Conduit_lwt.TCP.configuration =
     { Conduit_lwt.TCP.sockaddr= Unix.(ADDR_INET (inet_addr_of_string host, port))
     ; capacity= 40 } in
-  let _always, run = server cfg
-    ~protocol:Conduit_lwt.TCP.protocol
-    ~service:Conduit_lwt.TCP.service in
+  let _always, run = server cfg Conduit_lwt.TCP.service in
   run ()
 
 let () =
-  let uri = Uri.of_string Sys.argv.(1) in  
+  let uri = Uri.of_string Sys.argv.(1) in
   Lwt_main.run (fiber ~uri)
 ]}
 
@@ -202,20 +200,16 @@ let fiber ~uri =
   let _always, run = match Uri.scheme uri with
     | None | Some "pg" ->
       let port = Option.value ~default:8080 (Uri.port uri) in
-      server (cfg ~port)
-        ~protocol:Conduit_lwt.TCP.protocol
-        ~service:Conduit_lwt.TCP.service
+      server (cfg ~port) Conduit_lwt.TCP.service
     | Some "pgs" ->
       let port = Option.value ~default:4343 (Uri.port uri) in
       let cfg = cfg ~port, config "server.pem" "server.key" in
-      server cfg
-        ~protocol:Conduit_lwt_tls.TCP.protocol
-        ~service:Conduit_lwt_tls.TCP.service
+      server cfg Conduit_lwt_tls.TCP.service
     | Some scheme -> invalid_arg "Invalid scheme: %s" scheme in
   run ()
 
 let () =
-  let uri = Uri.of_string Sys.argv.(1) in  
+  let uri = Uri.of_string Sys.argv.(1) in
   Lwt_main.run (fiber ~uri)
 ]}
 
@@ -231,14 +225,14 @@ let conduit_of_uri uri =
   let resolvers = match Uri.scheme uri with
     | Some "pg" ->
       let open Conduit_lwt.TCP in
-      let port = Option.value ~default:8080 (Uri.port uri) in 
+      let port = Option.value ~default:8080 (Uri.port uri) in
       let resolvers =
         Conduit.empty
         |> Conduit_lwt.add protocol (TCP.resolve ~port) in
       resolvers
     | Some "pgs" ->
       let open Conduit_lwt_tls.TCP in
-      let port = Option.value ~default:4343 (Uri.port uri) in 
+      let port = Option.value ~default:4343 (Uri.port uri) in
       let resolvers =
         Conduit.empty
         |> Conduit_lwt.add protocol (resolve ~port ~config:tls_config) in
@@ -246,8 +240,8 @@ let conduit_of_uri uri =
     | None ->
       let module TCP = Conduit_lwt.TCP in
       let module TLS = Conduit_lwt_tls.TCP in
-      let u_port = Option.value ~default:8080 (Uri.port uri) in 
-      let s_port = Option.value ~default:4343 (Uri.port uri) in 
+      let u_port = Option.value ~default:8080 (Uri.port uri) in
+      let s_port = Option.value ~default:4343 (Uri.port uri) in
       let resolvers =
         Conduit.empty
         |> Conduit_lwt.add ~priority:10 TLS.protocol

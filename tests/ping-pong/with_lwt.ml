@@ -59,13 +59,10 @@ let config cert key =
   | _ -> Fmt.failwith "Invalid key or certificate"
 
 let run_with :
-    type cfg service flow.
-    cfg ->
-    service:(cfg, service, flow) Conduit_lwt.Service.service ->
-    string list ->
-    unit =
- fun cfg ~service clients ->
-  let stop, server = server cfg ~service in
+    type cfg s flow.
+    (cfg, s, flow) Conduit_lwt.Service.t -> cfg -> string list -> unit =
+ fun service cfg clients ->
+  let stop, server = server service cfg in
   let clients = List.map (client ~resolvers) clients in
   let clients =
     Lwt.join clients >>= fun () ->
@@ -74,22 +71,22 @@ let run_with :
   Lwt_main.run (Lwt.join [ server (); clients ])
 
 let run_with_tcp clients =
-  run_with
+  run_with Conduit_lwt.TCP.service
     {
       Conduit_lwt.TCP.sockaddr = Unix.ADDR_INET (Unix.inet_addr_loopback, 4000);
       capacity = 40;
     }
-    ~service:Conduit_lwt.TCP.service clients
+    clients
 
 let run_with_tls cert key clients =
   let ctx = config cert key in
-  run_with
+  run_with tls_service
     ( {
         Conduit_lwt.TCP.sockaddr = Unix.ADDR_INET (Unix.inet_addr_loopback, 8000);
         capacity = 40;
       },
       ctx )
-    ~service:tls_service clients
+    clients
 
 let () =
   match Array.to_list Sys.argv with

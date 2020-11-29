@@ -86,11 +86,11 @@ module Fake_protocol2 = struct
   let close _ = Ok ()
 end
 
-let fake0 = Tuyau.register ~protocol:(module Fake_protocol0)
+let fake0 = Tuyau.register (module Fake_protocol0)
 
-let fake1 = Tuyau.register ~protocol:(module Fake_protocol1)
+let fake1 = Tuyau.register (module Fake_protocol1)
 
-let fake2 = Tuyau.register ~protocol:(module Fake_protocol2)
+let fake2 = Tuyau.register (module Fake_protocol2)
 
 let hello_world = "Hello World!\n"
 

@@ -33,9 +33,10 @@ let resolve_tls_ping_pong =
   Conduit_lwt_tls.TCP.resolve ~port:8000 ~config
 
 let resolvers =
-  Conduit.empty
-  |> Conduit_lwt.add ~priority:20 Conduit_lwt.TCP.protocol resolve_ping_pong
-  |> Conduit_lwt.add ~priority:10 tls_protocol resolve_tls_ping_pong
+  let open Conduit_lwt in
+  empty
+  |> add ~priority:20 TCP.protocol resolve_ping_pong
+  |> add ~priority:10 tls_protocol resolve_tls_ping_pong
 
 (* Run *)
 

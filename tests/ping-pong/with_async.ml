@@ -38,9 +38,10 @@ let resolve_tls_ping_pong =
   Conduit_async_tls.TCP.resolve ~port:9000 ~config
 
 let resolvers =
-  Conduit.empty
-  |> Conduit_async.add ~priority:10 tls_protocol resolve_tls_ping_pong
-  |> Conduit_async.add ~priority:20 tcp_protocol resolve_ping_pong
+  let open Conduit_async in
+  empty
+  |> add ~priority:10 tls_protocol resolve_tls_ping_pong
+  |> add ~priority:20 tcp_protocol resolve_ping_pong
 
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
 

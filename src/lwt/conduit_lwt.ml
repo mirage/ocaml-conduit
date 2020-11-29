@@ -65,7 +65,6 @@ let serve :
  fun ?timeout ~handler service cfg ->
   let open Lwt.Infix in
   let stop = Lwt_condition.create () in
-  let module Svc = (val Service.impl service) in
   let main () =
     Service.init service cfg >>= function
     | Error err -> failwith "%a" Service.pp_error err
@@ -73,8 +72,8 @@ let serve :
         let rec loop () =
           let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
           let accept =
-            Svc.accept t >>? fun flow ->
-            Lwt.return_ok (`Flow (Service.pack service flow)) in
+            Service.accept service t >>? fun flow -> Lwt.return_ok (`Flow flow)
+          in
           let events =
             match timeout with
             | None -> [ stop; accept ]
@@ -88,14 +87,14 @@ let serve :
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Ok (`Stop | `Timeout) -> Service.close service t
           | Error err0 -> (
-              Svc.close t >>= function
+              Service.close service t >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function
         | Ok () -> Lwt.return_unit
-        | Error err -> failwith "%a" Svc.pp_error err) in
+        | Error err -> failwith "%a" Service.pp_error err) in
   (stop, main)
 
 module TCP = struct

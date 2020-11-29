@@ -467,11 +467,8 @@ module type S = sig
     val close : ('cfg, 's, 'v) t -> 's -> (unit, [> error ]) result io
     (** [close t s] releases the resources associated to the server [s]. *)
 
-    val pack : (_, _, 'v) t -> 'v -> flow
-    (** [pack service v] returns the abstracted value [v] as {!pack} does for a
-        given protocol {i witness} (bound with the given [service]). It serves
-        to abstract the flow created (and initialised) by the service to a
-        {!flow}.
+    val flow : (_, _, 'v) t -> 'v -> flow
+    (** [flow t s] is the [s] seen as a an abstract {!flow}.
 
         {[
           let handler (flow : flow) =
@@ -479,11 +476,11 @@ module type S = sig
             ...
 
           let run service cfg =
-            let module Service = Service.impl service in
+            let module S = Service.impl service in
             Service.init cfg >>? fun t ->
             let rec loop t =
-              Service.accept t >>? fun flow ->
-              let flow = Service.pack service flow in
+              S.accept t >>? fun flow ->
+              let flow = Service.flow service flow in
               async (fun () -> handler flow) ; loop t in
             loop t
 

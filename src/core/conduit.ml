@@ -317,9 +317,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
           | Error _err -> go r) in
     go l
 
-  let pack : type edn v. (edn, v) protocol -> v -> flow =
-   fun { flow = (module Witness); _ } flow -> Witness.T flow
-
   let resolve :
       type edn v.
       resolvers ->
@@ -413,10 +410,10 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     let accept :
         type cfg s v. (cfg, s, v) t -> s -> (flow, [> error ]) result io =
-     fun (Service ((module Witness), protocol)) t ->
+     fun (Service ((module Witness), { flow = (module Flow); _ })) t ->
       let (Svc (_, (module Service))) = Witness.witness in
       Service.accept t >>= function
-      | Ok flow -> return (Ok (pack protocol flow))
+      | Ok flow -> return (Ok (Flow.T flow))
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let close :
@@ -427,8 +424,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
-    let pack : type v. (_, _, v) t -> v -> flow =
-     fun (Service (_, protocol)) flow -> pack protocol flow
+    let flow : type v. (_, _, v) t -> v -> flow =
+     fun (Service (_, { flow = (module Witness); _ })) flow -> Witness.T flow
 
     let impl :
         type cfg s flow.

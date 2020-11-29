@@ -15,8 +15,8 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
 
 val serve :
   ?timeout:int ->
-  handler:('flow -> unit Async.Deferred.t) ->
-  service:('cfg, 'master, 'flow) service ->
+  handler:(flow -> unit Async.Deferred.t) ->
+  service:('cfg, 't, 'v) service ->
   'cfg ->
   unit Async.Condition.t * (unit -> unit Async.Deferred.t)
 (** [serve ~handler ~service cfg] creates an usual infinite [service]

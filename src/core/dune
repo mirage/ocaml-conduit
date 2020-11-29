@@ -1,7 +1,7 @@
 (library
  (name conduit)
  (public_name conduit)
- (libraries stdlib-shims ipaddr domain-name))
+ (libraries stdlib-shims logs ipaddr domain-name))
 
 (documentation
  (package conduit)

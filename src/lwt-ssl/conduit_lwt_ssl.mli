@@ -97,10 +97,5 @@ module TCP : sig
     ?verify:verify ->
     (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
 
-  type t =
-    ( (Lwt_unix.sockaddr, Conduit_lwt.TCP.Protocol.flow) endpoint,
-      Lwt_ssl.socket )
-    Conduit.value
-
-  type Conduit_lwt.flow += T of t
+  type Conduit_lwt.flow += T of Lwt_ssl.socket
 end

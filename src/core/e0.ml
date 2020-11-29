@@ -100,7 +100,7 @@ module Make (Key : S1) = struct
 
   type v = Value : 'a * 'a Key.t -> v
 
-  type k = Key : 'a Key.t * ('a -> t) -> k
+  type k = Key : 'a Key.t -> k
 
   let equal : type a b. a s -> b s -> (a, b) refl option =
    fun a b ->
@@ -127,7 +127,7 @@ module Make (Key : S1) = struct
 
     let witness = X.witness
 
-    let key = Key (witness, fun x -> T x)
+    let key = Key witness
 
     let value x = Value (x, witness)
 

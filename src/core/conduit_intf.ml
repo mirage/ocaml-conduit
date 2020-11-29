@@ -112,8 +112,6 @@ end
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
-type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
-
 module type S = sig
   module Endpoint : module type of Endpoint
 
@@ -137,9 +135,9 @@ module type S = sig
       implementation:
 
       {[
-        Conduit.connect domain_name >>? function
-         | Conduit_lwt_unix_tcp.T Conduit.(Value (file_descr : Lwt_unix.file_descr)) -> ...
-         | Conduit_lwt_unix_tls.T Conduit.(Value (fd, (tls : Tls.Engine.state))) -> ...
+        connect domain_name >>? function
+         | Conduit_lwt_unix_tcp.T (file_descr : Lwt_unix.file_descr) -> ...
+         | Conduit_lwt_unix_tls.T (_, (tls : Tls.Engine.state)) -> ...
          | _ -> ... (* use flow functions for the default case *)
       ]} *)
 
@@ -214,6 +212,11 @@ module type S = sig
       endpoints, while [Unix.file_descr] would be used for the flow transport.
 
       {[
+        module TCP :
+          PROTOCOL
+            with type endpoint = Unix.sockaddr
+             and type flow = Unix.file_descr = struct ... end
+
         module Conduit_tcp : sig
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
@@ -226,6 +229,11 @@ module type S = sig
       transparently:
 
       {[
+        module TLS :
+          PROTOCOL
+            with type endpoint = Unix.sockaddr * Tls.config_client
+             and type flow = Unix.file_descr = struct ... end
+
         module Conduit_tcp_tls : sig
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
@@ -267,32 +275,33 @@ module type S = sig
     type flow += T of t
   end
 
-  val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
-  (** As a protocol implementer, you should expose the concrete type of your
-      flow (to be able users to {i destruct} {!flow}). [repr] returns a module
-      which contains extension of {!flow} from your [protocol] such as:
+  type 'a repr = (module REPR with type t = 'a)
+  (** The type for {!REPR} values. *)
+
+  val repr : (_, 'flow) protocol -> 'flow repr
+  (** [repr t] is a module which contains the concrete representation of flow
+      values. It can then be used to destruct {!flow} values, via
+      pattern-matching. For instance, For to set the underlying file-decriptor
+      as non-blocking, one can do:
 
       {[
-        module Conduit_tcp : sig
-          type t = (Unix.sockaddr, Unix.file_descr) Conduit.value
+        module TCP :
+          PROTOCOL
+            with type endpoint = Unix.sockaddr
+             and type flow = Unix.file_descr = struct ... end
 
-          type Conduit.flow += T of t
+        module Conduit_tcp : sig
+          type flow += T of Unix.file_descr
 
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
           let t = register (module TCP)
 
-          include (val Conduit.repr t)
+          include (val repr t)
         end
-      ]}
 
-      With this interface, users are able to {i destruct} {!flow} to your
-      concrete type:
-
-      {[
-        Conduit.connect domain_name >>? function
-          | Conduit_tcp.T (Conduit.Value file_descr) -> ...
-          | _ -> ...
+        let set_nonblock (flow : flow) =
+          match flow with Conduit_tcp.T fd -> Unix.set_nonblock fd | _ -> ()
       ]} *)
 
   type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
@@ -302,14 +311,12 @@ module type S = sig
       abstract [flow] such as:
 
       {[
-        Conduit.connect edn >>= fun flow ->
-        let (Conduit.Flow (flow, (module Flow))) = Conduit.unpack flow in
+        connect edn >>= fun flow ->
+        let (Flow (flow, (module Flow))) = unpack flow in
         Flow.send flow "Hello World!"
       ]} *)
 
-  val impl :
-    ('edn, 'flow) protocol ->
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
+  val impl : ('edn, 'flow) protocol -> ('edn, 'flow) impl
   (** [impl protocol] is [protocol]'s implementation. *)
 
   val cast : flow -> (_, 'flow) protocol -> 'flow option
@@ -317,7 +324,7 @@ module type S = sig
       type described by the given [protocol].
 
       {[
-        match Conduit.is flow Conduit_tcp.t with
+        match cast flow Conduit_tcp.t with
         | Some (file_descr : Unix.file_descr) ->
             Some (Unix.getpeername file_descr)
         | None -> None
@@ -330,8 +337,8 @@ module type S = sig
 
       {[
         let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-        let flow = Conduit.pack Conduit_tcp.t socket in
-        Conduit.send flow "Hello World!"
+        let flow = pack Conduit_tcp.t socket in
+        send flow "Hello World!"
       ]} *)
 
   (** {2:resolution Domain name resolvers.} *)
@@ -408,12 +415,11 @@ module type S = sig
           |> add tcp ~priority:20 resolver_on_internet
 
         let () =
-          Conduit.resolve resolvers (Conduit.Endpoint.domain mirage_io)
-          >>? function
-          | TCP.T (Conduit.Value file_descr) as flow ->
+          resolve resolvers (Endpoint.domain mirage_io) >>? function
+          | TCP.T file_descr as flow ->
               let peer = Unix.getpeername file_descr in
-              ignore @@ Conduit.send flow ("Hello " ^ string_of_sockaddr peer)
-          | flow -> ignore @@ Conduit.send flow "Hello World!"
+              ignore @@ send flow ("Hello " ^ string_of_sockaddr peer)
+          | flow -> ignore @@ send flow "Hello World!"
       ]} *)
 
   val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
@@ -457,13 +463,18 @@ module type S = sig
         For instance:
 
         {[
-          module TCP_service : SERVICE with type configuration = Unix.sockaddr
-                                        and type t = Unix.file_descr
-                                        and type flow = Unix.file_descr
+          module TCP_service :
+            SERVICE
+              with type configuration = Unix.sockaddr
+               and type t = Unix.file_descr
+               and type flow = Unix.file_descr = struct ... end
 
-          let tcp_protocol = Conduit.register (module TCP_protocol)
-          let tcp_service : (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.service =
-            Conduit.Service.register (module TCP_service) tcp_protocol
+          let tcp_protocol = register (module TCP_protocol)
+
+          let tcp_service :
+              (Unix.sockaddr, Unix.file_descr, Unix.file_descr) Service.t
+              =
+            Service.register (module TCP_service) tcp_protocol
         ]} *)
 
     type error = [ `Msg of string ]
@@ -487,16 +498,16 @@ module type S = sig
         {!flow}.
 
         {[
-          let handler (flow : Conduit.flow) =
-            Conduit.send flow "Hello World!" >>= fun _ ->
+          let handler (flow : flow) =
+            send flow "Hello World!" >>= fun _ ->
             ...
 
           let run service cfg =
-            let module Service = Conduit.Service.impl service in
+            let module Service = Service.impl service in
             Service.init cfg >>? fun t ->
             let rec loop t =
               Service.accept t >>? fun flow ->
-              let flow = Conduit.Service.pack service flow in
+              let flow = Service.pack service flow in
               async (fun () -> handler flow) ; loop t in
             loop t
 

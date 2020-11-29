@@ -6,9 +6,6 @@ type resolvers
 val empty : resolvers
 (** [empty] is an empty {!resolvers} map. *)
 
-type ('edn, 'flow) value = ('edn, 'flow) Conduit_intf.value =
-  | Value : 'flow -> ('edn, 'flow) value
-
 module type S = Conduit_intf.S
 (** @inline *)
 

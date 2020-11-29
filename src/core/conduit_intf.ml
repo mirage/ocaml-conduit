@@ -304,18 +304,6 @@ module type S = sig
           match flow with Conduit_tcp.T fd -> Unix.set_nonblock fd | _ -> ()
       ]} *)
 
-  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
-
-  val unpack : flow -> unpack
-  (** [pack flow] projects the module implementation associated to the given
-      abstract [flow] such as:
-
-      {[
-        connect edn >>= fun flow ->
-        let (Flow (flow, (module Flow))) = unpack flow in
-        Flow.send flow "Hello World!"
-      ]} *)
-
   val impl : ('edn, 'flow) protocol -> ('edn, 'flow) impl
   (** [impl protocol] is [protocol]'s implementation. *)
 
@@ -325,20 +313,8 @@ module type S = sig
 
       {[
         match cast flow Conduit_tcp.t with
-        | Some (file_descr : Unix.file_descr) ->
-            Some (Unix.getpeername file_descr)
+        | Some (fd : Unix.file_descr) -> Some (Unix.getpeername fd)
         | None -> None
-      ]} *)
-
-  val pack : (_, 'v) protocol -> 'v -> flow
-  (** [pack protocol concrete_flow] abstracts the given [flow] into the {!flow}
-      type from a given [protocol]. It permits to use [Conduit] with a concrete
-      value created by the user.
-
-      {[
-        let socket = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
-        let flow = pack Conduit_tcp.t socket in
-        send flow "Hello World!"
       ]} *)
 
   (** {2:resolution Domain name resolvers.} *)

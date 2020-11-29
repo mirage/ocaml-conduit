@@ -352,13 +352,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Flow.T flow))
 
-  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
-
-  let unpack : flow -> unpack =
-   fun flow ->
-    let (Value (flow, Flow (_, m))) = Flw.prj flow in
-    Flow (flow, m)
-
   let impl :
       type edn flow.
       (edn, flow) protocol ->

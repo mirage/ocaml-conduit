@@ -92,12 +92,21 @@ let fake1 = Tuyau.register (module Fake_protocol1)
 
 let fake2 = Tuyau.register (module Fake_protocol2)
 
+module R0 = (val Tuyau.repr fake0)
+
+module R1 = (val Tuyau.repr fake1)
+
+module R2 = (val Tuyau.repr fake2)
+
 let hello_world = "Hello World!\n"
 
 let fn_fully_abstr flow = Benchmark.V (fun () -> Tuyau.send flow hello_world)
 
-let fn_abstr (Tuyau.Flow (flow, (module Flow))) =
-  Benchmark.V (fun () -> Flow.send flow hello_world)
+let fn_abstr = function
+  | R0.T flow -> Benchmark.V (fun () -> Fake_protocol0.send flow hello_world)
+  | R1.T flow -> Benchmark.V (fun () -> Fake_protocol1.send flow hello_world)
+  | R2.T flow -> Benchmark.V (fun () -> Fake_protocol2.send flow hello_world)
+  | _ -> assert false
 
 type result = {
   with_conduit : float;
@@ -139,7 +148,7 @@ let run json =
   Tuyau.connect Unix.stderr fake0 >>= fun flow ->
   Tuyau.send flow hello_world >>= fun _ ->
   let samples0 = Benchmark.run (fn_fully_abstr flow) in
-  let samples1 = Benchmark.run (fn_abstr (Tuyau.unpack flow)) in
+  let samples1 = Benchmark.run (fn_abstr flow) in
 
   match
     ( Linear_algebra.ols (fun m -> m.(1)) [| (fun m -> m.(0)) |] samples0,

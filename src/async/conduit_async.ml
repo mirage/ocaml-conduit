@@ -13,21 +13,21 @@ let failwith fmt = Format.kasprintf failwith fmt
 
 let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 let serve :
     type cfg t v.
     ?timeout:int ->
     handler:(flow -> unit Async.Deferred.t) ->
-    service:(cfg, t, v) service ->
+    (cfg, t, v) service ->
     cfg ->
     unit Async.Condition.t * (unit -> unit Async.Deferred.t) =
- fun ?timeout ~handler ~service cfg ->
+ fun ?timeout ~handler service cfg ->
   let open Async in
   let stop = Async.Condition.create () in
   let module Svc = (val Service.impl service) in
   let main () =
-    Service.init cfg ~service >>= function
+    Service.init service cfg >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok t -> (
         let rec loop () =
@@ -180,7 +180,7 @@ module TCP = struct
         Writer.close writer >>= fun () -> Async.return (Ok ()))
   end
 
-  let protocol = register ~protocol:(module Protocol)
+  let protocol = register (module Protocol)
 
   type configuration =
     | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
@@ -246,7 +246,7 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = S.register ~service:(module Service) ~protocol
+  let service = S.register (module Service) protocol
 
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->

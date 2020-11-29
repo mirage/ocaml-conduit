@@ -6,7 +6,7 @@ module type S = sig
   val serve :
     ?timeout:int ->
     handler:(flow -> unit io) ->
-    service:('cfg, 'master, 'v) Service.service ->
+    ('cfg, 's, 'flow) Service.t ->
     'cfg ->
     unit condition * (unit -> unit io)
 end
@@ -112,11 +112,11 @@ struct
     | Ok () -> return ()
 
   let server :
-      type cfg service.
+      type cfg s.
+      (cfg, s, 'flow) Conduit.Service.t ->
       cfg ->
-      service:(cfg, service, 'flow) Conduit.Service.service ->
       unit Condition.t * (unit -> unit IO.t) =
-   fun cfg ~service -> Conduit.serve ~handler:transmission ~service cfg
+   fun service cfg -> Conduit.serve ~handler:transmission service cfg
 
   (* part *)
 

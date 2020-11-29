@@ -62,10 +62,10 @@ type 't service
 (** The type for SSL services. *)
 
 val service_with_ssl :
-  ('cfg, 't, 'flow) Service.service ->
+  ('cfg, 't, 'flow) Service.t ->
   file_descr:('flow -> Lwt_unix.file_descr) ->
   ('edn, Lwt_ssl.socket) protocol ->
-  (Ssl.context * 'cfg, 't service, Lwt_ssl.socket) Service.service
+  (Ssl.context * 'cfg, 't service, Lwt_ssl.socket) Service.t
 (** [service_with_ssl ~key service ~file_descr ssl_protocol] returns a
     representation of the given service with SSL. The service deliver an SSL
     flow which must be described by a [Lwt_ssl.socket Witness.protocol] (eg.

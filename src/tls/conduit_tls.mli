@@ -65,10 +65,10 @@ module Make
   type 'service service_with_tls
 
   val service_with_tls :
-    ('cfg, 't, 'flow) Conduit.Service.service ->
+    ('cfg, 't, 'flow) Conduit.Service.t ->
     ('edn, 'flow protocol_with_tls) Conduit.protocol ->
     ( 'cfg * Tls.Config.server,
       't service_with_tls,
       'flow protocol_with_tls )
-    Conduit.Service.service
+    Conduit.Service.t
 end

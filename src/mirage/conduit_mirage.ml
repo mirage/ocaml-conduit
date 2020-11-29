@@ -15,15 +15,15 @@ let ( >>? ) = Lwt_result.bind
 let serve :
     type cfg service flow.
     handler:(flow -> unit Lwt.t) ->
-    service:(cfg, service, flow) Service.service ->
+    (cfg, service, flow) Service.t ->
     cfg ->
     unit Lwt_condition.t * unit Lwt.t =
- fun ~handler ~service cfg ->
+ fun ~handler service cfg ->
   let open Lwt.Infix in
   let stop = Lwt_condition.create () in
   let module Svc = (val Service.impl service) in
   let main =
-    Service.init cfg ~service >>= function
+    Service.init service cfg >>= function
     | Error err -> failwith "%a" Service.pp_error err
     | Ok service -> (
         let rec loop () =

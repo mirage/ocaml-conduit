@@ -19,21 +19,21 @@ val io_of_flow :
     these reasons, and even if {!TCP} try to the best to fit under an [Lwt_io],
     you should not use this function. *)
 
-type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.service
+type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 (** The type for lwt services. *)
 
 val serve :
   ?timeout:int ->
   handler:(flow -> unit Lwt.t) ->
-  service:('cfg, 'service, 'v) service ->
+  ('cfg, 'service, 'v) service ->
   'cfg ->
   unit Lwt_condition.t * (unit -> unit Lwt.t)
-(** [serve ~handler ~service cfg] creates an usual infinite [service] loop from
+(** [serve ~handler service cfg] creates an usual infinite [service] loop from
     the given configuration ['cfg]. It returns the {i promise} to launch the
     loop and a condition variable to stop the loop.
 
     {[
-      let stop, loop = serve ~handler ~service:TCP.service cfg in
+      let stop, loop = serve ~handler TCP.service cfg in
       Lwt.both
         ( Lwt_unix.sleep 10. >>= fun () ->
           Lwt_condition.broadcast stop () ;

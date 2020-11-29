@@ -24,7 +24,7 @@ module Make (Key : S1) : sig
 
   type v = Value : 'a * 'a Key.t -> v
 
-  type k = Key : 'a Key.t * ('a -> t) -> k
+  type k = Key : 'a Key.t -> k
 
   val equal : 'a s -> 'b s -> ('a, 'b) refl option
 

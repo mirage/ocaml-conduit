@@ -170,10 +170,8 @@ The end user is then able to {i destruct} the flow to this type:
 
 {[
 let hello (flow : Conduit.flow) = match flow with
-  | T (Value file_descr) ->
-    Unix.write file_descr "Hello World!"
-  | flow ->
-    Conduit.send flow "Hello World!"
+  | T file_descr -> Unix.write file_descr "Hello World!"
+  | flow -> Conduit.send flow "Hello World!"
 ]}
 
 Of course, we can not assert that the given [flow] is, in any case, an

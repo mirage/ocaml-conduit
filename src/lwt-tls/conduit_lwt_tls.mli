@@ -40,12 +40,7 @@ module TCP : sig
       Protocol.flow protocol_with_tls )
     protocol
 
-  type t =
-    ( Lwt_unix.sockaddr * Tls.Config.client,
-      Protocol.flow protocol_with_tls )
-    Conduit.value
-
-  type Conduit_lwt.flow += T of t
+  type Conduit_lwt.flow += T of Protocol.flow protocol_with_tls
 
   val service :
     ( configuration * Tls.Config.server,

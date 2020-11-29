@@ -112,9 +112,7 @@ module TCP : sig
 
   val protocol : (Lwt_unix.sockaddr, Protocol.flow) protocol
 
-  type t = (Lwt_unix.sockaddr, Protocol.flow) Conduit.value
-
-  type flow += T of t
+  type flow += T of Protocol.flow
 
   val service : (configuration, Service.t, Protocol.flow) service
 

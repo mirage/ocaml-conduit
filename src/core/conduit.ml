@@ -1,7 +1,5 @@
 module Endpoint = Endpoint
-module Sigs = Sigs
-
-type ('a, 'b) refl = Refl : ('a, 'a) refl
+include Conduit_intf
 
 let strf = Format.asprintf
 
@@ -16,8 +14,6 @@ type _ resolver =
       witness : 's witness;
     }
       -> ('edn * 's) resolver
-
-type ('a, 'b) value = Value : 'b -> ('a, 'b) value
 
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
@@ -51,139 +47,6 @@ module Map =
 type resolvers = Map.t
 
 let empty = Map.empty
-
-module type S = sig
-  module Endpoint : module type of Endpoint
-
-  type input
-
-  type output
-
-  type +'a io
-
-  type scheduler
-
-  type flow = private ..
-
-  type error = [ `Msg of string | `Not_found ]
-
-  val pp_error : error Fmt.t
-
-  val recv :
-    flow -> input -> ([ `Input of int | `End_of_flow ], [> error ]) result io
-
-  val send : flow -> output -> (int, [> error ]) result io
-
-  val close : flow -> (unit, [> error ]) result io
-
-  module type FLOW =
-    Sigs.FLOW
-      with type input = input
-       and type output = output
-       and type +'a io = 'a io
-
-  module type PROTOCOL =
-    Sigs.PROTOCOL
-      with type input = input
-       and type output = output
-       and type +'a io = 'a io
-
-  type ('edn, 'flow) impl =
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  type ('edn, 'flow) protocol
-
-  val register : protocol:('edn, 'flow) impl -> ('edn, 'flow) protocol
-
-  module type REPR = sig
-    type t
-
-    type flow += T of t
-  end
-
-  val repr : ('edn, 'v) protocol -> (module REPR with type t = ('edn, 'v) value)
-
-  type unpack = Flow : 'flow * (module FLOW with type flow = 'flow) -> unpack
-
-  val unpack : flow -> unpack
-
-  val impl :
-    ('edn, 'flow) protocol ->
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
-
-  val cast : flow -> ('edn, 'flow) protocol -> 'flow option
-
-  val pack : ('edn, 'v) protocol -> 'v -> flow
-
-  type 'edn resolver = Endpoint.t -> 'edn option io
-
-  type nonrec resolvers = resolvers
-
-  val empty : resolvers
-
-  val add :
-    ('edn, 'flow) protocol ->
-    ?priority:int ->
-    'edn resolver ->
-    resolvers ->
-    resolvers
-
-  val resolve :
-    resolvers ->
-    ?protocol:('edn, 'v) protocol ->
-    Endpoint.t ->
-    (flow, [> error ]) result io
-
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
-
-  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
-
-  module Service : sig
-    type ('cfg, 't, 'flow) impl =
-      (module SERVICE
-         with type configuration = 'cfg
-          and type t = 't
-          and type flow = 'flow)
-
-    type ('cfg, 't, 'flow) service
-
-    val equal :
-      ('cfg0, 't0, 'flow0) service ->
-      ('cfg1, 't1, 'flow1) service ->
-      (('cfg0, 'cfg1) refl * ('t0, 't1) refl * ('flow0, 'flow1) refl) option
-
-    val register :
-      service:('cfg, 't, 'v) impl ->
-      protocol:(_, 'v) protocol ->
-      ('cfg, 't, 'v) service
-
-    type error = [ `Msg of string ]
-
-    val pp_error : error Fmt.t
-
-    val init :
-      'cfg -> service:('cfg, 't, 'v) service -> ('t, [> error ]) result io
-
-    val accept :
-      service:('cfg, 't, 'v) service -> 't -> (flow, [> error ]) result io
-
-    val close :
-      service:('cfg, 't, 'v) service -> 't -> (unit, [> error ]) result io
-
-    val pack : (_, _, 'v) service -> 'v -> flow
-
-    val impl :
-      ('cfg, 't, 'v) service ->
-      (module SERVICE
-         with type configuration = 'cfg
-          and type t = 't
-          and type flow = 'v)
-  end
-end
-
-module type IO = Sigs.IO
-
-module type BUFFER = Sigs.BUFFER
 
 module type BIJECTION = sig
   type +'a s
@@ -241,13 +104,13 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   type output = Output.t
 
   module type PROTOCOL =
-    Sigs.PROTOCOL
+    PROTOCOL
       with type input = input
        and type output = output
        and type +'a io = 'a io
 
   module type FLOW =
-    Sigs.FLOW
+    FLOW
       with type input = input
        and type output = output
        and type +'a io = 'a io
@@ -486,7 +349,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     | Some (Value flow) -> Some flow
     | None -> None
 
-  module type SERVICE = Sigs.SERVICE with type +'a io = 'a io
+  module type SERVICE = SERVICE with type +'a io = 'a io
 
   module Service = struct
     type ('cfg, 't, 'flow) impl =

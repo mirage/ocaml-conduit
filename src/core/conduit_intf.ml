@@ -95,7 +95,7 @@ module type SERVICE = sig
 
   val accept : t -> (flow, error) result io
 
-  val close : t -> (unit, error) result io
+  val stop : t -> (unit, error) result io
 end
 
 module type IO = sig
@@ -464,8 +464,8 @@ module type S = sig
     (** [accept t s] waits for a connection on the server [s]. The result is a
         {i flow} connected to the client. *)
 
-    val close : ('cfg, 's, 'v) t -> 's -> (unit, [> error ]) result io
-    (** [close t s] releases the resources associated to the server [s]. *)
+    val stop : ('cfg, 's, 'v) t -> 's -> (unit, [> error ]) result io
+    (** [stop t s] releases the resources associated to the server [s]. *)
 
     val pack : (_, _, 'v) t -> 'v -> flow
     (** [pack service v] returns the abstracted value [v] as {!pack} does for a

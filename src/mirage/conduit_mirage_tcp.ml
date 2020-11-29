@@ -267,7 +267,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
             Lwt_mutex.unlock mutex ;
             accept t)
 
-    let close ({ stack; mutex; _ } as t) =
+    let stop ({ stack; mutex; _ } as t) =
       Lwt_mutex.with_lock mutex (fun () ->
           StackV4.disconnect stack >>= fun () ->
           t.closed <- true ;

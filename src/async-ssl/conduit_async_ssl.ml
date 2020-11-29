@@ -271,8 +271,8 @@ struct
                 connection = conn;
               })
 
-  let close (_, t) =
-    Service.close t >>= function
+  let stop (_, t) =
+    Service.stop t >>= function
     | Error err -> Async.return (Error (Service err))
     | Ok _ as v -> Async.return v
 end

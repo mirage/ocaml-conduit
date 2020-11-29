@@ -352,8 +352,8 @@ struct
       Log.info (fun m -> m "A TLS flow is coming.") ;
       return (Ok { tls = Some tls; closed = false; raw; queue; flow })
 
-    let close { service; _ } =
-      Service.close service >>| reword_error service_error
+    let stop { service; _ } =
+      Service.stop service >>| reword_error service_error
   end
 
   let service_with_tls :

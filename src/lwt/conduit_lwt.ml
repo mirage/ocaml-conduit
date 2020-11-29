@@ -88,9 +88,9 @@ let serve :
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Ok (`Stop | `Timeout) -> Svc.stop t
           | Error err0 -> (
-              Svc.close t >>= function
+              Svc.stop t >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function
@@ -405,7 +405,7 @@ module TCP = struct
           Lwt.return_error `Firewall_rules_forbid_connection
       | exn -> Lwt.fail exn
 
-    let close _service =
+    let stop _service =
       (* XXX(dinosaure): it seems that on MacOS, try to close the [master]
          socket raises an error. *)
       Lwt.return_ok ()

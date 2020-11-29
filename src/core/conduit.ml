@@ -28,8 +28,8 @@ module Log = (val Logs.src_log src : Logs.LOG)
 type ('a, 'b, 'c) thd =
   | Thd : 'b -> ('a, 'b, 'c) thd
       (** XXX(dinosaure): we must define [(_, _, _) thd] to be able to keep some
-          existential types (eg. ['cfg] and ['flow] when we use [('cfg, 't, 'flow)
-          service]) but still to use only on (eg. ['t]).
+          existential types (eg. ['cfg] and ['flow] when we use
+          [('cfg, 't, 'flow) service]) but still to use only on (eg. ['t]).
 
           We add [warning "-37"] to be able to compile the project. *)
 

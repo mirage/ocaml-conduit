@@ -1,5 +1,5 @@
-(** MirageOS-functor to be able to resolve a domain-name
-   such as [gethostbyname] with [ocaml-dns]. *)
+(** MirageOS-functor to be able to resolve a domain-name such as [gethostbyname]
+    with [ocaml-dns]. *)
 
 module Make
     (R : Mirage_random.S)

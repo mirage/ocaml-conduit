@@ -346,8 +346,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
         go l
 
   let connect :
-      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result io =
-   fun edn { protocol = (module Witness); _ } ->
+      type edn v. (edn, v) protocol -> edn -> (flow, [> error ]) result io =
+   fun { protocol = (module Witness); _ } edn ->
     let (Protocol (_, (module Flow), (module Protocol))) = Witness.witness in
     Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Flow.T flow))

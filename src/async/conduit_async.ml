@@ -46,9 +46,9 @@ let serve :
           | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok (`Stop | `Timeout) -> Svc.stop t
+          | Ok (`Stop | `Timeout) -> Service.stop service t
           | Error err0 -> (
-              Svc.stop t >>= function
+              Service.stop service t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in
         loop () >>= function

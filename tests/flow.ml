@@ -288,7 +288,7 @@ module Dummy_service = struct
 
   let accept T = Ok Flow
 
-  let close T = Ok ()
+  let stop T = Ok ()
 end
 
 let dummy_protocol = Conduit.register (module Dummy_protocol)

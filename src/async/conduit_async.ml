@@ -48,9 +48,9 @@ let serve :
           | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok (`Stop | `Timeout) -> Svc.close t
+          | Ok (`Stop | `Timeout) -> Svc.stop t
           | Error err0 -> (
-              Svc.close t >>= function
+              Svc.stop t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in
         loop () >>= function
@@ -242,7 +242,7 @@ module TCP = struct
           Async.return (Ok flow)
       | `Socket_closed -> Async.return (Error Socket_closed)
 
-    let close (Socket (socket, _)) =
+    let stop (Socket (socket, _)) =
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 

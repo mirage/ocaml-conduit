@@ -24,11 +24,11 @@ let send = Alcotest.int
 let error =
   let pp ppf = function
     | #Rresult.R.msg as v -> Rresult.R.pp_msg ppf v
-    | `Not_found -> Fmt.string ppf "`Not_found" in
+    | `Not_found edn -> Fmt.pf ppf "%a not found" Conduit.Endpoint.pp edn in
   let equal a b =
     match (a, b) with
     | `Msg a, `Msg b -> a = b
-    | `Not_found, `Not_found -> true
+    | `Not_found a, `Not_found b -> Conduit.Endpoint.equal a b
     | _ -> false in
   Alcotest.testable pp equal
 

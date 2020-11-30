@@ -343,8 +343,8 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
         go l
 
   let connect :
-      type edn v. edn -> (edn, v) protocol -> (flow, [> error ]) result io =
-   fun edn { protocol = (module Witness); _ } ->
+      type edn v. (edn, v) protocol -> edn -> (flow, [> error ]) result io =
+   fun { protocol = (module Witness); _ } edn ->
     let (Protocol (_, (module Flow), (module Protocol))) = Witness.witness in
     Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
     >>? fun flow -> return (Ok (Flow.T flow))
@@ -416,11 +416,11 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       | Ok flow -> return (Ok (Flow.T flow))
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 
-    let close :
+    let stop :
         type cfg s flow. (cfg, s, flow) t -> s -> (unit, [> error ]) result io =
      fun (Service ((module Witness), _)) t ->
       let (Svc (_, (module Service))) = Witness.witness in
-      Service.close t >>= function
+      Service.stop t >>= function
       | Ok () -> return (Ok ())
       | Error err -> return (error_msgf "%a" Service.pp_error err)
 

@@ -35,9 +35,9 @@ let serve :
           | Ok (`Flow flow) ->
               Lwt.async (fun () -> handler flow) ;
               Lwt.pause () >>= loop
-          | Ok `Stop -> Svc.close service
+          | Ok `Stop -> Svc.stop service
           | Error err0 -> (
-              Svc.close service >>= function
+              Svc.stop service >>= function
               | Ok () -> Lwt.return_error err0
               | Error _err1 -> Lwt.return_error err0) in
         loop () >>= function

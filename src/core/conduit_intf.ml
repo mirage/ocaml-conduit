@@ -95,7 +95,7 @@ module type SERVICE = sig
 
   val accept : t -> (flow, error) result io
 
-  val close : t -> (unit, error) result io
+  val stop : t -> (unit, error) result io
 end
 
 module type IO = sig
@@ -398,7 +398,7 @@ module type S = sig
           | flow -> ignore @@ send flow "Hello World!"
       ]} *)
 
-  val connect : 'edn -> ('edn, _) protocol -> (flow, [> error ]) result io
+  val connect : ('edn, _) protocol -> 'edn -> (flow, [> error ]) result io
 
   (** {2:service Server-side conduits.} *)
 
@@ -464,8 +464,8 @@ module type S = sig
     (** [accept t s] waits for a connection on the server [s]. The result is a
         {i flow} connected to the client. *)
 
-    val close : ('cfg, 's, 'v) t -> 's -> (unit, [> error ]) result io
-    (** [close t s] releases the resources associated to the server [s]. *)
+    val stop : ('cfg, 's, 'v) t -> 's -> (unit, [> error ]) result io
+    (** [stop t s] releases the resources associated to the server [s]. *)
 
     val flow : (_, _, 'v) t -> 'v -> flow
     (** [flow t s] is the [s] seen as a an abstract {!flow}.

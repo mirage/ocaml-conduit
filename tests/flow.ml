@@ -86,7 +86,7 @@ let memory0 = Conduit.register (module Memory_flow0)
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
   let open Rresult in
-  let flow = Conduit.connect ("Hello World!", Bytes.empty) memory0 in
+  let flow = Conduit.connect memory0 ("Hello World!", Bytes.empty) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let buf0 = Bytes.create 12 in
@@ -105,7 +105,7 @@ let test_output_string =
   Alcotest.test_case "output string" `Quick @@ fun () ->
   let open Rresult in
   let buf = Bytes.create 12 in
-  let flow = Conduit.connect ("", buf) memory0 in
+  let flow = Conduit.connect memory0 ("", buf) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let res0 = Conduit.send flow "Hell" in
@@ -204,7 +204,7 @@ let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->
   let open Rresult in
   let flow =
-    Conduit.connect ([ ""; "123"; "45"; "6789"; "0" ], [ Bytes.empty ]) memory1
+    Conduit.connect memory1 ([ ""; "123"; "45"; "6789"; "0" ], [ Bytes.empty ])
   in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
@@ -229,7 +229,7 @@ let test_output_strings =
   Alcotest.test_case "output strings" `Quick @@ fun () ->
   let open Rresult in
   let bufs = [ Bytes.create 4; Bytes.empty; Bytes.create 2; Bytes.create 6 ] in
-  let flow = Conduit.connect ([], bufs) memory1 in
+  let flow = Conduit.connect memory1 ([], bufs) in
   Alcotest.(check bool) "connect" (R.is_ok flow) true ;
   let flow = R.get_ok flow in
   let res0 = Conduit.send flow "Hello" in
@@ -288,7 +288,7 @@ module Dummy_service = struct
 
   let accept T = Ok Flow
 
-  let close T = Ok ()
+  let stop T = Ok ()
 end
 
 let dummy_protocol = Conduit.register (module Dummy_protocol)

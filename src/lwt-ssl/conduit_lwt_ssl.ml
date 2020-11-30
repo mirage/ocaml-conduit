@@ -106,8 +106,8 @@ struct
       Lwt_unix.close (Service.file_descr flow) >>= fun () -> Lwt.fail exn in
     Lwt.try_bind accept process error
 
-  let close { service; _ } =
-    Service.close service >|= reword_error (fun err -> `Service err)
+  let stop { service; _ } =
+    Service.stop service >|= reword_error (fun err -> `Service err)
 end
 
 let service_with_ssl :

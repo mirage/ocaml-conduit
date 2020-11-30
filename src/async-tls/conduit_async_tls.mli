@@ -36,6 +36,12 @@ module TCP : sig
       Protocol.flow protocol_with_tls )
     service
 
+  val configuration :
+    config:Tls.Config.server ->
+    ?backlog:int ->
+    ('a, 'listening_on) Async_unix.Tcp.Where_to_listen.t ->
+    configuration * Tls.Config.server
+
   val resolve :
     port:int ->
     config:Tls.Config.client ->

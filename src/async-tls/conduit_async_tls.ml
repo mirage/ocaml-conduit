@@ -8,6 +8,9 @@ module TCP = struct
 
   let service = service_with_tls service protocol
 
+  let configuration ~config:tls_config ?backlog listen =
+    (configuration ?backlog listen, tls_config)
+
   let resolve ~port ~config domain_name =
     resolve ~port domain_name >>| function
     | Some edn -> Some (edn, config)

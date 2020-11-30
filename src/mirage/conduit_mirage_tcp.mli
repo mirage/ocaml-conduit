@@ -26,4 +26,11 @@ module Make (StackV4 : Mirage_stack.V4) : sig
   type service
 
   val service : (StackV4.t configuration, service, protocol) Service.t
+
+  val configuration :
+    StackV4.t ->
+    ?keepalive:Mirage_protocols.Keepalive.t ->
+    ?nodelay:bool ->
+    port:int ->
+    StackV4.t configuration
 end

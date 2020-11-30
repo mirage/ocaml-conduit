@@ -97,5 +97,11 @@ module TCP : sig
     ?verify:verify ->
     (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
 
+  val configuration :
+    context:Ssl.context ->
+    ?capacity:int ->
+    Lwt_unix.sockaddr ->
+    Ssl.context * configuration
+
   type Conduit_lwt.flow += T of Lwt_ssl.socket
 end

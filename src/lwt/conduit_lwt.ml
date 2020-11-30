@@ -416,6 +416,8 @@ module TCP = struct
 
   let service = Conduit.Service.register (module Service) protocol
 
+  let configuration ?(capacity = 40) sockaddr = { capacity; sockaddr }
+
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->
         Lwt.return_some (Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port))

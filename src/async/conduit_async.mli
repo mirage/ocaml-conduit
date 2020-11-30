@@ -61,5 +61,8 @@ module TCP : sig
 
   val service : (configuration, Service.t, Protocol.flow) service
 
+  val configuration :
+    ?backlog:int -> ('a, 'listening_on) Tcp.Where_to_listen.t -> configuration
+
   val resolve : port:int -> endpoint resolver
 end

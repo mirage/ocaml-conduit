@@ -116,5 +116,7 @@ module TCP : sig
 
   val service : (configuration, Service.t, Protocol.flow) service
 
+  val configuration : ?capacity:int -> Lwt_unix.sockaddr -> configuration
+
   val resolve : port:int -> Lwt_unix.sockaddr resolver
 end

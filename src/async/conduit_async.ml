@@ -25,7 +25,6 @@ let serve :
  fun ?timeout ~handler service cfg ->
   let open Async in
   let stop = Async.Condition.create () in
-  let module Svc = (val Service.impl service) in
   let main () =
     Service.init service cfg >>= function
     | Error err -> failwith "%a" Service.pp_error err
@@ -33,9 +32,8 @@ let serve :
         let rec loop () =
           let close = Async.Condition.wait stop >>| fun () -> Ok `Stop in
           let accept =
-            Svc.accept t >>? fun flow ->
-            Async.(Deferred.ok (return (`Flow (Service.pack service flow))))
-          in
+            Service.accept service t >>? fun flow ->
+            Async.(Deferred.ok (return (`Flow flow))) in
           let events =
             match timeout with
             | None -> [ close; accept ]
@@ -48,14 +46,14 @@ let serve :
           | Ok (`Flow flow) ->
               Async.don't_wait_for (handler flow) ;
               Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok (`Stop | `Timeout) -> Svc.stop t
+          | Ok (`Stop | `Timeout) -> Service.stop service t
           | Error err0 -> (
-              Svc.stop t >>= function
+              Service.stop service t >>= function
               | Ok () -> Async.return (Error err0)
               | Error _err1 -> Async.return (Error err0)) in
         loop () >>= function
         | Ok () -> Async.return ()
-        | Error err -> failwith "%a" Svc.pp_error err) in
+        | Error err -> failwith "%a" Service.pp_error err) in
   (stop, main)
 
 let reader_and_writer_of_flow flow =

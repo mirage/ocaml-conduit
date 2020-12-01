@@ -69,5 +69,11 @@ module TCP : sig
       Protocol.flow with_ssl )
     service
 
+  val configuration :
+    context:context ->
+    ?backlog:int ->
+    ('a, 'litening_on) Tcp.Where_to_listen.t ->
+    context * configuration
+
   val resolve : port:int -> context:context -> (context * endpoint) resolver
 end

@@ -16,4 +16,7 @@ module TCP = struct
     resolve ~port domain_name >|= function
     | Some edn -> Some (edn, config)
     | None -> None
+
+  let configuration ~config:tls_config ?capacity sockaddr =
+    (configuration ?capacity sockaddr, tls_config)
 end

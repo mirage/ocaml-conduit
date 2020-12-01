@@ -132,6 +132,9 @@ module TCP = struct
     | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
     | None -> None
 
+  let configuration ~context ?capacity sockaddr =
+    (context, Conduit_lwt.TCP.configuration ?capacity sockaddr)
+
   open Conduit_lwt.TCP
 
   type verify =

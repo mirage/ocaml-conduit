@@ -246,6 +246,8 @@ module TCP = struct
 
   let service = S.register (module Service) protocol
 
+  let configuration ?backlog listen = Listen (backlog, listen)
+
   let resolve ~port = function
     | Conduit.Endpoint.IP ip ->
         let inet_addr =

@@ -52,4 +52,10 @@ module TCP : sig
     port:int ->
     config:Tls.Config.client ->
     (Lwt_unix.sockaddr * Tls.Config.client) resolver
+
+  val configuration :
+    config:Tls.Config.server ->
+    ?capacity:int ->
+    Lwt_unix.sockaddr ->
+    configuration * Tls.Config.server
 end

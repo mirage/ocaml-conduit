@@ -275,4 +275,7 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   end
 
   let service = Conduit_mirage.Service.register (module Service) protocol
+
+  let configuration stackv4 ?keepalive ?(nodelay = false) ~port =
+    { stack = stackv4; keepalive; nodelay; port }
 end

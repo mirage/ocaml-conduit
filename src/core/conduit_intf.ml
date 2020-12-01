@@ -138,7 +138,7 @@ module type S = sig
          | _ -> ... (* use flow functions for the default case *)
       ]} *)
 
-  type error = [ `Msg of string | `Not_found ]
+  type error = [ `Msg of string | `Not_found of Endpoint.t ]
 
   val pp_error : error Fmt.t
 

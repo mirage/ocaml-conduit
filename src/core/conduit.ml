@@ -236,24 +236,25 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let resolve = inj <.> resolve in
     Map.add key (Resolver { priority; resolve; witness })
 
-  type error = [ `Msg of string | `Not_found ]
+  type error = [ `Msg of string | `Not_found of Endpoint.t ]
 
   let pf ppf fmt = Format.fprintf ppf fmt
 
   let pp_error ppf = function
     | `Msg err -> pf ppf "%s" err
-    | `Not_found -> pf ppf "Not found"
+    | `Not_found edn -> pf ppf "%a not found" Endpoint.pp edn
 
   let flow_of_endpoint :
-      type edn. edn key -> edn -> (flow, [> error ]) result io =
-   fun key edn ->
+      type edn. edn:Endpoint.t -> edn key -> edn -> (flow, [> error ]) result io
+      =
+   fun ~edn key v ->
     let rec go = function
-      | [] -> return (Error `Not_found)
+      | [] -> return (Error (`Not_found edn))
       | Ptr.Key (Protocol (k, (module Flow), (module Protocol))) :: r ->
       match Map.Key.(key == k) with
       | None -> go r
       | Some E1.Refl.Refl -> (
-          Protocol.connect edn >>= function
+          Protocol.connect v >>= function
           | Ok flow -> return (Ok (Flow.T flow))
           | Error _err -> go r) in
     go (Ptr.bindings ())
@@ -307,12 +308,12 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     go [] (List.sort compare (Map.bindings m))
 
   let create : resolvers -> Endpoint.t -> (flow, [> error ]) result io =
-   fun m domain_name ->
-    resolve m domain_name >>= fun l ->
+   fun m edn ->
+    resolve m edn >>= fun l ->
     let rec go = function
-      | [] -> return (Error `Not_found)
-      | Endpoint (key, edn) :: r -> (
-          flow_of_endpoint key edn >>= function
+      | [] -> return (Error (`Not_found edn))
+      | Endpoint (key, v) :: r -> (
+          flow_of_endpoint ~edn key v >>= function
           | Ok flow -> return (Ok flow)
           | Error _err -> go r) in
     go l
@@ -323,16 +324,16 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
       ?protocol:(edn, v) protocol ->
       Endpoint.t ->
       (flow, [> error ]) result io =
-   fun m ?protocol domain_name ->
+   fun m ?protocol edn ->
     match protocol with
-    | None -> create m domain_name
+    | None -> create m edn
     | Some protocol ->
         let (module Protocol) = protocol.protocol in
         let (module Flow) = protocol.flow in
         let (Protocol (key', _, _)) = Protocol.witness in
-        resolve m domain_name >>= fun l ->
+        resolve m edn >>= fun l ->
         let rec go = function
-          | [] -> return (Error `Not_found)
+          | [] -> return (Error (`Not_found edn))
           | Endpoint (key, edn) :: r ->
           match Map.Key.(key == key') with
           | None -> go r

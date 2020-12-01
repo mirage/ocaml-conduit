@@ -170,7 +170,7 @@ let main json =
   match run json with
   | Ok v -> v
   | Error (`Msg err) -> Fmt.epr "%s: %s.\n%!" Sys.argv.(0) err
-  | Error `Not_found -> assert false
+  | Error (`Not_found _edn) -> assert false
 
 let cmd = (Term.(const main $ json), Term.info "run benchmarks")
 

@@ -494,3 +494,34 @@ module type S = sig
     (** [impl service] is [service]'s underlying implementation. *)
   end
 end
+
+module type Conduit = sig
+  module Endpoint = Endpoint
+
+  type resolvers
+  (** Type for resolvers map. *)
+
+  val empty : resolvers
+  (** [empty] is an empty {!resolvers} map. *)
+
+  module type S = sig
+    include S
+    (** @inline *)
+  end
+
+  module type IO = sig
+    include IO
+    (** @inline *)
+  end
+
+  module type BUFFER = sig
+    include BUFFER
+    (** @inline *)
+  end
+
+  module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
+    S
+      with type input = Input.t
+       and type output = Output.t
+       and type +'a io = 'a IO.t
+end

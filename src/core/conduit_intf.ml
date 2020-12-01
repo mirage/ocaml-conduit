@@ -124,9 +124,6 @@ module type S = sig
   type +'a io
   (** The type for I/O effects. *)
 
-  type scheduler
-  (** The type of I/O monads. *)
-
   (** {2:client Client-side conduits.} *)
 
   type flow = private ..

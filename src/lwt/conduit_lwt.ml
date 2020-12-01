@@ -29,26 +29,18 @@ let io_of_flow flow =
   let oc_close () =
     oc_closed := true ;
     close () in
-  let rec rrecv buf off len =
+  let rrecv buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     recv flow raw >>= function
-    | Ok (`Input 0) ->
-        if len = 0
-        then Lwt.return 0
-        else Lwt_unix.yield () >>= fun () -> rrecv buf off len
     | Ok (`Input len) -> Lwt.return len
     | Ok `End_of_flow -> Lwt.return 0
-    | Error err -> failwith "%a" pp_error err in
+    | Error err -> ic_closed := true ; failwith "%a" pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input rrecv in
-  let rec ssend buf off len =
+  let ssend buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     send flow raw >>= function
-    | Ok 0 ->
-        if len = 0
-        then Lwt.return 0
-        else Lwt_unix.yield () >>= fun () -> ssend buf off len
     | Ok len -> Lwt.return len
-    | Error err -> failwith "%a" pp_error err in
+    | Error err -> oc_closed := true ; failwith "%a" pp_error err in
   let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output ssend in
   (ic, oc)
 
@@ -199,8 +191,7 @@ module TCP = struct
         (* | EINPROGRESS: TODO *) in
       go ()
 
-    (* XXX(dinosaure): [recv] wants to fill [raw] as much as possible until
-       it has reached [`End_of_file]. *)
+    
     let rec recv ({ socket; closed; _ } as t)
         ({ Cstruct.buffer; off; len } as raw) =
       if closed
@@ -209,7 +200,7 @@ module TCP = struct
         let process () =
           Lwt_bytes.read socket buffer off len >>= function
           | 0 ->
-              t.closed <- true ;
+              Lwt_unix.shutdown socket SHUTDOWN_RECEIVE ;
               Lwt.return (Ok `End_of_flow)
           | len -> Lwt.return (Ok (`Input len)) in
         Lwt.catch process @@ function
@@ -222,11 +213,6 @@ module TCP = struct
         (* | EBADF: impossible *)
         | exn -> Lwt.fail exn
 
-    (* XXX(dinosaure): [send] tries to send as much as it can [raw]. However,
-       if [send] returns something smaller that what we requested, we stop
-       the process and return how many byte(s) we sended.
-
-       Try to send into a closed socket is an error. *)
     let rec send ({ socket; closed; _ } as t)
         ({ Cstruct.buffer; off; len } as raw) =
       if closed
@@ -240,12 +226,10 @@ module TCP = struct
         | Unix.(Unix_error (EACCES, _, _)) ->
             Lwt.return_error `Operation_not_permitted
         | Unix.(Unix_error (ECONNRESET, _, _)) ->
-            Lwt_unix.shutdown t.socket Unix.SHUTDOWN_ALL ;
-            t.closed <- true ;
+            Lwt_unix.shutdown socket SHUTDOWN_SEND ;
             Lwt.return_error `Closed_by_peer
         | Unix.(Unix_error (EPIPE, _, _)) ->
-            Lwt_unix.shutdown t.socket Unix.SHUTDOWN_ALL ;
-            t.closed <- true ;
+            Lwt_unix.shutdown socket SHUTDOWN_SEND ;
             Lwt.return_error `Closed_by_peer
         | Unix.(Unix_error (EDESTADDRREQ, _, _))
         | Unix.(Unix_error (ENOTCONN, _, _)) ->

@@ -149,7 +149,7 @@ module TCP = struct
     (* XXX(dinosaure): as [lwt] and seems required for [conduit-tls], [recv] wants to read
        as much as possible. Due to underlying non-blocking socket, even if we reached [`Eof],
        we must retry to read until we have something or the underlying socket was closed. *)
-    let rec recv (Socket { socket; reader; _ } as flow) raw =
+    let recv (Socket { reader; _ }) raw =
       Monitor.try_with (fun () ->
           Reader.read_bigsubstring reader (of_cstruct raw))
       >>= function
@@ -157,10 +157,7 @@ module TCP = struct
           Reader.close reader >>= fun () ->
           Async.return (Error (Core.Error.of_exn err))
       | Ok (`Ok n) -> Async.return (Ok (`Input n))
-      | Ok `Eof -> (
-          Fd.ready_to (Socket.fd socket) `Read >>= function
-          | `Bad_fd | `Closed -> Async.return (Ok `End_of_flow)
-          | `Ready -> Scheduler.yield () >>= fun () -> recv flow raw)
+      | Ok `Eof -> Async.return (Ok `End_of_flow)
 
     let send (Socket { writer; _ }) raw =
       Writer.write_bigsubstring writer (of_cstruct raw) ;

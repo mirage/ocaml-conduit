@@ -1,49 +1,17 @@
-(** Common TLS implementation with Conduit.
+module type IO = sig
+  type +'a t
 
-    The current implementation of the TLS layer over an underlying protocol
-    respects some assumptions and it has a specific behaviour which is decribed
-    here:
+  val bind : 'a t -> ('a -> 'b t) -> 'b t
 
-    The {i handshake} is not done when we initialize the flow. Only a call to
-    [recv] or [send] really starts the handshake with your peer. In that
-    context, a concurrent call of these actions should put some trouble into the
-    handshake and they must be protected by an exclusion.
+  val return : 'a -> 'a t
 
-    In other words due to the non-atomicity of [recv] and [send], while the
-    handshake, you should ensure to finish a call of one of them before to call
-    the other. A mutex should be used in this context to protect the mutual
-    exclusion between [recv] and [send]. In others words, such process is safe:
+  val catch : (unit -> 'a t) -> (exn -> 'a t) -> 'a t
 
-    {[
-      let* _ = Conduit.send tls_flow raw in
-      let* _ = Conduit.recv tls_flow raw in
-    ]}
-
-    Where such process is not safe:
-
-    {[
-      async (fun () -> Conduit.send tls_flow raw) ;
-      async (fun () -> Conduit.recv tls_flow raw)
-    ]}
-
-    The non-atomicity of [send] and [recv] is due to the underlying handshake of
-    TLS which can appear everytime. By this fact, [send] or [recv] (depends
-    which is executed first) can start an handshake process which can call
-    several times underlying [Flow.send] and [Flow.recv] processes (no 0-RTT).
-    If you use [async], the scheduler can misleading/misorder handshake started
-    with one to the other call to [send] and [recv].
-
-    A solution such as a {i mutex} to ensure the exclusivity between [send] and
-    [recv] can be used - it does not exists at this layer where such abstraction
-    is not available.
-
-    This design appear when you use [LWT] or [ASYNC] which can do a concurrence
-    between {i promises}. Without such {i scheduler}, the process is sequential
-    and the OCaml {i scheduler} should not re-order sub-processes of
-    [Conduit.send] and [Conduit.recv]. *)
+  val fail : exn -> 'a t
+end
 
 module Make
-    (IO : Conduit.IO)
+    (IO : IO)
     (Conduit : Conduit.S
                  with type input = Cstruct.t
                   and type output = Cstruct.t
@@ -56,7 +24,10 @@ module Make
   val handshake : 'flow protocol_with_tls -> bool
   (** [handshake flow] returns [true] if {i handshake} is processing. *)
 
+  val reneg : unit -> unit
+
   val protocol_with_tls :
+    ?host_of_endpoint:('edn -> string option) ->
     ('edn, 'flow) Conduit.protocol ->
     ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol
   (** From a given protocol [witness], it creates a new {i witness} of the
@@ -66,7 +37,8 @@ module Make
 
   val service_with_tls :
     ('cfg, 't, 'flow) Conduit.Service.t ->
-    ('edn, 'flow protocol_with_tls) Conduit.protocol ->
+    ('edn, 'flow) Conduit.protocol ->
+    ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol ->
     ( 'cfg * Tls.Config.server,
       't service_with_tls,
       'flow protocol_with_tls )

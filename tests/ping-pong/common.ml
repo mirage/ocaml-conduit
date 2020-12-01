@@ -73,7 +73,6 @@ struct
       | None -> (
           Conduit.recv flow tmp >>? function
           | `End_of_flow -> IO.return (Ok `Close)
-          | `Input 0 -> IO.yield () >>= go
           | `Input len ->
               Ke.Rke.N.push queue ~blit ~length:Cstruct.len ~off:0 ~len tmp ;
               go ()) in

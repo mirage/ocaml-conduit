@@ -11,7 +11,6 @@ module Make
   val resolv :
     S.t ->
     ?keepalive:Mirage_protocols.Keepalive.t ->
-    ?nodelay:bool ->
     t ->
     ?nameserver:Transport.ns_addr ->
     port:int ->

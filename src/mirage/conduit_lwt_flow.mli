@@ -1,5 +1,5 @@
-(** An implementation of [conduit-lwt] according the interface [Mirage_flow.S].
-    This module is {b deprecated} when the current implementation of [read] has
+(** An implementation of [conduit] according the interface [Mirage_flow.S]. This
+    module is {b deprecated} when the current implementation of [read] has
     another behaviour:
 
     [conduit] provides:
@@ -15,4 +15,7 @@
     the POSIX interface and let the end-user to allocate by himself the input
     buffer. *)
 
-include Mirage_flow.S with type flow = Conduit_lwt.flow
+val page_size : int
+(** [page_size = 4096] *)
+
+include Mirage_flow.S with type flow = Conduit_mirage.flow

@@ -1,3 +1,5 @@
+[@@@warning "-32"]
+
 exception Tls_alert of Tls.Packet.alert_type
 
 exception Tls_failure of Tls.Engine.failure

@@ -24,8 +24,6 @@ module Make
   val handshake : 'flow protocol_with_tls -> bool
   (** [handshake flow] returns [true] if {i handshake} is processing. *)
 
-  val reneg : unit -> unit
-
   val protocol_with_tls :
     ?host_of_endpoint:('edn -> string option) ->
     ('edn, 'flow) Conduit.protocol ->

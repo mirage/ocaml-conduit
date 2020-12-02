@@ -1,371 +1,452 @@
-module Ke = Ke.Rke
+[@@@warning "-32"]
 
-let option_fold ~none ~some = function Some x -> some x | None -> none
+exception Tls_alert of Tls.Packet.alert_type
 
-(* NOTE(dinosaure): we use an unbound queue where TLS can produce
-   something bigger than the given input. It seems hard to limit
-   the internal queue and arbitrary limit (like a queue two times
-   larger than the input) is not good. By this fact, we use [Ke.Rke]
-   even if it an infinitely grow. *)
+exception Tls_failure of Tls.Engine.failure
+
+module type IO = sig
+  type +'a t
+
+  val bind : 'a t -> ('a -> 'b t) -> 'b t
+
+  val return : 'a -> 'a t
+
+  val catch : (unit -> 'a t) -> (exn -> 'a t) -> 'a t
+
+  val fail : exn -> 'a t
+end
+
+module type S0 = sig
+  type +'a io
+
+  type file_descr
+
+  val read : file_descr -> Cstruct.t -> int io
+
+  val write : file_descr -> Cstruct.t -> int io
+
+  val write_full : file_descr -> Cstruct.t -> unit io
+
+  val close : file_descr -> unit io
+
+  type endpoint
+
+  type error
+
+  val pp_error : Format.formatter -> error -> unit
+
+  val connect : endpoint -> (file_descr, error) result io
+end
 
 module Make
-    (IO : Conduit.IO)
+    (IO : IO)
     (Conduit : Conduit.S
-                 with type input = Cstruct.t
-                  and type output = Cstruct.t
-                  and type +'a io = 'a IO.t) =
+                 with type 'a io = 'a IO.t
+                  and type input = Cstruct.t
+                  and type output = Cstruct.t) =
 struct
-  let return x = IO.return x
-
   let ( >>= ) x f = IO.bind x f
 
-  let ( >>| ) x f = x >>= fun x -> return (f x)
+  let return x = IO.return x
 
-  let ( >>? ) x f =
-    x >>= function Ok x -> f x | Error err -> return (Error err)
+  let ( >|= ) x f = x >>= fun x -> return (f x)
 
-  let reword_error : ('e0 -> 'e1) -> ('a, 'e0) result -> ('a, 'e1) result =
-   fun f -> function Ok v -> Ok v | Error err -> Error (f err)
+  let return_unit = return ()
 
-  let src = Logs.Src.create "conduit-tls"
+  let[@inline never] fail exn = IO.fail exn
 
-  module Log = (val Logs.src_log src : Logs.LOG)
+  let safely th =
+    IO.catch (fun () -> th >>= fun _ -> return_unit) (fun _ -> return_unit)
 
   type 'flow protocol_with_tls = {
-    mutable tls : Tls.Engine.state option;
-    mutable closed : bool;
-    raw : Cstruct.t;
-    flow : 'flow;
-    queue : (char, Bigarray.int8_unsigned_elt) Ke.t;
+    fd : 'flow;
+    mutable state : [ `Active of Tls.Engine.state | `Eof | `Error of exn ];
+    mutable linger : Cstruct.t option;
+    recv_buf : Cstruct.t;
   }
 
-  let underlying { flow; _ } = flow
+  module Make_drain_handshake (Protocol : S0 with type 'a io = 'a IO.t) : sig
+    val drain_handshake :
+      Protocol.file_descr protocol_with_tls ->
+      Protocol.file_descr protocol_with_tls IO.t
 
-  let handshake { tls; _ } =
-    match tls with
-    | Some tls -> Tls.Engine.handshake_in_progress tls
-    | None -> false
+    val read_react :
+      Protocol.file_descr protocol_with_tls ->
+      [> `Eof | `Ok of Cstruct.t option ] IO.t
 
-  module Make_protocol (Flow : Conduit.PROTOCOL) = struct
-    type input = Conduit.input
+    val write_t :
+      Protocol.file_descr protocol_with_tls -> Cstruct.t -> unit IO.t
+  end = struct
+    let read_t, write_t =
+      let recording_errors op t cs =
+        IO.catch
+          (fun () -> op t.fd cs)
+          (fun exn ->
+            (match t.state with
+            | `Error _ | `Eof -> ()
+            | `Active _ -> t.state <- `Error exn) ;
+            fail exn) in
+      (recording_errors Protocol.read, recording_errors Protocol.write_full)
 
-    type output = Conduit.output
+    let when_some f = function None -> return_unit | Some x -> f x
 
-    type +'a io = 'a Conduit.io
+    let rec read_react t =
+      let handle tls buf =
+        match Tls.Engine.handle_tls tls buf with
+        | `Ok (state', `Response resp, `Data data) ->
+            let state' =
+              match state' with
+              | `Ok tls -> `Active tls
+              | `Eof -> `Eof
+              | `Alert a -> `Error (Tls_alert a) in
+            t.state <- state' ;
+            safely (resp |> when_some (write_t t)) >|= fun () -> `Ok data
+        | `Fail (alert, `Response resp) ->
+            t.state <- `Error (Tls_failure alert) ;
+            write_t t resp >>= fun () -> read_react t in
 
-    type endpoint = Flow.endpoint * Tls.Config.client
+      match t.state with
+      | `Error e -> fail e
+      | `Eof -> return `Eof
+      | `Active _ -> (
+          read_t t t.recv_buf >>= fun n ->
+          match (t.state, n) with
+          | `Active _, 0 ->
+              t.state <- `Eof ;
+              return `Eof
+          | `Active tls, n -> handle tls (Cstruct.sub t.recv_buf 0 n)
+          | `Error e, _ -> fail e
+          | `Eof, _ -> return `Eof)
 
-    type flow = Flow.flow protocol_with_tls
-
-    type error =
-      [ `Msg of string
-      | `Flow of Flow.error
-      | `TLS of Tls.Engine.failure
-      | `Closed_by_peer ]
-
-    let pp_error : error Fmt.t =
-     fun ppf -> function
-      | `Msg err -> Fmt.string ppf err
-      | `Flow err -> Flow.pp_error ppf err
-      | `TLS failure -> Fmt.string ppf (Tls.Engine.string_of_failure failure)
-      | `Closed_by_peer -> Fmt.string ppf "Closed by peer"
-
-    let flow_error err = `Flow err
-
-    let flow_wr_opt :
-        Flow.flow -> Cstruct.t option -> (unit, error) result Conduit.io =
-     fun flow -> function
-      | None -> return (Ok ())
-      | Some raw ->
-          Log.debug (fun m -> m "~> Send %d bytes" (Cstruct.len raw)) ;
-          let rec go raw =
-            Flow.send flow raw >>| reword_error flow_error >>? fun len ->
-            let raw = Cstruct.shift raw len in
-            if Cstruct.len raw = 0 then return (Ok ()) else go raw in
-          go raw
-
-    let blit src src_off dst dst_off len =
-      let src = Cstruct.to_bigarray src in
-      Bigstringaf.blit src ~src_off dst ~dst_off ~len
-
-    let queue_wr_opt queue = function
-      | None -> ()
-      | Some raw ->
-          Log.debug (fun m ->
-              m "Fill the queue with %d byte(s)." (Cstruct.len raw)) ;
-          Ke.N.push queue ~blit ~length:Cstruct.len ~off:0 raw
-
-    let handle_tls :
-        Tls.Engine.state ->
-        (char, Bigarray.int8_unsigned_elt) Ke.t ->
-        Flow.flow ->
-        Cstruct.t ->
-        (Tls.Engine.state option, error) result IO.t =
-     fun tls queue flow raw ->
-      match Tls.Engine.handle_tls tls raw with
-      | `Fail (failure, `Response resp) ->
-          Log.debug (fun m -> m "|- TLS state: Fail") ;
-          flow_wr_opt flow (Some resp) >>? fun () ->
-          return (Error (`TLS failure))
-      | `Ok (`Alert _alert, `Response resp, `Data data) ->
-          Log.debug (fun m -> m "|- TLS state: Alert") ;
-          queue_wr_opt queue data ;
-          flow_wr_opt flow resp >>? fun () -> return (Ok (Some tls))
-      | `Ok (`Eof, `Response resp, `Data data) ->
-          Log.debug (fun m -> m "|- TLS state: EOF") ;
-          queue_wr_opt queue data ;
-          flow_wr_opt flow resp >>? fun () -> return (Ok None)
-      | `Ok (`Ok tls, `Response resp, `Data data) ->
-          (* XXX(dinosaure): it seems that decoding TLS inputs can produce
-             something bigger than expected. For example, decoding 4096 bytes
-             can produce 4119 byte(s). *)
-          Log.debug (fun m -> m "|- TLS state: Ok.") ;
-          queue_wr_opt queue data ;
-          flow_wr_opt flow resp >>? fun () -> return (Ok (Some tls))
-
-    let handle_handshake :
-        Tls.Engine.state ->
-        (char, Bigarray.int8_unsigned_elt) Ke.t ->
-        Flow.flow ->
-        Cstruct.t ->
-        (Tls.Engine.state option, error) result IO.t =
-     fun tls queue flow raw0 ->
-      let rec go tls raw1 =
-        match Tls.Engine.can_handle_appdata tls with
-        | true ->
-            Log.debug (fun m -> m "Start to talk with TLS (handshake is done).") ;
-            handle_tls tls queue flow raw1
-        | false -> (
-            assert (Tls.Engine.handshake_in_progress tls = true) ;
-            Log.debug (fun m -> m "Process TLS handshake.") ;
-
-            (* XXX(dinosaure): assertion, [Tls.Engine.handle_tls] consumes all
-               bytes of [raw1] and [raw1] is physically a subset of [raw0] (or
-               is [raw0]). we can re-use [raw0] for [Flow.recv] safely. *)
-            match Tls.Engine.handle_tls tls raw1 with
-            | `Ok (`Ok tls, `Response resp, `Data data) ->
-                Log.debug (fun m ->
-                    m "-- TLS state: OK (data: %d byte(s))"
-                      (option_fold ~none:0 ~some:Cstruct.len data)) ;
-                queue_wr_opt queue data ;
-                flow_wr_opt flow resp >>? fun () ->
-                if Tls.Engine.handshake_in_progress tls
-                then (
-                  Log.debug (fun m ->
-                      m "<- Read the TLS flow (while handshake).") ;
-                  Flow.recv flow raw0 >>| reword_error flow_error >>? function
-                  | `End_of_flow ->
-                      Log.warn (fun m ->
-                          m
-                            "Got EOF from underlying connection while \
-                             handshake.") ;
-                      return (Ok None)
-                  | `Input 0 ->
-                      Log.debug (fun m ->
-                          m "Underlying connection asks to re-schedule.") ;
-                      return (Ok (Some tls))
-                  | `Input len ->
-                      Log.debug (fun m ->
-                          let uid =
-                            Hashtbl.hash
-                              (Cstruct.to_string (Cstruct.sub raw0 0 len)) in
-                          m
-                            "<~ [%04x] Got %d bytes (handshake in progress: \
-                             true)."
-                            uid len) ;
-                      go tls (Cstruct.sub raw0 0 len))
-                else (
-                  Log.debug (fun m -> m "Handshake is done.") ;
-                  return (Ok (Some tls)))
-            | `Ok (`Eof, `Response resp, `Data data) ->
-                Log.debug (fun m -> m "-- TLS state: EOF") ;
-                queue_wr_opt queue data ;
-                flow_wr_opt flow resp >>? fun () -> return (Ok None)
-            | `Fail (failure, `Response resp) ->
-                Log.debug (fun m -> m "-- TLS state: Fail") ;
-                flow_wr_opt flow (Some resp) >>? fun () ->
-                return (Error (`TLS failure))
-            | `Ok (`Alert _alert, `Response resp, `Data data) ->
-                Log.debug (fun m -> m "-- TLS state: Alert") ;
-                queue_wr_opt queue data ;
-                flow_wr_opt flow resp >>? fun () -> return (Ok (Some tls)))
-      in
-      go tls raw0
-
-    let connect (edn, config) =
-      Flow.connect edn >>| reword_error flow_error >>? fun flow ->
-      let raw = Cstruct.create 0x1000 in
-      let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
-      let tls, buf = Tls.Engine.client config in
-      let rec go buf =
-        Log.debug (fun m -> m "Start handshake.") ;
-        Flow.send flow buf >>| reword_error flow_error >>? fun len ->
-        let buf = Cstruct.shift buf len in
-        if Cstruct.len buf = 0
-        then return (Ok { tls = Some tls; closed = false; raw; queue; flow })
-        else go buf in
-      go buf
-
-    let blit src src_off dst dst_off len =
-      let dst = Cstruct.to_bigarray dst in
-      Bigstringaf.blit src ~src_off dst ~dst_off ~len
-
-    let rec recv t raw =
-      Log.debug (fun m -> m "<~ Start to receive.") ;
-      match Ke.N.peek t.queue with
-      | [] -> (
-          Log.debug (fun m -> m "<~ TLS queue is empty.") ;
-          match t.tls with
-          | None ->
-              Log.debug (fun m -> m "<~ Connection is close.") ;
-              return (Ok `End_of_flow)
-          | Some tls -> (
-              Log.debug (fun m -> m "<- Read the TLS flow.") ;
-              Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
-              | `End_of_flow ->
-                  Log.warn (fun m ->
-                      m "<- Connection closed by underlying protocol.") ;
-                  t.tls <- None ;
-                  return (Ok `End_of_flow)
-              | `Input 0 ->
-                  Log.debug (fun m -> m "We must re-schedule, nothing to read.") ;
-                  return (Ok (`Input 0))
-              | `Input len ->
-                  Log.debug (fun m -> m "<- Got %d byte(s)." len) ;
-                  let handle raw =
-                    if Tls.Engine.handshake_in_progress tls
-                    then handle_handshake tls t.queue t.flow raw
-                    else handle_tls tls t.queue t.flow raw in
-                  Log.debug (fun m ->
-                      let uid =
-                        Hashtbl.hash
-                          (Cstruct.to_string (Cstruct.sub t.raw 0 len)) in
-                      m "<~ [%04x] Got %d bytes (handshake in progress: %b)."
-                        uid len
-                        (Tls.Engine.handshake_in_progress tls)) ;
-                  handle (Cstruct.sub t.raw 0 len) >>? fun tls ->
-                  t.tls <- tls ;
-                  recv t raw))
-      | _ ->
-          let max = Cstruct.len raw in
-          let len = min (Ke.length t.queue) max in
-          Ke.N.keep_exn t.queue ~blit ~length:Cstruct.len ~off:0 ~len raw ;
-          Ke.N.shift_exn t.queue len ;
-          return (Ok (`Input len))
-
-    let rec send t raw =
-      Log.debug (fun m -> m "~> Start to send %d bytes." (Cstruct.len raw)) ;
-      match t.tls with
-      | None -> return (Error `Closed_by_peer)
-      | Some tls when Tls.Engine.can_handle_appdata tls -> (
-          let raw = [ raw ] in
-          match Tls.Engine.send_application_data tls raw with
-          | Some (tls, resp) ->
-              t.tls <- Some tls ;
-              flow_wr_opt t.flow (Some resp) >>? fun () ->
-              return (Ok (Cstruct.lenv raw))
-          | None -> return (Ok (Cstruct.lenv raw)))
-      | Some tls -> (
-          Flow.recv t.flow t.raw >>| reword_error flow_error >>? function
-          | `End_of_flow ->
-              Log.debug (fun m -> m "[-] Underlying flow already closed.") ;
-              t.tls <- None ;
-              return (Error `Closed_by_peer)
-          | `Input 0 ->
-              Log.debug (fun m -> m "[-] Underlying flow re-schedule.") ;
-              return (Ok 0)
-          | `Input len -> (
-              let res =
-                handle_handshake tls t.queue t.flow (Cstruct.sub t.raw 0 len)
-              in
-              res >>= function
-              | Ok tls ->
-                  t.tls <- tls ;
-                  send t raw (* recall to finish handshake. *)
-              | Error _ as err ->
-                  Log.err (fun m -> m "[-] Got an error during handshake.") ;
-                  return err))
-
-    let close t =
-      Log.debug (fun m -> m "!- Asking to close the TLS connection") ;
-      if not t.closed
-      then (
-        match t.tls with
-        | None ->
-            Log.debug (fun m ->
-                m "!- TLS state already reached EOF, close the connection.") ;
-            Flow.close t.flow >>| reword_error flow_error >>= fun res ->
-            Log.debug (fun m -> m "!- Underlying flow properly closed.") ;
-            t.closed <- true ;
-            return res
-        | Some tls ->
-            let _tls, resp = Tls.Engine.send_close_notify tls in
-            t.tls <- None ;
-            Log.debug (fun m -> m "!- Close the connection.") ;
-            flow_wr_opt t.flow (Some resp) >>? fun () ->
-            Flow.close t.flow >>| reword_error flow_error >>? fun () ->
-            t.closed <- true ;
-            return (Ok ()))
-      else return (Ok ())
+    (*
+     * XXX bad XXX
+     * This is a point that should particularly be protected from concurrent r/w.
+     * Doing this before a `t` is returned is safe; redoing it during rekeying is
+     * not, as the API client already sees the `t` and can mistakenly interleave
+     * writes while this is in progress.
+     * *)
+    let rec drain_handshake t =
+      let push_linger t mcs =
+        let open Tls.Utils.Cs in
+        match (mcs, t.linger) with
+        | None, _ -> ()
+        | scs, None -> t.linger <- scs
+        | Some cs, Some l -> t.linger <- Some (l <+> cs) in
+      match t.state with
+      | `Active tls when not (Tls.Engine.handshake_in_progress tls) -> return t
+      | _ -> (
+          read_react t >>= function
+          | `Eof -> fail End_of_file
+          | `Ok cs ->
+              push_linger t cs ;
+              drain_handshake t)
   end
 
-  let protocol_with_tls :
-      type edn flow.
-      (edn, flow) Conduit.protocol ->
-      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
-   fun protocol ->
-    let module Protocol = (val Conduit.impl protocol) in
-    let module M = Make_protocol (Protocol) in
-    Conduit.register (module M)
+  module type PROTOCOL =
+    Conduit.PROTOCOL
+      with type 'a io = 'a IO.t
+       and type input = Cstruct.t
+       and type output = Cstruct.t
 
-  type 'service service_with_tls = {
-    service : 'service;
-    tls : Tls.Config.server;
-  }
+  module Make_S0_from_PROTOCOL (Protocol : PROTOCOL) = struct
+    exception Local_failure of string
 
-  module Make_server (Service : Conduit.SERVICE) = struct
-    type +'a io = 'a Conduit.io
+    let failwithf fmt =
+      Format.kasprintf (fun err -> fail (Local_failure err)) fmt
+
+    type +'a io = 'a IO.t
+
+    type file_descr = Protocol.flow
+
+    let read file_descr buf =
+      Protocol.recv file_descr buf >>= function
+      | Ok (`Input len) -> return len
+      | Ok `End_of_flow -> return 0
+      | Error err -> failwithf "%a" Protocol.pp_error err
+
+    let write file_descr buf =
+      Protocol.send file_descr buf >>= function
+      | Ok len -> return len
+      | Error err -> failwithf "%a" Protocol.pp_error err
+
+    let rec write_full file_descr = function
+      | cs when Cstruct.len cs = 0 -> return ()
+      | cs -> (
+          Protocol.send file_descr cs >>= function
+          | Ok len -> write_full file_descr (Cstruct.shift cs len)
+          | Error err -> failwithf "%a" Protocol.pp_error err)
+
+    let close file_descr =
+      Protocol.close file_descr >>= function
+      | Ok () -> return ()
+      | Error err -> failwithf "%a" Protocol.pp_error err
+
+    type endpoint = Protocol.endpoint
+
+    type error = Protocol.error
+
+    let pp_error = Protocol.pp_error
+
+    let connect = Protocol.connect
+  end
+
+  module Make0 (Protocol : S0 with type 'a io = 'a IO.t) = struct
+    type t = Protocol.file_descr protocol_with_tls
+
+    include Make_drain_handshake (Protocol)
+
+    let rec read t buf =
+      let writeout res =
+        let open Cstruct in
+        let rlen = len res in
+        let n = min (len buf) rlen in
+        blit res 0 buf 0 n ;
+        t.linger <- (if n < rlen then Some (sub res n (rlen - n)) else None) ;
+        return n in
+
+      match t.linger with
+      | Some res -> writeout res
+      | None -> (
+          read_react t >>= function
+          | `Eof -> return 0
+          | `Ok None -> read t buf
+          | `Ok (Some res) -> writeout res)
+
+    let writev t css =
+      match t.state with
+      | `Error err -> fail err
+      | `Eof -> fail @@ Invalid_argument "tls: closed socket"
+      | `Active tls ->
+      match Tls.Engine.send_application_data tls css with
+      | Some (tls, tlsdata) ->
+          t.state <- `Active tls ;
+          write_t t tlsdata
+      | None -> fail @@ Invalid_argument "tls: write: socket not ready"
+
+    let write t cs = writev t [ cs ]
+
+    let reneg ?authenticator ?acceptable_cas ?cert ?(drop = true) t =
+      match t.state with
+      | `Error err -> fail err
+      | `Eof -> fail @@ Invalid_argument "tls: closed socket"
+      | `Active tls ->
+      match Tls.Engine.reneg ?authenticator ?acceptable_cas ?cert tls with
+      | None -> fail @@ Invalid_argument "tls: can't renegotiate"
+      | Some (tls', buf) ->
+          if drop then t.linger <- None ;
+          t.state <- `Active tls' ;
+          write_t t buf >>= fun () ->
+          drain_handshake t >>= fun _ -> return_unit
+
+    let key_update ?request t =
+      match t.state with
+      | `Error err -> fail err
+      | `Eof -> fail @@ Invalid_argument "tls: closed socket"
+      | `Active tls ->
+      match Tls.Engine.key_update ?request tls with
+      | Error _ -> fail @@ Invalid_argument "tls: can't update key"
+      | Ok (tls', buf) ->
+          t.state <- `Active tls' ;
+          write_t t buf
+
+    let close_tls t =
+      match t.state with
+      | `Active tls ->
+          let _, buf = Tls.Engine.send_close_notify tls in
+          t.state <- `Eof ;
+          write_t t buf
+      | _ -> return_unit
+
+    let close t = safely (close_tls t) >>= fun () -> Protocol.close t.fd
+
+    let client_of_fd config ?host fd =
+      let config' =
+        match host with
+        | None -> config
+        | Some host -> Tls.Config.peer config host in
+      let t =
+        { state = `Eof; fd; linger = None; recv_buf = Cstruct.create 0x1000 }
+      in
+      let tls, init = Tls.Engine.client config' in
+      let t = { t with state = `Active tls } in
+      write_t t init >>= fun () -> drain_handshake t
+
+    (*
+  let accept conf fd =
+    Lwt_unix.accept fd >>= fun (fd', addr) ->
+    Lwt.catch (fun () -> server_of_fd conf fd' >|= fun t -> (t, addr))
+      (fun exn -> safely (Lwt_unix.close fd') >>= fun () -> fail exn)
+
+  let connect conf (host, port) =
+    resolve host (string_of_int port) >>= fun addr ->
+    let fd = Lwt_unix.(socket (Unix.domain_of_sockaddr addr) SOCK_STREAM 0) in
+    Lwt.catch (fun () -> Lwt_unix.connect fd addr >>= fun () -> client_of_fd conf ~host fd)
+      (fun exn -> safely (Lwt_unix.close fd) >>= fun () -> fail exn)
+  *)
+
+    let read_bytes t bs off len = read t (Cstruct.of_bigarray ~off ~len bs)
+
+    let write_bytes t bs off len = write t (Cstruct.of_bigarray ~off ~len bs)
+
+    let epoch t =
+      match t.state with
+      | `Active tls -> (
+          match Tls.Engine.epoch tls with
+          | `InitialEpoch -> assert false (* can never occur! *)
+          | `Epoch data -> `Ok data)
+      | `Eof -> `Error
+      | `Error _ -> `Error
+  end
+
+  type 'edn endpoint = 'edn * Tls.Config.client
+
+  module Make1 (Protocol : sig
+    include PROTOCOL
+
+    val host_of_endpoint : endpoint -> string option
+  end) =
+  struct
+    module M0 = Make_S0_from_PROTOCOL (Protocol)
+    include Make0 (M0)
+
+    type flow = t
+
+    type nonrec endpoint = Protocol.endpoint endpoint
+
+    type input = Cstruct.t
+
+    and output = Cstruct.t
+
+    type +'a io = 'a IO.t
+
+    type error =
+      [ `Tls_alert of Tls.Packet.alert_type
+      | `Tls_failure of Tls.Engine.failure
+      | `Msg of string ]
+
+    let pp_error _ppf _err = assert false
+
+    let recv flow buf =
+      IO.catch (fun () ->
+          read flow buf >>= function
+          | 0 -> return (Ok `End_of_flow)
+          | n -> return (Ok (`Input n)))
+      @@ function
+      | Tls_alert alert -> return (Error (`Tls_alert alert))
+      | Tls_failure failure -> return (Error (`Tls_failure failure))
+      | M0.Local_failure err -> return (Error (`Msg err))
+      | exn -> fail exn
+
+    let send flow buf =
+      IO.catch (fun () ->
+          write flow buf >>= fun () -> return (Ok (Cstruct.len buf)))
+      @@ function
+      | Tls_alert alert -> return (Error (`Tls_alert alert))
+      | Tls_failure failure -> return (Error (`Tls_failure failure))
+      | M0.Local_failure err -> return (Error (`Msg err))
+      | exn -> fail exn
+
+    let close flow =
+      IO.catch (fun () -> close flow >>= fun () -> return (Ok ())) @@ function
+      | Tls_alert alert -> return (Error (`Tls_alert alert))
+      | Tls_failure failure -> return (Error (`Tls_failure failure))
+      | M0.Local_failure err -> return (Error (`Msg err))
+      | exn -> fail exn
+
+    let connect (edn, conf) =
+      Protocol.connect edn >>= function
+      | Ok file_descr ->
+          client_of_fd conf ?host:(Protocol.host_of_endpoint edn) file_descr
+          >>= fun flow -> return (Ok flow)
+      | Error err ->
+          let msg = Format.asprintf "%a" Protocol.pp_error err in
+          return (Error (`Msg msg))
+  end
+
+  module Make2
+      (Protocol : PROTOCOL)
+      (Service : Conduit.SERVICE
+                   with type +'a io = 'a IO.t
+                    and type flow = Protocol.flow) =
+  struct
+    module M0 = Make_S0_from_PROTOCOL (Protocol)
+
+    type +'a io = 'a IO.t
+
+    let ( >>= ) = IO.bind
+
+    let return = IO.return
+
+    type t = Service.t * Tls.Config.server
+
+    type error = Service.error
 
     type configuration = Service.configuration * Tls.Config.server
 
-    type flow = Service.flow protocol_with_tls
+    type flow = M0.file_descr protocol_with_tls
 
-    type error = [ `Service of Service.error ]
+    let pp_error = Service.pp_error
 
-    let pp_error : error Fmt.t =
-     fun ppf -> function `Service err -> Service.pp_error ppf err
+    let init (cfg, tls) =
+      Service.init cfg >>= function
+      | Ok t -> return (Ok (t, tls))
+      | Error _ as err -> return err
 
-    let service_error err = `Service err
+    include Make_drain_handshake (M0)
 
-    type t = Service.t service_with_tls
+    let server_of_fd config fd =
+      drain_handshake
+        {
+          state = `Active (Tls.Engine.server config);
+          fd;
+          linger = None;
+          recv_buf = Cstruct.create 0x1000;
+        }
 
-    let init (edn, tls) =
-      Service.init edn >>| reword_error service_error >>? fun service ->
-      Log.info (fun m -> m "Start a TLS service.") ;
-      return (Ok { service; tls })
+    let accept (t, tls) =
+      Service.accept t >>= function
+      | Ok fd -> server_of_fd tls fd >>= fun flow -> return (Ok flow)
+      | Error _ as err -> return err
 
-    let accept { service; tls } =
-      Service.accept service >>| reword_error service_error >>? fun flow ->
-      let tls = Tls.Engine.server tls in
-      let raw = Cstruct.create 0x1000 in
-      let queue = Ke.create ~capacity:0x1000 Bigarray.Char in
-      Log.info (fun m -> m "A TLS flow is coming.") ;
-      return (Ok { tls = Some tls; closed = false; raw; queue; flow })
-
-    let stop { service; _ } =
-      Service.stop service >>| reword_error service_error
+    let stop (t, _) = Service.stop t
   end
 
+  let underlying ({ fd; _ } : 'flow protocol_with_tls) = fd
+
+  let handshake ({ state; _ } : 'flow protocol_with_tls) =
+    match state with
+    | `Active state -> Tls.Engine.handshake_in_progress state
+    | _ -> false
+
+  let protocol_with_tls :
+      type edn flow.
+      ?host_of_endpoint:(edn -> string option) ->
+      (edn, flow) Conduit.protocol ->
+      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
+   fun ?(host_of_endpoint = fun _ -> None) protocol ->
+    let module Protocol0 = (val Conduit.impl protocol) in
+    let module Protocol1 = struct
+      include Protocol0
+
+      let host_of_endpoint = host_of_endpoint
+    end in
+    let module Protocol2 = Make1 (Protocol1) in
+    Conduit.register (module Protocol2)
+
+  type 't service_with_tls = 't * Tls.Config.server
+
   let service_with_tls :
-      type cfg edn t flow.
+      type cfg t flow edn.
       (cfg, t, flow) Conduit.Service.t ->
-      (edn, flow protocol_with_tls) Conduit.protocol ->
+      (edn, flow) Conduit.protocol ->
+      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol ->
       ( cfg * Tls.Config.server,
         t service_with_tls,
         flow protocol_with_tls )
       Conduit.Service.t =
-   fun service protocol ->
-    let module Service = (val Conduit.Service.impl service) in
-    let module M = Make_server (Service) in
-    Conduit.Service.register (module M) protocol
+   fun service p0 p1 ->
+    let module Service0 = (val Conduit.Service.impl service) in
+    let module Protocol0 = (val Conduit.impl p0) in
+    let module Service1 = Make2 (Protocol0) (Service0) in
+    Conduit.Service.register (module Service1) p1
 end

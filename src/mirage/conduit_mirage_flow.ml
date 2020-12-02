@@ -38,4 +38,9 @@ let writev flow cs =
         | Error _ as err -> Lwt.return err) in
   go cs
 
-let close flow = Conduit_mirage.close flow >>= fun _ -> Lwt.return_unit
+let failwithf fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
+
+let close flow =
+  Conduit_mirage.close flow >>= function
+  | Ok () -> Lwt.return_unit
+  | Error err -> failwithf "%a" Conduit_mirage.pp_error err

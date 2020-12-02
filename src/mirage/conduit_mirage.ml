@@ -155,6 +155,14 @@ module Make0 (Protocol : Mirage_protocol) = struct
     Protocol.close flow >>= fun () -> Lwt.return (Ok ())
 end
 
+let protocol_of_mirage_flow :
+    type flow edn.
+    (module Mirage_protocol with type flow = flow and type endpoint = edn) ->
+    (edn, flow flow0) protocol =
+ fun (module Mirage_protocol) ->
+  let module Protocol = Make0 (Mirage_protocol) in
+  register (module Protocol)
+
 module Make1
     (Protocol : Conduit.Conduit_intf.PROTOCOL
                   with type 'a io = 'a Lwt.t

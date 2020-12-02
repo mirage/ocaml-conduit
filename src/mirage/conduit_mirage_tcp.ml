@@ -15,20 +15,20 @@ module Make (StackV4 : Mirage_stack.V4) = struct
   open Rresult
   open Lwt.Infix
 
-  module Protocol = Conduit_mirage.Make0 (struct
+  module Protocol = struct
     type nonrec endpoint = (StackV4.t, Ipaddr.V4.t) endpoint
 
     let connect ({ stack; keepalive; ip; port } : endpoint) =
       StackV4.TCPV4.create_connection ?keepalive (StackV4.tcpv4 stack) (ip, port)
 
     include StackV4.TCPV4
-  end)
+  end
 
-  type protocol = Protocol.flow
+  type protocol = StackV4.TCPV4.flow Conduit_mirage.flow0
 
   let dst ({ Conduit_mirage.flow; _ } : protocol) = StackV4.TCPV4.dst flow
 
-  let protocol = Conduit_mirage.register (module Protocol)
+  let protocol = Conduit_mirage.protocol_of_mirage_flow (module Protocol)
 
   include (val Conduit_mirage.repr protocol)
 

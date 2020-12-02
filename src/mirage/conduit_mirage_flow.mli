@@ -13,6 +13,9 @@
     This current implementation allocates an {b arbitrary} 4096 bytes buffer to
     fit under the [mirage-flow] interface. [conduit] did the choice to follow
     the POSIX interface and let the end-user to allocate by himself the input
-    buffer. *)
+    buffer.
+
+    The [write] operation tries to do several [Conduit.send] until we sent all
+    bytes. The buffer is free then. *)
 
 include Mirage_flow.S with type flow = Conduit_mirage.flow

@@ -11,13 +11,8 @@ val io_of_flow :
 (** [io_of_flow flow] creates an input flow and an output flow according to
     [Lwt_io]. This function, even if it creates something more usable is
     {b deprecated}. Indeed, [Lwt_io] has its own way to schedule [read] and
-    [write] - you should be aware about that more specially when you use
-    [Conduit_tls] or [Conduit_lwt_ssl].
-
-    Due to a specific behavior, [Lwt_io] does not fit with some specific
-    protocols - non thread-safe protocols, {i send-first} protocols, etc. From
-    these reasons, and even if {!TCP} try to the best to fit under an [Lwt_io],
-    you should not use this function. *)
+    [write]. It assumes (but it can not check) that [Conduit.recv flow] and
+    [Conduit.send flow] are {i thread-safe}. They can be called concurrently. *)
 
 type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 (** The type for lwt services. *)
@@ -50,15 +45,19 @@ module TCP : sig
       Behaviours of [Protocol] differs from {i syscall} provided by [Lwt_unix].
       This is a description of what they currently do.
 
-      {b NOTE}: [recv] wants to fill the given buffer as much as possible until
-      it has reached {i end-of-input}. In other words, [recv] can do a multiple
-      call to [Lwt_unix.recv] to fill the given buffer.
+      {b NOTE}: [recv] does one and unique call of [Lwt_unix.read]. It returns
+      what [Lwt_unix.read] returns with a special case when it returns [0]. In
+      that case, we returns [`End_of_flow]. Any errors (exception) are handled
+      and, in that case, we {i shutdown} the underlying socket.
 
-      {b NOTE}: [send] tries to send as much as it can the given buffer.
-      However, if internal call of [Lwt_unix.send] returns something smaller
-      than what we requested, we stop the process and return how many byte(s) we
-      sended. In other word, [send] can do a multiple call to [Lwt_unix.send]
-      until we fully sended what we wanted. *)
+      {b NOTE}: [close] calls [Lwt_unix.close] only one and unique time. Then,
+      all subsequent calls of [recv] returns [`End_of_flow] and all subsequent
+      calls of [send] returns an error.
+
+      {b NOTE}: [send] tries to send in one call to [Lwt_unix.write] the given
+      buffer. It returns how many bytes was transmitted, as [Lwt_unix.write]. It
+      handles exception and {i shutdown} the connection when we got [ECONNRESET]
+      or [EPIPE]. *)
 
   module Protocol : sig
     include

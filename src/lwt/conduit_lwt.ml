@@ -34,13 +34,17 @@ let io_of_flow flow =
     recv flow raw >>= function
     | Ok (`Input len) -> Lwt.return len
     | Ok `End_of_flow -> Lwt.return 0
-    | Error err -> ic_closed := true ; failwith "%a" pp_error err in
+    | Error err ->
+        ic_closed := true ;
+        failwith "%a" pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input rrecv in
   let ssend buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
     send flow raw >>= function
     | Ok len -> Lwt.return len
-    | Error err -> oc_closed := true ; failwith "%a" pp_error err in
+    | Error err ->
+        oc_closed := true ;
+        failwith "%a" pp_error err in
   let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output ssend in
   (ic, oc)
 
@@ -191,7 +195,6 @@ module TCP = struct
         (* | EINPROGRESS: TODO *) in
       go ()
 
-    
     let rec recv ({ socket; closed; _ } as t)
         ({ Cstruct.buffer; off; len } as raw) =
       if closed

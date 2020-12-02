@@ -15,12 +15,11 @@ let failwith fmt = Format.kasprintf (fun err -> Lwt.fail (Failure err)) fmt
 
 let io_of_flow flow =
   let open Lwt.Infix in
-  let mutex = Lwt_mutex.create () in
   let ic_closed = ref false and oc_closed = ref false in
   let close () =
     if !ic_closed && !oc_closed
     then
-      Lwt_mutex.with_lock mutex (fun () -> close flow) >>= function
+      close flow >>= function
       | Ok () -> Lwt.return_unit
       | Error err -> failwith "%a" pp_error err
     else Lwt.return_unit in
@@ -30,26 +29,22 @@ let io_of_flow flow =
   let oc_close () =
     oc_closed := true ;
     close () in
-  let rec rrecv buf off len =
+  let rrecv buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
-    Lwt_mutex.with_lock mutex (fun () -> recv flow raw) >>= function
-    | Ok (`Input 0) ->
-        if len = 0
-        then Lwt.return 0
-        else Lwt_unix.yield () >>= fun () -> rrecv buf off len
+    recv flow raw >>= function
     | Ok (`Input len) -> Lwt.return len
     | Ok `End_of_flow -> Lwt.return 0
-    | Error err -> failwith "%a" pp_error err in
+    | Error err ->
+        ic_closed := true ;
+        failwith "%a" pp_error err in
   let ic = Lwt_io.make ~close:ic_close ~mode:Lwt_io.input rrecv in
-  let rec ssend buf off len =
+  let ssend buf off len =
     let raw = Cstruct.of_bigarray buf ~off ~len in
-    Lwt_mutex.with_lock mutex (fun () -> send flow raw) >>= function
-    | Ok 0 ->
-        if len = 0
-        then Lwt.return 0
-        else Lwt_unix.yield () >>= fun () -> ssend buf off len
+    send flow raw >>= function
     | Ok len -> Lwt.return len
-    | Error err -> failwith "%a" pp_error err in
+    | Error err ->
+        oc_closed := true ;
+        failwith "%a" pp_error err in
   let oc = Lwt_io.make ~close:oc_close ~mode:Lwt_io.output ssend in
   (ic, oc)
 
@@ -200,40 +195,18 @@ module TCP = struct
         (* | EINPROGRESS: TODO *) in
       go ()
 
-    (* XXX(dinosaure): [recv] wants to fill [raw] as much as possible until
-       it has reached [`End_of_file]. *)
-    let rec recv ({ socket; closed; _ } as t) raw =
+    let rec recv ({ socket; closed; _ } as t)
+        ({ Cstruct.buffer; off; len } as raw) =
       if closed
       then Lwt.return_ok `End_of_flow
       else
-        let rec process filled raw =
-          let max = Cstruct.len raw in
-          Lwt_unix.read socket t.linger 0 (min max (Bytes.length t.linger))
-          >>= fun len ->
-          if len = 0
-          then
-            Lwt.return_ok (if filled = 0 then `End_of_flow else `Input filled)
-          else (
-            Cstruct.blit_from_bytes t.linger 0 raw 0 len ;
-            if len = Bytes.length t.linger && max > Bytes.length t.linger
-            then
-              if Lwt_unix.readable t.socket
-              then process (filled + len) (Cstruct.shift raw len)
-              else
-                Lwt.return_ok
-                  (if filled + len = 0
-                  then `End_of_flow
-                  else `Input (filled + len))
-            else
-              Lwt.return_ok
-                (if filled + len = 0
-                then `End_of_flow
-                else `Input (filled + len))) in
-        Lwt.catch (fun () ->
-            if Lwt_unix.readable t.socket
-            then process 0 raw
-            else Lwt.return_ok (`Input 0))
-        @@ function
+        let process () =
+          Lwt_bytes.read socket buffer off len >>= function
+          | 0 ->
+              Lwt_unix.shutdown socket SHUTDOWN_RECEIVE ;
+              Lwt.return (Ok `End_of_flow)
+          | len -> Lwt.return (Ok (`Input len)) in
+        Lwt.catch process @@ function
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> recv t raw
         | Unix.(Unix_error (EINTR, _, _)) -> recv t raw
         | Unix.(Unix_error (EFAULT, _, _)) -> Lwt.return_error `Bad_address
@@ -243,38 +216,23 @@ module TCP = struct
         (* | EBADF: impossible *)
         | exn -> Lwt.fail exn
 
-    (* XXX(dinosaure): [send] tries to send as much as it can [raw]. However,
-       if [send] returns something smaller that what we requested, we stop
-       the process and return how many byte(s) we sended.
-
-       Try to send into a closed socket is an error. *)
-    let rec send ({ socket; closed; _ } as t) raw =
+    let rec send ({ socket; closed; _ } as t)
+        ({ Cstruct.buffer; off; len } as raw) =
       if closed
       then Lwt.return_error `Closed_by_peer
       else
-        let rec process pushed raw =
-          if Cstruct.len raw = 0
-          then Lwt.return_ok pushed
-          else
-            let max = Cstruct.len raw in
-            let len0 = min (Bytes.length t.linger) max in
-            Cstruct.blit_to_bytes raw 0 t.linger 0 len0 ;
-            Lwt_unix.write socket t.linger 0 len0 >>= fun len1 ->
-            if len1 = len0 && len0 = max
-            then Lwt.return_ok (pushed + len1)
-            else process (pushed + len1) (Cstruct.shift raw len1) in
-        Lwt.catch (fun () -> process 0 raw) @@ function
+        let process () =
+          Lwt_bytes.write socket buffer off len >|= fun len -> Ok len in
+        Lwt.catch process @@ function
         | Unix.(Unix_error ((EAGAIN | EWOULDBLOCK), _, _)) -> send t raw
         | Unix.(Unix_error (EINTR, _, _)) -> send t raw
         | Unix.(Unix_error (EACCES, _, _)) ->
             Lwt.return_error `Operation_not_permitted
         | Unix.(Unix_error (ECONNRESET, _, _)) ->
-            Lwt_unix.shutdown t.socket Unix.SHUTDOWN_ALL ;
-            t.closed <- true ;
+            Lwt_unix.shutdown socket SHUTDOWN_SEND ;
             Lwt.return_error `Closed_by_peer
         | Unix.(Unix_error (EPIPE, _, _)) ->
-            Lwt_unix.shutdown t.socket Unix.SHUTDOWN_ALL ;
-            t.closed <- true ;
+            Lwt_unix.shutdown socket SHUTDOWN_SEND ;
             Lwt.return_error `Closed_by_peer
         | Unix.(Unix_error (EDESTADDRREQ, _, _))
         | Unix.(Unix_error (ENOTCONN, _, _)) ->

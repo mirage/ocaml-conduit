@@ -524,4 +524,21 @@ module type Conduit = sig
       with type input = Input.t
        and type output = Output.t
        and type +'a io = 'a IO.t
+
+  (** General module types re-exported for convenience. *)
+
+  module type FLOW = sig
+    include FLOW
+    (** @inline *)
+  end
+
+  module type PROTOCOL = sig
+    include PROTOCOL
+    (** @inline *)
+  end
+
+  module type SERVICE = sig
+    include SERVICE
+    (** @inline *)
+  end
 end

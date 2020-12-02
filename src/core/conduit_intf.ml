@@ -498,8 +498,6 @@ end
 module type Conduit = sig
   module Endpoint = Endpoint
 
-  type nonrec ('a, 'b) refl = ('a, 'b) refl
-
   type resolvers
   (** Type for resolvers map. *)
 

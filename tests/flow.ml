@@ -6,6 +6,7 @@ module Unix_scheduler = struct
   let return x = x
 end
 
+module Conduit_lib = Conduit
 module Conduit = Conduit.Make (Unix_scheduler) (Bytes) (String)
 
 let recv =
@@ -305,6 +306,13 @@ let test_type_equality =
   | Ok (Repr.T Dummy_flow.Flow) -> Alcotest.(check pass) "type equality" () ()
   | _ -> Alcotest.failf "Invalid flow value"
 
+let test_service_equality =
+  Alcotest.test_case "service equality" `Quick @@ fun () ->
+  match Conduit.Service.equal dummy_service dummy_service with
+  | Some (Conduit_lib.Refl, _, _) ->
+      Alcotest.(check pass) "Service.equal is reflexive" () ()
+  | _ -> Alcotest.failf "Service not equal to itself"
+
 let tests =
   [
     ( "flow",
@@ -314,5 +322,6 @@ let tests =
         test_input_strings;
         test_output_strings;
         test_type_equality;
+        test_service_equality;
       ] );
   ]

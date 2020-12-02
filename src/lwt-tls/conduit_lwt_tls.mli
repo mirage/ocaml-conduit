@@ -19,6 +19,7 @@ val handshake : 'flow protocol_with_tls -> bool
     it returns [false]. *)
 
 val protocol_with_tls :
+  ?host_of_endpoint:('edn -> string option) ->
   ('edn, 'flow) protocol ->
   ('edn * Tls.Config.client, 'flow protocol_with_tls) protocol
 
@@ -26,7 +27,8 @@ type 'service service_with_tls
 
 val service_with_tls :
   ('cfg, 't, 'flow) Service.t ->
-  ('edn, 'flow protocol_with_tls) protocol ->
+  ('edn, 'flow) protocol ->
+  ('edn * Tls.Config.client, 'flow protocol_with_tls) protocol ->
   ( 'cfg * Tls.Config.server,
     't service_with_tls,
     'flow protocol_with_tls )

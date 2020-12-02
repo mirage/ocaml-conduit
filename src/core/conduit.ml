@@ -175,17 +175,19 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
    * - performance is intrinsic with [caml_hash]
    *)
 
-  let recv flow input =
+  let recv flow =
     let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
-    Protocol.recv flow input >>| function
-    | Ok _ as v -> v
-    | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
+    fun input ->
+      Protocol.recv flow input >>| function
+      | Ok _ as v -> v
+      | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
-  let send flow output =
+  let send flow =
     let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
-    Protocol.send flow output >>| function
-    | Ok _ as v -> v
-    | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
+    fun output ->
+      Protocol.send flow output >>| function
+      | Ok _ as v -> v
+      | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
   let close flow =
     let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
@@ -345,10 +347,11 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   let connect :
       type edn v. (edn, v) protocol -> edn -> (flow, [> error ]) result io =
-   fun { protocol = (module Witness); _ } edn ->
+   fun { protocol = (module Witness); _ } ->
     let (Protocol (_, (module Flow), (module Protocol))) = Witness.witness in
-    Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
-    >>? fun flow -> return (Ok (Flow.T flow))
+    fun edn ->
+      Protocol.connect edn >>| reword_error (msgf "%a" Protocol.pp_error)
+      >>? fun flow -> return (Ok (Flow.T flow))
 
   let impl :
       type edn flow.
@@ -403,27 +406,30 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     let init :
         type cfg s flow. (cfg, s, flow) t -> cfg -> (s, [> error ]) result io =
-     fun (Service ((module Witness), _)) cfg ->
+     fun (Service ((module Witness), _)) ->
       let (Svc (_, (module Service))) = Witness.witness in
-      Service.init cfg >>= function
-      | Ok t -> return (Ok t)
-      | Error err -> return (error_msgf "%a" Service.pp_error err)
+      fun cfg ->
+        Service.init cfg >>= function
+        | Ok t -> return (Ok t)
+        | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let accept :
         type cfg s v. (cfg, s, v) t -> s -> (flow, [> error ]) result io =
-     fun (Service ((module Witness), { flow = (module Flow); _ })) t ->
+     fun (Service ((module Witness), { flow = (module Flow); _ })) ->
       let (Svc (_, (module Service))) = Witness.witness in
-      Service.accept t >>= function
-      | Ok flow -> return (Ok (Flow.T flow))
-      | Error err -> return (error_msgf "%a" Service.pp_error err)
+      fun t ->
+        Service.accept t >>= function
+        | Ok flow -> return (Ok (Flow.T flow))
+        | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let stop :
         type cfg s flow. (cfg, s, flow) t -> s -> (unit, [> error ]) result io =
-     fun (Service ((module Witness), _)) t ->
+     fun (Service ((module Witness), _)) ->
       let (Svc (_, (module Service))) = Witness.witness in
-      Service.stop t >>= function
-      | Ok () -> return (Ok ())
-      | Error err -> return (error_msgf "%a" Service.pp_error err)
+      fun t ->
+        Service.stop t >>= function
+        | Ok () -> return (Ok ())
+        | Error err -> return (error_msgf "%a" Service.pp_error err)
 
     let flow : type v. (_, _, v) t -> v -> flow =
      fun (Service (_, { flow = (module Witness); _ })) flow -> Witness.T flow

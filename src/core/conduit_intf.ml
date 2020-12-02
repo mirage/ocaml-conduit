@@ -335,6 +335,7 @@ module type S = sig
   type resolvers
 
   val empty : resolvers
+  (** [empty] is equal to {!Conduit.empty}. *)
 
   val add :
     ('edn, _) protocol ->
@@ -505,7 +506,7 @@ module type Conduit = sig
   (** [empty] is an empty {!resolvers} map. *)
 
   module type S = sig
-    include S
+    include S with type resolvers := resolvers
     (** @inline *)
   end
 

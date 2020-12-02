@@ -70,6 +70,10 @@ end) : BIJECTION with type +'a s = 'a Functor.t = struct
   external prj : ('a, t) app -> 'a s = "%identity"
 end
 
+module type S = sig
+  include S with type resolvers := resolvers
+end
+
 module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   S
     with type input = Input.t
@@ -221,8 +225,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   let repr t = Flow.repr t.flow
 
   let ( <.> ) f g x = f (g x)
-
-  type nonrec resolvers = resolvers
 
   let empty = empty
 

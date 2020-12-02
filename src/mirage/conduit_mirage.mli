@@ -22,14 +22,14 @@ val serve :
     - [Make0] to produce a {!Conduit.S.PROTOCOL} from a [Mirage_flow.S] plus
       its [connect] function
     - [Make1] to produce a [Mirage_flow.S] plus its [connect] function from
-      a [!Conduit.S.PROTOCOL}
+      a {!Conduit.S.PROTOCOL}
 
     {b NOTE}:Both {i temporize} the flow by an intermediate buffer.
 
     We ensure that [Make0.{recv,send}] do one and unique call to
     [Mirage_flow.S.{read,write}].
 
-    We ensure that {Make1.{read,write}] do one and unique call to
+    We ensure that [Make1.{read,write}] do one and unique call to
     [Conduit.S.PROTOCOL.{recv,send}] - despite {!Conduit_mirage_flow] which
     does several call of {!Conduit.S.PROTOCOL.send} until it sent all bytes. *)
 

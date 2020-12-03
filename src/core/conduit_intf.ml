@@ -241,6 +241,12 @@ module type S = sig
       As a protocol implementer, you must {i register} your implementation and
       expose the {i witness} of it. Then, users will be able to use it. *)
 
+  val equal :
+    ('edn0, 'flow0) protocol ->
+    ('edn1, 'flow1) protocol ->
+    ('edn0, 'edn1) refl option * ('flow0, 'flow1) refl option
+  (** [equal p0 p1] can proves that 2 protocols share same types. *)
+
   (** {2 Injection and Extraction.}
 
       The goal of [Conduit] is to provide:

@@ -218,6 +218,20 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     let protocol = Ptr.inj (Protocol (key, flow, (module M))) in
     { flow; protocol }
 
+  let equal :
+      type edn0 flow0 edn1 flow1.
+      (edn0, flow0) protocol ->
+      (edn1, flow1) protocol ->
+      (edn0, edn1) refl option * (flow0, flow1) refl option =
+   fun { protocol = (module W0); _ } { protocol = (module W1); _ } ->
+    let (Protocol (k0, flow0, _)) = W0.witness in
+    let (Protocol (k1, flow1, _)) = W1.witness in
+    match (Map.Key.(k0 == k1), Flw.equal flow0 flow1) with
+    | Some Refl, Some Refl -> (Some Refl, Some Refl)
+    | Some Refl, None -> (Some Refl, None)
+    | None, Some Refl -> (None, Some Refl)
+    | None, None -> (None, None)
+
   let repr t = Flow.repr t.flow
 
   let ( <.> ) f g x = f (g x)

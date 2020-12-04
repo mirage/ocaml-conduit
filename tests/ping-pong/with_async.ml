@@ -5,11 +5,7 @@ let () = Mirage_crypto_rng_unix.initialize ()
 
 include Common.Make
           (struct
-            type +'a t = 'a Async.Deferred.t
-
-            let bind x f = Async.Deferred.bind x ~f
-
-            let return = Async.Deferred.return
+            include Conduit_async.IO
 
             let yield () = Async.Deferred.return ()
           end)

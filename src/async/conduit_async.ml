@@ -1,6 +1,8 @@
 module IO = struct
   type +'a t = 'a Async.Deferred.t
 
+  let map f x = Async.Deferred.map ~f x
+
   let bind x f = Async.Deferred.bind x ~f
 
   let return x = Async.Deferred.return x

@@ -1,6 +1,8 @@
 module IO = struct
   type +'a t = 'a Lwt.t
 
+  let map f x = Lwt.map f x
+
   let bind x f = Lwt.bind x f
 
   let return x = Lwt.return x

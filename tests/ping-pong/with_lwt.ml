@@ -6,6 +6,7 @@ let failwith fmt = Fmt.kstrf (fun err -> Lwt.fail (Failure err)) fmt
 
 module Lwt = struct
   include Lwt
+  include Conduit_lwt.IO
 
   let yield = Lwt_unix.yield
 end

@@ -1,6 +1,8 @@
 module Unix_scheduler = struct
   type +'a t = 'a
 
+  let map f x = f x
+
   let bind x f = f x
 
   let return x = x

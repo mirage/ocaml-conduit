@@ -53,44 +53,44 @@ let ( >>? ) = Lwt_result.bind
 let serve :
     type cfg service v.
     ?timeout:int ->
+    ?stop:Lwt_switch.t ->
     handler:(flow -> unit Lwt.t) ->
     (cfg, service, v) Service.t ->
     cfg ->
-    unit Lwt_condition.t * (unit -> unit Lwt.t) =
- fun ?timeout ~handler service cfg ->
+    unit Lwt.t =
+ fun ?timeout ?stop ~handler service cfg ->
   let open Lwt.Infix in
-  let stop = Lwt_condition.create () in
-  let main () =
-    Service.init service cfg >>= function
-    | Error err -> failwith "%a" Service.pp_error err
-    | Ok t -> (
-        let rec loop () =
-          let stop = Lwt_condition.wait stop >>= fun () -> Lwt.return_ok `Stop in
-          let accept =
-            Service.accept service t >>? fun flow -> Lwt.return_ok (`Flow flow)
-          in
-          let events =
-            match timeout with
-            | None -> [ stop; accept ]
-            | Some t ->
-                let timeout =
-                  Lwt_unix.sleep (float_of_int t) >>= fun () ->
-                  Lwt.return_ok `Timeout in
-                [ stop; accept; timeout ] in
-
-          Lwt.pick events >>= function
-          | Ok (`Flow flow) ->
-              Lwt.async (fun () -> handler flow) ;
-              Lwt.pause () >>= loop
-          | Ok (`Stop | `Timeout) -> Service.stop service t
-          | Error err0 -> (
-              Service.stop service t >>= function
-              | Ok () -> Lwt.return_error err0
-              | Error _err1 -> Lwt.return_error err0) in
-        loop () >>= function
-        | Ok () -> Lwt.return_unit
-        | Error err -> failwith "%a" Service.pp_error err) in
-  (stop, main)
+  let timeout () =
+    match timeout with
+    | None -> Lwt.wait () |> fst
+    | Some t -> Lwt_unix.sleep (float_of_int t) in
+  Service.init service cfg >>= function
+  | Error err -> failwith "%a" Service.pp_error err
+  | Ok t -> (
+      let switched_off =
+        let t, u = Lwt.wait () in
+        Lwt_switch.add_hook stop (fun () ->
+            Lwt.wakeup_later u (Ok `Stopped) ;
+            Lwt.return_unit) ;
+        t in
+      let rec loop () =
+        let accept =
+          Service.accept service t >>? fun flow -> Lwt.return_ok (`Flow flow)
+        in
+        Lwt.pick [ accept; (timeout () >|= fun () -> Ok `Timeout) ] >>? function
+        | `Flow flow ->
+            Lwt.async (fun () -> handler flow) ;
+            Lwt.pause () >>= loop
+        | `Timeout -> Lwt.return (Ok `Timeout) in
+      let stop_result =
+        Lwt.pick [ switched_off; loop () ] >>= function
+        | Ok (`Timeout | `Stopped) -> Service.stop service t
+        | Error _ as err0 -> (
+            Service.stop service t >>= function
+            | Ok () | Error _ -> Lwt.return err0) in
+      stop_result >>= function
+      | Ok () -> Lwt.return_unit
+      | Error err -> failwith "%a" Service.pp_error err)
 
 module TCP = struct
   open Lwt.Infix

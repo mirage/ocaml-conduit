@@ -19,25 +19,24 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 val serve :
   ?timeout:int ->
+  ?stop:Lwt_switch.t ->
   handler:(flow -> unit Lwt.t) ->
   ('cfg, 'service, 'v) service ->
   'cfg ->
-  unit Lwt_condition.t * (unit -> unit Lwt.t)
-(** [serve ~handler service cfg] creates an usual infinite [service] loop from
-    the given configuration ['cfg]. It returns the {i promise} to launch the
-    loop and a condition variable to stop the loop.
+  unit Lwt.t
+(** [serve ~handler service cfg] launches a [service] loop from the given
+    configuration ['cfg]. By default, the service loop runs indefinitely.
+
+    - If passed, [~stop] is a switch that terminates the service loop, for
+      example to limit execution time to 10 seconds:
 
     {[
-      let stop, loop = serve ~handler TCP.service cfg in
-      Lwt.both
-        ( Lwt_unix.sleep 10. >>= fun () ->
-          Lwt_condition.broadcast stop () ;
-          Lwt.return () )
-        (loop ())
+      let stop = Lwt_switch.create () in
+      let loop = serve ~stop ~handler TCP.service cfg in
+      Lwt.both (Lwt_unix.sleep 10. >>= fun () -> Lwt_switch.turn_off stop) loop
     ]}
-
-    In your example, we want to launch a server only for 10 seconds. To help the
-    user, the option [?timeout] allows us to wait less than [timeout] seconds. *)
+    - If passed, [~timeout] specifies a maximum time to wait between accepting
+      connections. *)
 
 module TCP : sig
   (** Implementation of TCP protocol as a client.

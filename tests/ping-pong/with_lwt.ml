@@ -10,12 +10,7 @@ module Lwt = struct
   let yield = Lwt_unix.yield
 end
 
-include Common.Make (Lwt) (Lwt_condition)
-          (struct
-            type 'a condition = 'a Lwt_condition.t
-
-            include Conduit_lwt
-          end)
+include Common.Make (Lwt) (Lwt_switch) (Conduit_lwt)
 
 (* Composition *)
 
@@ -62,13 +57,11 @@ let run_with :
     type cfg s flow.
     (cfg, s, flow) Conduit_lwt.Service.t -> cfg -> string list -> unit =
  fun service cfg clients ->
-  let stop, server = server service cfg in
+  let stop = Lwt_switch.create () in
+  let server = server ~stop service cfg in
   let clients = List.map (client ~resolvers) clients in
-  let clients =
-    Lwt.join clients >>= fun () ->
-    Lwt_condition.broadcast stop () ;
-    Lwt.return_unit in
-  Lwt_main.run (Lwt.join [ server (); clients ])
+  let clients = Lwt.join clients >>= fun () -> Lwt_switch.turn_off stop in
+  Lwt_main.run (Lwt.join [ server; clients ])
 
 let run_with_tcp clients =
   run_with Conduit_lwt.TCP.service

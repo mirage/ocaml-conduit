@@ -92,7 +92,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   let ( >>= ) x f = IO.bind x f
 
-  let ( >>| ) x f = x >>= fun x -> return (f x)
+  let ( >>| ) x f = IO.map f x
 
   let ( >>? ) x f =
     x >>= function Ok x -> f x | Error err -> return (Error err)

@@ -3,6 +3,8 @@ external tick : unit -> (int64[@unboxed]) = "none" "get_tick" [@@noalloc]
 module None = struct
   type +'a t = 'a
 
+  let map f x = f x
+
   let bind x f = f x
 
   let return x = x

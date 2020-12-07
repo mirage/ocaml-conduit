@@ -58,10 +58,12 @@ let run_with :
     (cfg, s, flow) Conduit_lwt.Service.t -> cfg -> string list -> unit =
  fun service cfg clients ->
   let stop = Lwt_switch.create () in
-  let server = server ~stop service cfg in
-  let clients = List.map (client ~resolvers) clients in
-  let clients = Lwt.join clients >>= fun () -> Lwt_switch.turn_off stop in
-  Lwt_main.run (Lwt.join [ server; clients ])
+  let main =
+    server ~stop service cfg >>= fun (`Initialized server) ->
+    let clients = List.map (client ~resolvers) clients in
+    let clients = Lwt.join clients >>= fun () -> Lwt_switch.turn_off stop in
+    Lwt.join [ server; clients ] in
+  Lwt_main.run main
 
 let run_with_tcp clients =
   run_with Conduit_lwt.TCP.service

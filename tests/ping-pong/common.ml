@@ -3,13 +3,13 @@ module type S = sig
 
   type switch
 
-  val serve :
+  val serve_when_ready :
     ?timeout:int ->
     ?stop:switch ->
     handler:(flow -> unit io) ->
     ('cfg, 's, 'flow) Service.t ->
     'cfg ->
-    unit io
+    [ `Initialized of unit io ] io
 end
 
 module type SWITCH = sig
@@ -113,9 +113,12 @@ struct
 
   let server :
       type cfg s.
-      ?stop:Switch.t -> (cfg, s, 'flow) Conduit.Service.t -> cfg -> unit IO.t =
+      ?stop:Switch.t ->
+      (cfg, s, 'flow) Conduit.Service.t ->
+      cfg ->
+      [ `Initialized of unit IO.t ] IO.t =
    fun ?stop service cfg ->
-    Conduit.serve ?stop ~handler:transmission service cfg
+    Conduit.serve_when_ready ?stop ~handler:transmission service cfg
 
   (* part *)
 

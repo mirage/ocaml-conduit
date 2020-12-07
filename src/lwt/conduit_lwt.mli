@@ -38,6 +38,25 @@ val serve :
     - If passed, [~timeout] specifies a maximum time to wait between accepting
       connections. *)
 
+val serve_when_ready :
+  ?timeout:int ->
+  ?stop:Lwt_switch.t ->
+  handler:(flow -> unit Lwt.t) ->
+  ('cfg, 'service, 'v) service ->
+  'cfg ->
+  [ `Initialized of unit Lwt.t ] Lwt.t
+(** An extension of {!serve} that promises a service loop computation that is
+    ready to receive connections. The inner promise is then determined once the
+    service loop has ended – by default, only when an error occurs.
+
+    This is useful when subsequent actions are reliant on the service loop
+    having begun, such as when testing with a client-server pair:
+
+    {[
+      let* (`Initialized server) = serve ~stop ~handler TCP.service cfg in
+      Lwt.both server (client >|= signal_stop)
+    ]} *)
+
 module TCP : sig
   (** Implementation of TCP protocol as a client.
 

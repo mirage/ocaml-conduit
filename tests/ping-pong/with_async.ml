@@ -53,17 +53,13 @@ let run_with :
     let open Async.Ivar in
     let v = create () in
     (read v, fill v) in
-  let server = server (* ~launched *) ~stop service cfg in
-  let clients =
-    Async.after Core.Time.Span.(of_sec 0.5) >>= fun () ->
-    (* XXX(dinosaure): [async] tries to go further and fibers
-     * can be launched before the initialization of the server.
-     * We waiting a bit to ensure that the server is launched
-     * before clients. *)
-    let clients = List.map (client ~resolvers) clients in
-    Async.Deferred.all_unit clients >>| signal_stop in
-  Async.don't_wait_for
-    (Async.Deferred.all_unit [ server; clients ] >>| fun () -> shutdown 0) ;
+  let main =
+    server ~stop service cfg >>= fun (`Initialized server) ->
+    let clients =
+      let clients = List.map (client ~resolvers) clients in
+      Async.Deferred.all_unit clients >>| signal_stop in
+    Async.Deferred.all_unit [ server; clients ] >>| fun () -> shutdown 0 in
+  Async.don't_wait_for main ;
   Core.never_returns (Scheduler.go ())
 
 let run_with_tcp clients =

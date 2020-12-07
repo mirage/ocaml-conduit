@@ -114,9 +114,20 @@ end
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
-module type S = sig
-  module Endpoint : module type of Endpoint
+module type STRAT = sig
+  type 'a t
+  type 'a field
 
+  val req : 'a t -> 'a field
+  val opt : 'a t -> 'a option field
+  val dft : 'a t -> 'a -> 'a field
+
+  val obj1 : 'a field -> 'a t
+  val obj2 : 'a field -> 'b field -> ('a * 'b) t
+  val info : name:string -> 'a t
+end
+
+module type S = sig
   type input
   (** The type for payload inputs. *)
 
@@ -140,7 +151,7 @@ module type S = sig
          | _ -> ... (* use flow functions for the default case *)
       ]} *)
 
-  type error = [ `Msg of string | `Not_found of Endpoint.t ]
+  type error = [ `Msg of string | `Not_found ]
 
   val pp_error : error Fmt.t
 
@@ -192,20 +203,29 @@ module type S = sig
        and type output = output
        and type +'a io = 'a io
 
-  type ('edn, 'flow) impl =
-    (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
+  type ('v, 'flow) impl =
+    (module PROTOCOL with type endpoint = 'v and type flow = 'flow)
   (** The type to represent a module {!PROTOCOL}. *)
 
-  type ('edn, 'flow) protocol
-  (** The type for client protocols. ['edn] is the type for endpoint parameters.
+  type ('v, 'flow) protocol
+  (** The type for client protocols. ['v] is the type for endpoint parameters.
       ['flow] is the type for underlying flows.
 
       Endpoints allow users to create flows by either connecting directly to a
       remote server or by resolving domain names (with {!connect}). *)
 
-  val register : ('edn, 'flow) impl -> ('edn, 'flow) protocol
-  (** [register i] is the protocol using the implementation [i]. [protocol] must
-      provide a [connect] function to allow client flows to be created.
+  type 'a strat
+
+  type 'v info
+  (** The type for a user-defined information. ['v] is the type of the
+      information. It permits to fill the context with values depending
+      on your context. *)
+
+  val register : 'v strat -> ('v, 'flow) impl -> ('v, 'flow) protocol
+  (** [register strategy (module Protocol)] is the protocol. It requires a
+      resolution strategy to extract its required value to {i connect}/{i create}
+      a client flow from the {!context}. [(module Protocol)] must provide a
+      [connect] function to allow client flows to be created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
       endpoints, while [Unix.file_descr] would be used for the flow transport.
@@ -217,14 +237,16 @@ module type S = sig
              and type flow = Unix.file_descr = struct ... end
 
         module Conduit_tcp : sig
+          val sockaddr : Unix.sockaddr value
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let t = register (module TCP)
+          let sockaddr = value ~name:"sockaddr"
+          let t = register info (module TCP)
         end
       ]}
 
-      Client endpoints can of course be more complex, for instance to hold TLS
-      credentials, and [Conduit] allows all these kinds of flow to be used
+      Client informations can of course be more complex, for instance to hold
+      TLS credentials, and [Conduit] allows all these kinds of flow to be used
       transparently:
 
       {[
@@ -234,14 +256,17 @@ module type S = sig
              and type flow = Unix.file_descr = struct ... end
 
         module Conduit_tcp_tls : sig
+          val sockaddr_and_credentials : (Unix.sockaddr * Tls.Config.client) strat
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
-          let t = register (module TLS)
+          let credentials = value ~name:"credentials"
+          let sockaddr_and_credentials = Strat.(obj2 (req sockaddr) (req tls_config))
+          let t = register sockaddr_and_credentials (module TLS)
         end
       ]}
 
       As a protocol implementer, you must {i register} your implementation and
-      expose the {i witness} of it. Then, users will be able to use it. *)
+      you should expose the {i witness} of it. Then, users will be able to use it. *)
 
   (** {2 Injection and Extraction.}
 
@@ -316,60 +341,49 @@ module type S = sig
         | None -> None
       ]} *)
 
-  (** {2:resolution Domain name resolvers.} *)
+  (** {2:resolution Domain name context.} *)
 
-  type 'edn resolver = Endpoint.t -> 'edn option io
-  (** The type for resolver functions, which resolve domain names to endpoints.
-      For instance, the DNS resolver function is:
+  type context
 
-      {[
-        let http_resolver : Unix.sockaddr resolver = function
-          | IP ip -> Some (Ipaddr_unix.to_inet_addr ip, 80)
-          | Domain domain_name ->
-          match Unix.gethostbyname (Domain_name.to_string domain_name) with
-          | { Unix.h_addr_list; _ } ->
-              if Array.length h_addr_list > 0
-              then Some (Unix.ADDR_INET (h_addr_list.(0), 80))
-              else None
-          | exception _ -> None
-      ]} *)
+  val info : name:string -> 'a info
 
-  type resolvers
-
-  val empty : resolvers
+  val empty : context
   (** [empty] is equal to {!Conduit.empty}. *)
 
-  val add :
-    ('edn, _) protocol ->
-    ?priority:int ->
-    'edn resolver ->
-    resolvers ->
-    resolvers
-  (** [add protocol ?priority resolver resolvers] adds a new resolver function
-      [resolver] to [resolvers].
+  val add : 'edn info -> 'edn -> context -> context
+  (** [add info protocol context] adds a new information function
+      [resolver] to [context].
 
       When the [resolver] is able to resolve the given domain name, it will try
-      to connect to the specified client endpoint. Resolvers are iterated in
+      to connect to the specified client endpoint. Context are iterated in
       priority order (lower to higher).
 
       {[
         let http_resolver = ...
         let https_resolver = ... (* deal with client-side certificates here. *)
 
-        let resolvers =
+        let context =
           empty
           |> add Conduit_tcp.t http_resolver
           |> add Conduit_tcp_tls.t https_resolver ~priority:10
           |> add Conduit_tcp_ssl.t https_resolver ~priority:20
       ]} *)
 
+  type ('k, 'res) args =
+    | [] : ('res, 'res) args
+    | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+  and 'v arg =
+    | Map : ('f, 'a) args * 'f -> 'a arg
+    | Const : 'a info -> 'a arg
+
+  val fold : 'res strat -> ('k, 'res option io) args -> f:'k -> context -> context
+
   val resolve :
-    resolvers ->
-    ?protocol:('edn, 'v) protocol ->
-    Endpoint.t ->
+    ?protocol:('v, 'flow) protocol ->
+    context ->
     (flow, [> error ]) result io
-  (** [resolve resolvers domain_name] is the flow created by connecting to the
-      domain name [domain_name], using the resolvers [resolvers]. Each resolver
+  (** [resolve context domain_name] is the flow created by connecting to the
+      domain name [domain_name], using the context [context]. Each resolver
       tries to resolve the given domain-name (they are ordered by the given
       priority). The first which connects successfully wins.
 
@@ -384,14 +398,14 @@ module type S = sig
 
         val resolver_with_tls : (Unix.sockaddr * Tls.Config.client) resolver
 
-        let resolvers =
+        let context =
           empty
           |> add tls ~priority:0 resolver_with_tls
           |> add tcp ~priority:10 resolver_on_my_private_network
           |> add tcp ~priority:20 resolver_on_internet
 
         let () =
-          resolve resolvers (Endpoint.domain mirage_io) >>? function
+          resolve context (Endpoint.domain mirage_io) >>? function
           | TCP.T file_descr as flow ->
               let peer = Unix.getpeername file_descr in
               ignore @@ send flow ("Hello " ^ string_of_sockaddr peer)
@@ -499,16 +513,19 @@ module type S = sig
 end
 
 module type Conduit = sig
-  module Endpoint = Endpoint
+  type context
+  (** Type for context map. *)
 
-  type resolvers
-  (** Type for resolvers map. *)
+  type 'a strat
 
-  val empty : resolvers
-  (** [empty] is an empty {!resolvers} map. *)
+  module Strat : STRAT with type 'a t := 'a strat
+
+  val empty : context
+  (** [empty] is an empty {!context} map. *)
 
   module type S = sig
-    include S with type resolvers := resolvers
+    include S with type context := context
+               and type 'a strat := 'a strat
     (** @inline *)
   end
 

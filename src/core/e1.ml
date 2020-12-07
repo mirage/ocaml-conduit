@@ -36,11 +36,11 @@ let identifier_equal a b = (compare : int -> int -> int) a b = 0
 
 let identifier_compare a b = (compare : int -> int -> int) a b
 
-module type S1 = sig
+module type FUNCTOR = sig
   type 'a t
 end
 
-module Make (K : S1) (V : S1) = struct
+module Make (K : FUNCTOR) = struct
   module Key = struct
     type 'a info = 'a K.t
 
@@ -77,41 +77,43 @@ module Make (K : S1) (V : S1) = struct
 
   module Map = Map.Make (Key)
 
-  type binding = B : 'a key * 'a V.t -> binding
+  module Make (V : FUNCTOR) = struct
+    type binding = B : 'a key * 'a V.t -> binding
 
-  type t = binding Map.t
+    type t = binding Map.t
 
-  let empty = Map.empty
+    let empty = Map.empty
 
-  let is_empty = Map.is_empty
+    let is_empty = Map.is_empty
 
-  let mem k m = Map.mem (Key.K k) m
+    let mem k m = Map.mem (Key.K k) m
 
-  let add k v m = Map.add (Key.K k) (B (k, v)) m
+    let add k v m = Map.add (Key.K k) (B (k, v)) m
 
-  let singleton k v = Map.singleton (Key.K k) (B (k, v))
+    let singleton k v = Map.singleton (Key.K k) (B (k, v))
 
-  let rem k m = Map.remove (Key.K k) m
+    let rem k m = Map.remove (Key.K k) m
 
-  let len m = Map.cardinal m
+    let len m = Map.cardinal m
 
-  let find : type a. a key -> t -> a V.t option =
-   fun k m ->
-    match Map.find (K k) m with
-    | B (k', v) -> (
-        match eq k.Key.tid k'.Key.tid with
-        | Some Refl.Refl -> Some v
-        | None -> None)
-    | exception Not_found -> None
+    let find : type a. a key -> t -> a V.t option =
+     fun k m ->
+      match Map.find (K k) m with
+      | B (k', v) -> (
+          match eq k.Key.tid k'.Key.tid with
+          | Some Refl.Refl -> Some v
+          | None -> None)
+      | exception Not_found -> None
 
-  type v = Value : 'a key * 'a V.t -> v
+    type v = Value : 'a key * 'a V.t -> v
 
-  let bindings m =
-    Map.bindings m
-    |> List.fold_left
-         (fun a (Key.K k, B (k', v)) ->
-           match eq k.Key.tid k'.Key.tid with
-           | Some Refl.Refl -> Value (k, v) :: a
-           | None -> a)
-         []
+    let bindings m =
+      Map.bindings m
+      |> List.fold_left
+           (fun a (Key.K k, B (k', v)) ->
+             match eq k.Key.tid k'.Key.tid with
+             | Some Refl.Refl -> Value (k, v) :: a
+             | None -> a)
+           []
+  end
 end

@@ -8,11 +8,11 @@ val identifier_equal : identifier -> identifier -> bool
 
 val identifier_compare : identifier -> identifier -> int
 
-module type S1 = sig
+module type FUNCTOR = sig
   type 'a t
 end
 
-module Make (K : S1) (V : S1) : sig
+module Make (K : FUNCTOR) : sig
   type 'a key
 
   module Key : sig
@@ -35,25 +35,27 @@ module Make (K : S1) (V : S1) : sig
     val ( == ) : 'a key -> 'b key -> ('a, 'b) Refl.t option
   end
 
-  type t
+  module Make (V : FUNCTOR) : sig
+    type t
 
-  val empty : t
+    val empty : t
 
-  val is_empty : t -> bool
+    val is_empty : t -> bool
 
-  val add : 'a key -> 'a V.t -> t -> t
+    val add : 'a key -> 'a V.t -> t -> t
 
-  val mem : 'a key -> t -> bool
+    val mem : 'a key -> t -> bool
 
-  val singleton : 'a key -> 'a V.t -> t
+    val singleton : 'a key -> 'a V.t -> t
 
-  val rem : 'a key -> t -> t
+    val rem : 'a key -> t -> t
 
-  val find : 'a key -> t -> 'a V.t option
+    val find : 'a key -> t -> 'a V.t option
 
-  val len : t -> int
+    val len : t -> int
 
-  type v = Value : 'a key * 'a V.t -> v
+    type v = Value : 'a key * 'a V.t -> v
 
-  val bindings : t -> v list
+    val bindings : t -> v list
+  end
 end

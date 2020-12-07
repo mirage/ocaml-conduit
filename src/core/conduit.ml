@@ -1,19 +1,50 @@
-module Endpoint = Endpoint
 include Conduit_intf
 
 let strf = Format.asprintf
 
-type _ witness = ..
+module Map0 = E1.Make(struct type _ t = string end)
 
-type (+'a, 's) app
+module Strat = struct
+  [@@@warning "-37"]
 
-type _ resolver =
-  | Resolver : {
-      priority : int option;
-      resolve : Endpoint.t -> ('edn option, 's) app;
-      witness : 's witness;
-    }
-      -> ('edn * 's) resolver
+  type 'a t =
+    | Field : 'a field -> 'a t
+    | Record : 'a t * 'b t -> ('a * 'b) t
+    | Conv : ('a -> 'b) * 'a t -> 'b t
+    | Key : 'a Map0.key -> 'a t
+    | Union : 'a case list -> 'a t
+  and 'a field =
+    | Req : 'a t -> 'a field
+    | Opt : 'a t -> 'a option field
+    | Dft : 'a t * 'a -> 'a field
+  and 'a case =
+    | Case : 'a t * ('a -> 'b) -> 'b case
+
+  [@@@warning "+37"]
+
+  type value = Strat : 'a Map0.key * 'a t -> value
+
+  let tbl = 
+
+  let req t = Req t
+  let opt t = Opt t
+  let dft t v = Dft (t, v)
+
+  let obj1 field = Field field
+  let obj2 f0 f1 = Record (Field f0, Field f1)
+  let info ~name =
+    let key = Map0.Key.create name in
+    Hashtbl.add tbl (Strat (Key key)) key ; Key key
+
+  let key_of_strategy : type a. a t -> a Map0.key = function
+    | Key k -> k
+    | _ -> assert false
+end
+
+type _ value = ..
+type _ value += Val : 'a -> 'a value
+
+module Map1 = Map0.Make(struct type 'a t = 'a value end)
 
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
@@ -33,61 +64,25 @@ type ('a, 'b, 'c) thd =
 
           We add [warning "-37"] to be able to compile the project. *)
 
+[@@@warning "+37"]
+
 let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
 
-module Map =
-  E1.Make
-    (struct
-      type _ t = string
-    end)
-    (struct
-      type 'a t = 'a resolver
-    end)
+type context = Map1.t
+type 'a strat = 'a Strat.t
 
-type resolvers = Map.t
-
-let empty = Map.empty
-
-module type BIJECTION = sig
-  type +'a s
-
-  type t
-
-  external inj : 'a s -> ('a, t) app = "%identity"
-
-  external prj : ('a, t) app -> 'a s = "%identity"
-end
-
-module Higher (Functor : sig
-  type +'a t
-end) : BIJECTION with type +'a s = 'a Functor.t = struct
-  type +'a s = 'a Functor.t
-
-  type t
-
-  external inj : 'a s -> ('a, t) app = "%identity"
-
-  external prj : ('a, t) app -> 'a s = "%identity"
-end
+let empty = Map1.empty
 
 module type S = sig
-  include S with type resolvers := resolvers
+  include S with type context := context
+             and type 'a strat := 'a strat
 end
 
-module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
-  S
-    with type input = Input.t
-     and type output = Output.t
-     and type +'a io = 'a IO.t = struct
-  module Endpoint = Endpoint
-  module Bijection = Higher (IO)
-
-  type scheduler = Bijection.t
-
-  let inj = Bijection.inj
-
-  let prj = Bijection.prj
-
+module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
+  : S with type input = Input.t
+       and type output = Output.t
+       and type +'a io = 'a IO.t
+= struct
   let return = IO.return
 
   let ( >>= ) x f = IO.bind x f
@@ -99,9 +94,15 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
   type +'a io = 'a IO.t
 
-  type _ witness += Witness : scheduler witness
+  type ('k, 'res) args =
+    | [] : ('res, 'res) args
+    | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+  and 'v arg =
+    | Map : ('f, 'a) args * 'f -> 'a arg
+    | Const : 'a info -> 'a arg
+  and 'v info = 'v Map0.key
 
-  let witness : scheduler witness = Witness
+  type _ value += Fun : ('k, 'a option io) args * 'k -> 'a value
 
   type input = Input.t
 
@@ -122,14 +123,10 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
 
-  type 'edn key = ('edn * scheduler) Map.key
-
-  type 'edn resolver = Endpoint.t -> 'edn option io
-
   module F = struct
     type 'a impl = (module FLOW with type flow = 'a)
 
-    type _ t = Flow : 'flow key * 'flow impl -> 'flow t
+    type _ t = Flow : 'flow impl -> 'flow t
   end
 
   module Flw = E0.Make (F)
@@ -151,8 +148,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     let register : type flow. flow impl -> flow t =
      fun flow ->
-      let key = Map.Key.create "" in
-      Flw.inj (Flow (key, flow))
+      Flw.inj (Flow flow)
 
     let repr : type flow. flow t -> (module REPR with type t = flow) =
      fun (module Witness) ->
@@ -180,31 +176,35 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
    *)
 
   let recv flow =
-    let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
+    let (Value (flow, Flow (module Protocol))) = Flw.prj flow in
     fun input ->
       Protocol.recv flow input >>| function
       | Ok _ as v -> v
       | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
   let send flow =
-    let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
+    let (Value (flow, Flow (module Protocol))) = Flw.prj flow in
     fun output ->
       Protocol.send flow output >>| function
       | Ok _ as v -> v
       | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
   let close flow =
-    let (Value (flow, Flow (_, (module Protocol)))) = Flw.prj flow in
+    let (Value (flow, Flow (module Protocol))) = Flw.prj flow in
     Protocol.close flow >>| function
     | Ok _ as v -> v
     | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
   module P = struct
+    [@@@warning "-37"]
+
     type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
+
+    [@@@warning "+37"]
 
     type _ t =
       | Protocol :
-          'edn key * 'flow Flow.t * ('edn, 'flow) impl
+          'edn Strat.t * 'flow Flow.t * ('edn, 'flow) impl
           -> ('edn, 'flow) value t
   end
 
@@ -215,52 +215,79 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     flow : 'flow Flow.t;
   }
 
-  let register : type edn flow. (edn, flow) impl -> (edn, flow) protocol =
-   fun (module M) ->
+  let register : type v flow. v Strat.t -> (v, flow) impl -> (v, flow) protocol =
+   fun strat (module M) ->
     let flow = Flow.register (module M) in
-    let key = Map.Key.create "" in
-    let protocol = Ptr.inj (Protocol (key, flow, (module M))) in
+    let protocol = Ptr.inj (Protocol (strat, flow, (module M))) in
     { flow; protocol }
 
   let repr t = Flow.repr t.flow
 
-  let ( <.> ) f g x = f (g x)
-
   let empty = empty
 
-  let add :
-      type edn flow.
-      (edn, flow) protocol ->
-      ?priority:int ->
-      edn resolver ->
-      resolvers ->
-      resolvers =
-   fun { protocol = (module Witness); _ } ?priority resolve ->
-    let (Protocol (key, _, _)) = Witness.witness in
-    let resolve = inj <.> resolve in
-    Map.add key (Resolver { priority; resolve; witness })
+  let info ~name = Map0.Key.create name
 
-  type error = [ `Msg of string | `Not_found of Endpoint.t ]
+  let add k v m = Map1.add k (Val v) m
+
+  let rec apply
+    : type k res. context -> (k, res option io) args -> k -> res option io
+    = fun ctx args f ->
+      let rec go : type k res. context -> (k, res) args -> k -> res io = fun ctx -> function
+        | [] -> fun x -> return x
+        | Map (args', f') :: tl ->
+          fun f -> go ctx args' f' >>= fun v -> go ctx tl (f v)
+        | Const key :: tl ->
+          fun f -> find key ctx >>= function
+            | Some v -> go ctx tl (f v)
+            | None -> raise Not_found in
+      try go ctx args f >>= fun fiber -> fiber >>= fun v -> return v
+      with Not_found -> return None
+
+  and find
+    : type a. a info -> context -> a option io
+    = fun info ctx ->
+      match Map1.find info ctx with
+      | None -> return None
+      | Some (Val v) -> return (Some v)
+      | Some (Fun (args, f)) -> apply ctx args f
+      | _ -> return None
+
+  let fold
+    : type k res. res info -> (k, res option io) args -> f:k -> context -> context
+    = fun key args ~f ctx ->
+      Map1.add key (Fun (args, f)) ctx
+
+  let fold
+    : type k res. res Strat.t -> (k, res option io) args -> f:k -> context -> context
+    = fun strat args ~f ctx ->
+      match Hashtbl.find Strat.tbl (Strat.Strat strat) with
+      | key -> fold key args ~f ctx
+      | exception Not_found ->
+        let key = Map0.Key.create "" in
+        Hashtbl.add key strat Strat.tbl ;
+        fold key args ~f ctx
+
+  type error = [ `Msg of string | `Not_found ]
 
   let pf ppf fmt = Format.fprintf ppf fmt
 
   let pp_error ppf = function
     | `Msg err -> pf ppf "%s" err
-    | `Not_found edn -> pf ppf "%a not found" Endpoint.pp edn
+    | `Not_found -> pf ppf "Not found"
 
-  let flow_of_endpoint :
-      type edn. edn:Endpoint.t -> edn key -> edn -> (flow, [> error ]) result io
-      =
-   fun ~edn key v ->
-    let rec go = function
-      | [] -> return (Error (`Not_found edn))
-      | Ptr.Key (Protocol (k, (module Flow), (module Protocol))) :: r ->
-      match Map.Key.(key == k) with
-      | None -> go r
-      | Some E1.Refl.Refl -> (
-          Protocol.connect v >>= function
-          | Ok flow -> return (Ok (Flow.T flow))
-          | Error _err -> go r) in
+  let flow_of_info
+    : type v. v info -> v -> (flow, [> error ]) result io
+    = fun key v ->
+    let rec go : Ptr.k list -> _ = function
+      | [] -> return (Error `Not_found)
+      | Ptr.Key (Protocol (strat, (module Flow), (module Protocol))) :: r ->
+        let key' = Strat.key_of_strategy strat in
+        ( match Map0.Key.(key == key') with
+        | None -> go r
+        | Some E1.Refl.Refl -> (
+            Protocol.connect v >>= function
+            | Ok flow -> return (Ok (Flow.T flow))
+            | Error _err -> go r) ) in
     go (Ptr.bindings ())
 
   let flow_of_protocol :
@@ -272,80 +299,55 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
     | Ok flow -> return (Ok flow)
     | Error err -> return (error_msgf "%a" Protocol.pp_error err)
 
-  type endpoint = Endpoint : 'edn key * 'edn -> endpoint
+  type value = Value : 'v info * 'v -> value
 
-  module Refl = struct
-    type ('a, 'b) t = Refl : ('a, 'a) t
-  end
+  let resolve : context -> value list io =
+   fun m ->
+    let rec go acc : Map1.v list -> _ = function
+      | [] -> return (List.rev acc)
+      | Map1.Value (k, Val v) :: r -> go (Value (k, v) :: acc) r
+      | Map1.Value (k, Fun (args, f)) :: r ->
+        ( apply m args f >>= function
+        | Some v -> go (Value (k, v) :: acc) r
+        | None -> go acc r )
+      | _ :: r -> go acc r in
+    go [] (Map1.bindings m)
 
-  let scheduler : type s. s witness -> (s, scheduler) Refl.t option = function
-    | Witness -> Some Refl.Refl
-    | _ -> None
-
-  let inf = -1
-
-  and sup = 1
-
-  let resolve : resolvers -> Endpoint.t -> endpoint list io =
-   fun m domain_name ->
-    let rec go acc = function
-      | [] -> return (List.rev acc) (* XXX(dinosaure): keep order. *)
-      | Map.Value (k, Resolver { resolve; witness; _ }) :: r ->
-      match scheduler witness with
-      | None ->
-          Log.warn (fun m ->
-              m "A resolver with another scheduler exists in the given map.") ;
-          go acc r
-      | Some Refl.Refl -> (
-          Log.debug (fun m -> m "Try a possible protocol.") ;
-          resolve domain_name |> prj >>= function
-          | Some edn -> go (Endpoint (k, edn) :: acc) r
-          | None -> go acc r) in
-    let compare (Map.Value (_, Resolver { priority = pa; _ }))
-        (Map.Value (_, Resolver { priority = pb; _ })) =
-      match (pa, pb) with
-      | Some a, Some b -> (Stdlib.compare : int -> int -> int) a b
-      | None, Some _ -> sup
-      | Some _, None -> inf
-      | None, None -> 0 in
-    Log.debug (fun m -> m "Start to resolve %a." Endpoint.pp domain_name) ;
-    go [] (List.sort compare (Map.bindings m))
-
-  let create : resolvers -> Endpoint.t -> (flow, [> error ]) result io =
-   fun m edn ->
-    resolve m edn >>= fun l ->
-    let rec go = function
-      | [] -> return (Error (`Not_found edn))
-      | Endpoint (key, v) :: r -> (
-          flow_of_endpoint ~edn key v >>= function
+  let create : context -> (flow, [> error ]) result io =
+   fun m ->
+    resolve m >>= fun l ->
+    let rec go : value list -> _ = function
+      | [] -> return (Error `Not_found)
+      | Value (key, v) :: r -> (
+          flow_of_info key v >>= function
           | Ok flow -> return (Ok flow)
           | Error _err -> go r) in
     go l
 
   let resolve :
       type edn v.
-      resolvers ->
       ?protocol:(edn, v) protocol ->
-      Endpoint.t ->
+      context ->
       (flow, [> error ]) result io =
-   fun m ?protocol edn ->
+   fun ?protocol m ->
     match protocol with
-    | None -> create m edn
+    | None -> create m
     | Some protocol ->
         let (module Protocol) = protocol.protocol in
         let (module Flow) = protocol.flow in
-        let (Protocol (key', _, _)) = Protocol.witness in
-        resolve m edn >>= fun l ->
-        let rec go = function
-          | [] -> return (Error (`Not_found edn))
-          | Endpoint (key, edn) :: r ->
-          match Map.Key.(key == key') with
-          | None -> go r
-          | Some E1.Refl.Refl -> (
-              flow_of_protocol protocol edn >>= function
-              | Ok flow -> return (Ok (Flow.T flow))
-              | Error _err -> go r) in
-        go l
+        match Protocol.witness with
+        | Protocol (Strat.Key key', _, _) ->
+          resolve m >>= fun l ->
+          let rec go : value list -> _ = function
+            | [] -> return (Error `Not_found)
+            | Value (key, edn) :: r -> match Map0.Key.(key == key') with
+              | None -> go r
+              | Some E1.Refl.Refl -> (
+                  flow_of_protocol protocol edn >>= function
+                  | Ok flow -> return (Ok (Flow.T flow))
+                  | Error _err -> go r) in
+          go l
+        | _ -> return (Error `Not_found)
 
   let connect :
       type edn v. (edn, v) protocol -> edn -> (flow, [> error ]) result io =
@@ -377,7 +379,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
 
     module F = struct
       type 't t =
-        | Svc : 'cfg key * ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) thd t
+        | Svc : 'cfg Map0.key * ('cfg, 't, 'flow) impl -> ('cfg, 't, 'flow) thd t
     end
 
     module Svc = E0.Make (F)
@@ -391,7 +393,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER) :
         type cfg s flow.
         (cfg, s, flow) impl -> (_, flow) protocol -> (cfg, s, flow) t =
      fun service protocol ->
-      let cfg = Map.Key.create "" in
+      let cfg = Map0.Key.create "" in
       Service (Svc.inj (Svc (cfg, service)), protocol)
 
     type error = [ `Msg of string ]

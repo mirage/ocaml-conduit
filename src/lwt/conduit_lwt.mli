@@ -19,25 +19,43 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 val serve :
   ?timeout:int ->
+  ?stop:Lwt_switch.t ->
   handler:(flow -> unit Lwt.t) ->
   ('cfg, 'service, 'v) service ->
   'cfg ->
-  unit Lwt_condition.t * (unit -> unit Lwt.t)
-(** [serve ~handler service cfg] creates an usual infinite [service] loop from
-    the given configuration ['cfg]. It returns the {i promise} to launch the
-    loop and a condition variable to stop the loop.
+  unit Lwt.t
+(** [serve ~handler service cfg] launches a [service] loop from the given
+    configuration ['cfg]. By default, the service loop runs indefinitely.
+
+    - If passed, [~stop] is a switch that terminates the service loop, for
+      example to limit execution time to 10 seconds:
 
     {[
-      let stop, loop = serve ~handler TCP.service cfg in
-      Lwt.both
-        ( Lwt_unix.sleep 10. >>= fun () ->
-          Lwt_condition.broadcast stop () ;
-          Lwt.return () )
-        (loop ())
+      let stop = Lwt_switch.create () in
+      let loop = serve ~stop ~handler TCP.service cfg in
+      Lwt.both (Lwt_unix.sleep 10. >>= fun () -> Lwt_switch.turn_off stop) loop
     ]}
+    - If passed, [~timeout] specifies a maximum time to wait between accepting
+      connections. *)
 
-    In your example, we want to launch a server only for 10 seconds. To help the
-    user, the option [?timeout] allows us to wait less than [timeout] seconds. *)
+val serve_when_ready :
+  ?timeout:int ->
+  ?stop:Lwt_switch.t ->
+  handler:(flow -> unit Lwt.t) ->
+  ('cfg, 'service, 'v) service ->
+  'cfg ->
+  [ `Initialized of unit Lwt.t ] Lwt.t
+(** An extension of {!serve} that promises a service loop computation that is
+    ready to receive connections. The inner promise is then determined once the
+    service loop has ended – by default, only when an error occurs.
+
+    This is useful when subsequent actions are reliant on the service loop
+    having begun, such as when testing with a client-server pair:
+
+    {[
+      let* (`Initialized server) = serve ~stop ~handler TCP.service cfg in
+      Lwt.both server (client >|= signal_stop)
+    ]} *)
 
 module TCP : sig
   (** Implementation of TCP protocol as a client.

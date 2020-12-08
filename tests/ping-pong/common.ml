@@ -1,18 +1,19 @@
 module type S = sig
   include Conduit.S
 
-  type 'a condition
+  type switch
 
-  val serve :
+  val serve_when_ready :
     ?timeout:int ->
+    ?stop:switch ->
     handler:(flow -> unit io) ->
     ('cfg, 's, 'flow) Service.t ->
     'cfg ->
-    unit condition * (unit -> unit io)
+    [ `Initialized of unit io ] io
 end
 
-module type CONDITION = sig
-  type 'a t
+module type SWITCH = sig
+  type t
 end
 
 module type IO = sig
@@ -25,10 +26,10 @@ let ( <.> ) f g x = f (g x)
 
 module Make
     (IO : IO)
-    (Condition : CONDITION)
+    (Switch : SWITCH)
     (Conduit : S
                  with type +'a io = 'a IO.t
-                  and type 'a condition = 'a Condition.t
+                  and type switch := Switch.t
                   and type input = Cstruct.t
                   and type output = Cstruct.t) =
 struct
@@ -112,10 +113,12 @@ struct
 
   let server :
       type cfg s.
+      ?stop:Switch.t ->
       (cfg, s, 'flow) Conduit.Service.t ->
       cfg ->
-      unit Condition.t * (unit -> unit IO.t) =
-   fun service cfg -> Conduit.serve ~handler:transmission service cfg
+      [ `Initialized of unit IO.t ] IO.t =
+   fun ?stop service cfg ->
+    Conduit.serve_when_ready ?stop ~handler:transmission service cfg
 
   (* part *)
 

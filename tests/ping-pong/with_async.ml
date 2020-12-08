@@ -3,18 +3,18 @@ open Async
 
 let () = Mirage_crypto_rng_unix.initialize ()
 
+module Stop = struct
+  type t = unit Deferred.t
+end
+
 include Common.Make
           (struct
             include Conduit_async.IO
 
             let yield () = Async.Deferred.return ()
           end)
-          (Async.Condition)
-          (struct
-            type 'a condition = 'a Async.Condition.t
-
-            include Conduit_async
-          end)
+          (Stop)
+          (Conduit_async)
 
 let tcp_protocol, tcp_service =
   let open Conduit_async.TCP in
@@ -45,19 +45,17 @@ let run_with :
     type cfg service flow.
     (cfg, service, flow) Conduit_async.Service.t -> cfg -> string list -> unit =
  fun service cfg clients ->
-  let stop, server = server (* ~launched ~stop *) service cfg in
-  let clients =
-    Async.after Core.Time.Span.(of_sec 0.5) >>= fun () ->
-    (* XXX(dinosaure): [async] tries to go further and fibers
-     * can be launched before the initialization of the server.
-     * We waiting a bit to ensure that the server is launched
-     * before clients. *)
-    let clients = List.map (client ~resolvers) clients in
-    Async.Deferred.all_unit clients >>= fun () ->
-    Condition.broadcast stop () ;
-    Async.return () in
-  Async.don't_wait_for
-    (Async.Deferred.all_unit [ server (); clients ] >>| fun () -> shutdown 0) ;
+  let stop, signal_stop =
+    let open Async.Ivar in
+    let v = create () in
+    (read v, fill v) in
+  let main =
+    server ~stop service cfg >>= fun (`Initialized server) ->
+    let clients =
+      let clients = List.map (client ~resolvers) clients in
+      Async.Deferred.all_unit clients >>| signal_stop in
+    Async.Deferred.all_unit [ server; clients ] >>| fun () -> shutdown 0 in
+  Async.don't_wait_for main ;
   Core.never_returns (Scheduler.go ())
 
 let run_with_tcp clients =

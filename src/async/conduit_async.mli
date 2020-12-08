@@ -15,19 +15,43 @@ type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
 val serve :
   ?timeout:int ->
+  ?stop:unit Async.Deferred.t ->
   handler:(flow -> unit Async.Deferred.t) ->
   ('cfg, 't, 'v) service ->
   'cfg ->
-  unit Async.Condition.t * (unit -> unit Async.Deferred.t)
-(** [serve ~handler t cfg] creates an infinite service loop from the given
-    configuration ['cfg]. It returns the {i promise} to launch the loop and a
-    condition variable to stop the loop.
+  unit Async.Deferred.t
+(** [serve ~handler t cfg] launches a service loop from the given configuration
+    ['cfg]. By default, the service loop runs indefinitely.
+
+    - If passed, [~stop] terminates the loop as soon as possible after it is
+      determined.
 
     {[
-      let stop, loop = serve ~handler TCP.service cfg in
-      Async_unix.Signal.handle [ Core.Signal.int ] ~f:(fun _sig ->
-          Async.Condition.broadcast stop ()) ;
-      loop ()
+      let stop, signal_stop = Ivar.(let v = create () in (read v, fill v)) i
+      let loop = serve ~stop ~handler TCP.service cfg in
+      Async_unix.Signal.handle [ Core.Signal.int ] ~f:(fun _ -> signal_stop ());
+      loop
+    ]}
+    - If passed, [~timeout] specifies a maximum time to wait between accepting
+      connections. *)
+
+val serve_when_ready :
+  ?timeout:int ->
+  ?stop:unit Async.Deferred.t ->
+  handler:(flow -> unit Async.Deferred.t) ->
+  ('cfg, 't, 'v) service ->
+  'cfg ->
+  [ `Initialized of unit Async.Deferred.t ] Async.Deferred.t
+(** An extension of {!serve} that promises a service loop computation that is
+    ready to receive connections. The inner promise is then determined once the
+    service loop has ended – by default, only when an error occurs.
+
+    This is useful when subsequent actions are reliant on the service loop
+    having begun, such as when testing with a client-server pair:
+
+    {[
+      let* (`Initialized server) = serve ~stop ~handler TCP.service cfg in
+      Deferred.both server (client >>| signal_stop)
     ]} *)
 
 val reader_and_writer_of_flow :

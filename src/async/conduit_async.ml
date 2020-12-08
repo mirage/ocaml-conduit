@@ -17,46 +17,54 @@ let ( >>? ) x f = Async.Deferred.Result.bind x ~f
 
 type ('a, 'b, 'c) service = ('a, 'b, 'c) Service.t
 
-let serve :
+let serve_when_ready :
     type cfg t v.
     ?timeout:int ->
+    ?stop:unit Async.Deferred.t ->
     handler:(flow -> unit Async.Deferred.t) ->
     (cfg, t, v) service ->
     cfg ->
-    unit Async.Condition.t * (unit -> unit Async.Deferred.t) =
- fun ?timeout ~handler service cfg ->
+    [ `Initialized of unit Async.Deferred.t ] Async.Deferred.t =
+ fun ?timeout ?(stop = Async.Deferred.never ()) ~handler service cfg ->
   let open Async in
-  let stop = Async.Condition.create () in
-  let main () =
-    Service.init service cfg >>= function
-    | Error err -> failwith "%a" Service.pp_error err
-    | Ok t -> (
-        let rec loop () =
-          let close = Async.Condition.wait stop >>| fun () -> Ok `Stop in
-          let accept =
-            Service.accept service t >>? fun flow ->
-            Async.(Deferred.ok (return (`Flow flow))) in
-          let events =
-            match timeout with
-            | None -> [ close; accept ]
-            | Some t ->
-                let t = Core.Time.Span.of_int_sec t in
-                let timeout = Async.after t >>| fun () -> Ok `Timeout in
-                [ close; accept; timeout ] in
+  let timeout =
+    match timeout with
+    | None -> Deferred.never
+    | Some t -> fun () -> after (Core.Time.Span.of_int_sec t) in
+  Service.init service cfg >>| function
+  | Error err -> failwith "%a" Service.pp_error err
+  | Ok t ->
+      `Initialized
+        (let rec loop () =
+           let accept = Service.accept service t in
+           Deferred.choose
+             [
+               choice accept (Result.map (fun f -> `Flow f));
+               choice (timeout ()) (fun () -> Ok `Timeout);
+             ]
+           >>? function
+           | `Flow flow ->
+               don't_wait_for (handler flow) ;
+               Scheduler.yield () >>= loop
+           | `Timeout -> return (Ok `Timeout) in
+         let stop_result =
+           Deferred.choose
+             [
+               choice stop (fun () -> Ok `Stopped);
+               choice (loop ()) (fun r -> r);
+             ]
+           >>= function
+           | Ok (`Timeout | `Stopped) -> Service.stop service t
+           | Error _ as err0 -> (
+               Service.stop service t >>= function
+               | Ok () | Error _ -> return err0) in
+         stop_result >>= function
+         | Ok () -> return ()
+         | Error err -> failwith "%a" Service.pp_error err)
 
-          Async.Deferred.any events >>= function
-          | Ok (`Flow flow) ->
-              Async.don't_wait_for (handler flow) ;
-              Async.Scheduler.yield () >>= fun () -> (loop [@tailcall]) ()
-          | Ok (`Stop | `Timeout) -> Service.stop service t
-          | Error err0 -> (
-              Service.stop service t >>= function
-              | Ok () -> Async.return (Error err0)
-              | Error _err1 -> Async.return (Error err0)) in
-        loop () >>= function
-        | Ok () -> Async.return ()
-        | Error err -> failwith "%a" Service.pp_error err) in
-  (stop, main)
+let serve ?timeout ?stop ~handler service cfg =
+  Async.Deferred.bind (serve_when_ready ?timeout ?stop ~handler service cfg)
+    ~f:(fun (`Initialized loop) -> loop)
 
 let reader_and_writer_of_flow flow =
   let open Async in

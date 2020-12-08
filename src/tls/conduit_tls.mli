@@ -27,9 +27,11 @@ module Make
   val protocol_with_tls :
     ?host_of_endpoint:('edn -> string option) ->
     ('edn, 'flow) Conduit.protocol ->
-    ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol
+    ('edn * Tls.Config.client) Conduit.value * ('edn * Tls.Config.client, 'flow protocol_with_tls) Conduit.protocol
   (** From a given protocol [witness], it creates a new {i witness} of the
       protocol layered with TLS. *)
+
+  val credentials : Tls.Config.client Conduit.value
 
   type 'service service_with_tls
 

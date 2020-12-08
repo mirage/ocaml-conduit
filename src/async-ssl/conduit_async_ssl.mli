@@ -47,7 +47,7 @@ val protocol_with_ssl :
   reader:('flow -> Reader.t) ->
   writer:('flow -> Writer.t) ->
   ('edn, 'flow) protocol ->
-  (context * 'edn, 'flow with_ssl) protocol
+  (context * 'edn) value * (context * 'edn, 'flow with_ssl) protocol
 
 val service_with_ssl :
   ('cfg, 't, 'flow) Service.t ->
@@ -75,5 +75,7 @@ module TCP : sig
     ('a, 'litening_on) Tcp.Where_to_listen.t ->
     context * configuration
 
-  val resolve : port:int -> context:context -> (context * endpoint) resolver
+  val resolve : Conduit.context -> Conduit.context
+  val context : context -> Conduit.context -> Conduit.context
+  val endpoint : context -> Conduit_async.TCP.endpoint -> Conduit.context -> Conduit.context
 end

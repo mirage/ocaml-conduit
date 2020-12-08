@@ -172,6 +172,7 @@ module TCP = struct
       let linger = Bytes.create io_buffer_size in
       let rec go () =
         let process () =
+          Format.printf ">>> connect.\n%!" ;
           Lwt_unix.connect socket sockaddr >>= fun () ->
           Lwt.return_ok { socket; sockaddr; linger; closed = false } in
         Lwt.catch process @@ function
@@ -201,7 +202,11 @@ module TCP = struct
         (* | ENOTSOCK: impossible *)
         (* | EBADF: impossible *)
         (* | EINPROGRESS: TODO *) in
-      go ()
+      go () >>= function
+      | Ok v -> Lwt.return_ok v
+      | Error err ->
+        Format.printf ">>> %a.\n%!" pp_error err ;
+        Lwt.return_error err
 
     let rec recv ({ socket; closed; _ } as t)
         ({ Cstruct.buffer; off; len } as raw) =
@@ -376,7 +381,9 @@ module TCP = struct
       Lwt.return_ok ()
   end
 
-  let protocol = register (module Protocol)
+  let endpoint, protocol = register ~name:"lwt-tcp" (module Protocol)
+  let port : int Conduit.value = Conduit.info ~name:"lwt-port"
+  let domain_name : [ `host ] Domain_name.t Conduit.value = Conduit.info ~name:"lwt-domain-name"
 
   include (val repr protocol)
 
@@ -384,12 +391,18 @@ module TCP = struct
 
   let configuration ?(capacity = 40) sockaddr = { capacity; sockaddr }
 
-  let resolve ~port = function
-    | Conduit.Endpoint.IP ip ->
-        Lwt.return_some (Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port))
-    | Conduit.Endpoint.Domain domain_name -> (
-        Lwt_unix.gethostbyname (Domain_name.to_string domain_name) >>= function
-        | { Unix.h_addr_list; _ } when Array.length h_addr_list > 0 ->
-            Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
-        | _ -> Lwt.return_none)
+  let resolve ctx =
+    let gethostbyname domain_name port =
+      Format.printf ">>> %a:%d.\n%!" Domain_name.pp domain_name port ;
+      match Unix.gethostbyname (Domain_name.to_string domain_name) with
+      | { Unix.h_addr_list; _ } ->
+        if Array.length h_addr_list > 0
+        then ( Format.printf ">>> found.\n%!" ; Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port)) )
+        else Lwt.return_none
+      | exception _ -> Lwt.return_none in
+    fold endpoint Fun.[ req $ domain_name; req $ port ] ~f:gethostbyname ctx
+  let port v ctx = add port v ctx
+  let domain_name v ctx = add domain_name v ctx
+  let inet inet port ctx = add endpoint (Unix.ADDR_INET (inet, port)) ctx
+  let unix unix ctx = add endpoint (Unix.ADDR_UNIX unix) ctx
 end

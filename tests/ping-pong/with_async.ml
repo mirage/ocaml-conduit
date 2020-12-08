@@ -16,35 +16,26 @@ include Common.Make
           (Stop)
           (Conduit_async)
 
-let tcp_protocol, tcp_service =
-  let open Conduit_async.TCP in
-  (protocol, service)
-
 let tls_protocol, tls_service =
   let open Conduit_async_tls.TCP in
   (protocol, service)
 
-let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
-
-let resolve_ping_pong = Conduit_async.TCP.resolve ~port:5000
-
-let resolve_tls_ping_pong =
+let ctx = Conduit_async.empty
+let ctx = Conduit_async.TCP.resolve ctx
+let ctx =
   let null ~host:_ _ = Ok None in
-  let config = Tls.Config.client ~authenticator:null () in
-  Conduit_async_tls.TCP.resolve ~port:9000 ~config
-
-let resolvers =
-  let open Conduit_async in
-  empty
-  |> add ~priority:10 tls_protocol resolve_tls_ping_pong
-  |> add ~priority:20 tcp_protocol resolve_ping_pong
-
+  let cfg = Tls.Config.client ~authenticator:null () in
+  Conduit_async_tls.TCP.credentials cfg ctx
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
+let ctx = Conduit_async.TCP.domain_name localhost ctx
+
+let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
 
 let run_with :
     type cfg service flow.
+    ctx:Conduit.context ->
     (cfg, service, flow) Conduit_async.Service.t -> cfg -> string list -> unit =
- fun service cfg clients ->
+ fun ~ctx service cfg clients ->
   let stop, signal_stop =
     let open Async.Ivar in
     let v = create () in
@@ -52,14 +43,15 @@ let run_with :
   let main =
     server ~stop service cfg >>= fun (`Initialized server) ->
     let clients =
-      let clients = List.map (client ~resolvers) clients in
+      let clients = List.map (client ~resolvers:ctx) clients in
       Async.Deferred.all_unit clients >>| signal_stop in
     Async.Deferred.all_unit [ server; clients ] >>| fun () -> shutdown 0 in
   Async.don't_wait_for main ;
   Core.never_returns (Scheduler.go ())
 
 let run_with_tcp clients =
-  run_with tcp_service
+  let ctx = Conduit_async.TCP.port 5000 ctx in
+  run_with ~ctx Conduit_async.TCP.service
     (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 5000))
     clients
 
@@ -83,9 +75,10 @@ let config cert key =
   | _ -> Fmt.failwith "Invalid key or certificate"
 
 let run_with_tls cert key clients =
-  let ctx = config cert key in
-  run_with tls_service
-    (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000), ctx)
+  let ctx = Conduit_async.TCP.port 9000 ctx in
+  let ctx = Conduit_async_tls.TCP.resolve ctx in
+  run_with ~ctx tls_service
+    (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000), config cert key)
     clients
 
 let () =

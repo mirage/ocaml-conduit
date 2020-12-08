@@ -2,49 +2,34 @@ include Conduit_intf
 
 let strf = Format.asprintf
 
+(* XXX(dinosaure): the [context] must be out of the /functor/. It asserts
+   that we only need [Conduit] to be able to pass a context value from a
+   layer to an other.
+
+   In results, [Conduit_lwt.context = Conduit.context]. A situation can
+   appear when a layer (like an HTTP framework) don't want to choose
+   between LWT, ASYNC and Mirage. But it should be able to, at least, pass
+   the [context] to another layer which does this choice.
+*)
+
 module Map0 = E1.Make(struct type _ t = string end)
 
-module Strat = struct
-  [@@@warning "-37"]
+type _ metadata = ..
+type _ metadata += Val : 'a -> 'a metadata
 
-  type 'a t =
-    | Field : 'a field -> 'a t
-    | Record : 'a t * 'b t -> ('a * 'b) t
-    | Conv : ('a -> 'b) * 'a t -> 'b t
-    | Key : 'a Map0.key -> 'a t
-    | Union : 'a case list -> 'a t
-  and 'a field =
-    | Req : 'a t -> 'a field
-    | Opt : 'a t -> 'a option field
-    | Dft : 'a t * 'a -> 'a field
-  and 'a case =
-    | Case : 'a t * ('a -> 'b) -> 'b case
+(* XXX(dinosaure): a [context] binds a /type witness/ to a value ([Val v]).
+   It permits a kind of dynamic typing where the /type witness/ which is the
+   key (in terms of [Map.Make]) gives to us the type information.
 
-  [@@@warning "+37"]
+   NOTE: A trick is used here. We use a extensible variant which it will be
+   extend by the application of the /functor/ below. The extension is about
+   processes which can create some values from some others - such as a DNS
+   resolution. However, such constructor needs to know the `IO.t` type.
 
-  type value = Strat : 'a Map0.key * 'a t -> value
+   /!\ The extension should only be this particular case.
+*)
 
-  let tbl = 
-
-  let req t = Req t
-  let opt t = Opt t
-  let dft t v = Dft (t, v)
-
-  let obj1 field = Field field
-  let obj2 f0 f1 = Record (Field f0, Field f1)
-  let info ~name =
-    let key = Map0.Key.create name in
-    Hashtbl.add tbl (Strat (Key key)) key ; Key key
-
-  let key_of_strategy : type a. a t -> a Map0.key = function
-    | Key k -> k
-    | _ -> assert false
-end
-
-type _ value = ..
-type _ value += Val : 'a -> 'a value
-
-module Map1 = Map0.Make(struct type 'a t = 'a value end)
+module Map1 = Map0.Make(struct type 'a t = 'a metadata end)
 
 let reword_error f = function Ok x -> Ok x | Error err -> Error (f err)
 
@@ -69,13 +54,11 @@ type ('a, 'b, 'c) thd =
 let error_msgf fmt = Format.kasprintf (fun err -> Error (`Msg err)) fmt
 
 type context = Map1.t
-type 'a strat = 'a Strat.t
 
 let empty = Map1.empty
 
 module type S = sig
   include S with type context := context
-             and type 'a strat := 'a strat
 end
 
 module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
@@ -83,6 +66,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
        and type output = Output.t
        and type +'a io = 'a IO.t
 = struct
+  (* Prelude *)
   let return = IO.return
 
   let ( >>= ) x f = IO.bind x f
@@ -94,19 +78,32 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
 
   type +'a io = 'a IO.t
 
-  type ('k, 'res) args =
-    | [] : ('res, 'res) args
-    | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
-  and 'v arg =
-    | Map : ('f, 'a) args * 'f -> 'a arg
-    | Const : 'a info -> 'a arg
-  and 'v info = 'v Map0.key
-
-  type _ value += Fun : ('k, 'a option io) args * 'k -> 'a value
-
   type input = Input.t
 
   type output = Output.t
+
+  (* XXX(dinosaure): We extend values in our context by a new type:
+     a function. It permits to fill the context with a resolver such
+     as the DNS resolver. *)
+
+  type 'v value = 'v Map0.key
+
+  module Fun = struct
+    type ('k, 'res) args =
+      | [] : ('res, 'res) args
+      | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+    and 'v arg =
+      | Map : ('f, 'a) args * 'f -> 'a arg
+      | Req : 'a value -> 'a arg
+      | Opt : 'a value -> 'a option arg
+
+    let req k = Req k
+    let opt k = Opt k
+    let map args k = Map (args, k)
+    let ( $ ) f x = f x
+  end
+
+  type _ metadata += Fun : ('k, 'a option io) Fun.args * 'k -> 'a metadata
 
   module type PROTOCOL =
     PROTOCOL
@@ -123,6 +120,19 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
   type ('edn, 'flow) impl =
     (module PROTOCOL with type endpoint = 'edn and type flow = 'flow)
 
+  (* XXX(dinosaure): we restrict the user to use only:
+     - [recv]
+     - [send]
+     - [close]
+
+     Indeed, the [connect] will be called by [Conduit] but the end-user
+     should not be able to re-allocate a /flow/ ressource. The [FLOW]
+     interface is interesting for CoHTTP/Git such as a simple [Mirage_flow.S]
+     (with a minor update)[1] to be able to communicate with a peer.
+
+     [1]: the minor detail is about the [recv] function which differs from
+     [Mirage_flow.S.read] but the question is orthogonal to [Conduit]. *)
+
   module F = struct
     type 'a impl = (module FLOW with type flow = 'a)
 
@@ -131,6 +141,27 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
 
   module Flw = E0.Make (F)
 
+  (* XXX(dinosaure): [E0] produces a /private/ and extensible variant:
+     - [private] because only [Conduit] is able to extend it
+       The user must use [Conduit] (and [Conduit] takes care about some details)
+       to extend this variant.
+     - /extensible/ to let the user to dynamically extend the knowledge of
+       /protocols/. Depending on your context and specially on MirageOS, you can
+       not assert that the TCP/IP protocol exists - or SSH, or TLS, etc.
+
+       We can not assert the implementation of the protocol too. For example,
+       the TCP/IP protocol can concretely exist on different forms
+       ([mirage-tcpip] or the host's TCP/IP stack).
+
+       So we let the user to /register/ its protocols at the beginning and play
+       with them then. The core of [Conduit] does not assume any existence of
+       any protocols.
+     - [private] helps us to permit the end-user to /destruct/ the flow type to
+       what it really is (a [Unix.socket], etc.). This case does not and should
+       not appear for CoHTTP/Git (which want only a [FLOW]) but if layer pass the
+       [flow] to the end-user (like CoHTTP), the end-user should be able to
+       introspect the value and /destruct/ it to the underlying /socket/. *)
+
   type flow = Flw.t = private ..
 
   module type REPR = sig
@@ -138,6 +169,10 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
 
     type flow += T of t
   end
+
+  (* XXX(dinosaure): [REPR] is the way to re-export the /constructor/. It
+     permits to the protocol implementer to let the user to destruct the
+     type [flow] to its own new type. *)
 
   type 'a repr = (module REPR with type t = 'a)
 
@@ -161,18 +196,23 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
   end
 
   (* XXX(dinosaure): note about performance, [Ptr.prj] can cost where
-   * it's a lookup into the global [hashtbl] (created by [Ptr]). However,
-   * the usual pattern of [Conduit] is multiple calls of [send]/[recv] with
-   * the same [flow].
-   *
-   * Implementation of internal [hashtbl] memoize such case. We have different
-   * overheads:
-   * - about [recv]/[send], it's around ~500ns (first call), ~125ns (subsequent calls)
-   * - about [flow] & [Flow.recv]/[Flow.send], it's aroung ~75ns
-   *
-   * However, keep in your mind that:
-   * - the internal [hashtbl] should be small (smaller than 16 elements)
-   * - performance is intrinsic with [caml_hash]
+     it's a lookup into the global [hashtbl] (created by [Ptr]). However,
+     the usual pattern of [Conduit] is multiple calls of [send]/[recv] with
+     the same [flow].
+
+     Implementation of internal [hashtbl] memoize such case. We have different
+     overheads:
+     - about [recv]/[send], it's around ~500ns (first call), ~125ns (subsequent calls)
+     - about [flow] & [Flow.recv]/[Flow.send], it's aroung ~75ns
+
+     However, keep in your mind that:
+     - the internal [hashtbl] should be small (smaller than 16 elements)
+     - performance is intrinsic with [caml_hash]
+
+     NOTE: about performance, if we are really aware about that, the best to use
+     [Conduit] and the underlying protocol is to /project/ the implementation
+     with [Conduit.impl] and us it as is - by this way, it's like a use of a
+     first-class module.
    *)
 
   let recv flow =
@@ -195,34 +235,6 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
     | Ok _ as v -> v
     | Error err -> Error (`Msg (strf "%a" Protocol.pp_error err))
 
-  module P = struct
-    [@@@warning "-37"]
-
-    type ('edn, 'flow) value = Value : 'flow -> ('edn, 'flow) value
-
-    [@@@warning "+37"]
-
-    type _ t =
-      | Protocol :
-          'edn Strat.t * 'flow Flow.t * ('edn, 'flow) impl
-          -> ('edn, 'flow) value t
-  end
-
-  module Ptr = E0.Make (P)
-
-  type ('edn, 'flow) protocol = {
-    protocol : ('edn, 'flow) P.value Ptr.s;
-    flow : 'flow Flow.t;
-  }
-
-  let register : type v flow. v Strat.t -> (v, flow) impl -> (v, flow) protocol =
-   fun strat (module M) ->
-    let flow = Flow.register (module M) in
-    let protocol = Ptr.inj (Protocol (strat, flow, (module M))) in
-    { flow; protocol }
-
-  let repr t = Flow.repr t.flow
-
   let empty = empty
 
   let info ~name = Map0.Key.create name
@@ -230,13 +242,14 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
   let add k v m = Map1.add k (Val v) m
 
   let rec apply
-    : type k res. context -> (k, res option io) args -> k -> res option io
+    : type k res. context -> (k, res option io) Fun.args -> k -> res option io
     = fun ctx args f ->
-      let rec go : type k res. context -> (k, res) args -> k -> res io = fun ctx -> function
+      let rec go : type k res. context -> (k, res) Fun.args -> k -> res io = fun ctx -> function
         | [] -> fun x -> return x
         | Map (args', f') :: tl ->
           fun f -> go ctx args' f' >>= fun v -> go ctx tl (f v)
-        | Const key :: tl ->
+        | Opt key :: tl -> fun f -> find key ctx >>= fun v -> go ctx tl (f v)
+        | Req key :: tl ->
           fun f -> find key ctx >>= function
             | Some v -> go ctx tl (f v)
             | None -> raise Not_found in
@@ -244,7 +257,7 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
       with Not_found -> return None
 
   and find
-    : type a. a info -> context -> a option io
+    : type a. a value -> context -> a option io
     = fun info ctx ->
       match Map1.find info ctx with
       | None -> return None
@@ -253,19 +266,42 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
       | _ -> return None
 
   let fold
-    : type k res. res info -> (k, res option io) args -> f:k -> context -> context
+    : type k res. res value -> (k, res option io) Fun.args -> f:k -> context -> context
     = fun key args ~f ctx ->
       Map1.add key (Fun (args, f)) ctx
 
-  let fold
-    : type k res. res Strat.t -> (k, res option io) args -> f:k -> context -> context
-    = fun strat args ~f ctx ->
-      match Hashtbl.find Strat.tbl (Strat.Strat strat) with
-      | key -> fold key args ~f ctx
-      | exception Not_found ->
-        let key = Map0.Key.create "" in
-        Hashtbl.add key strat Strat.tbl ;
-        fold key args ~f ctx
+  module P = struct
+    [@@@warning "-37"]
+
+    type ('edn, 'flow) snd = Snd : 'flow -> ('edn, 'flow) snd
+    (* XXX(dinosaure): this is the same trick as [thd] to keep
+       existentials. *)
+
+    [@@@warning "+37"]
+
+    type _ t =
+      | Protocol :
+          'edn Map0.key * 'flow Flow.t * ('edn, 'flow) impl
+          -> ('edn, 'flow) snd t
+  end
+
+  module Ptr = E0.Make (P)
+  (* XXX(dinosaure): extension of [Flow] with [connect] - such map
+     is used only by [Conduit]. *)
+
+  type ('edn, 'flow) protocol = {
+    protocol : ('edn, 'flow) P.snd Ptr.s;
+    flow : 'flow Flow.t;
+  }
+
+  let register : type edn flow. name:string -> (edn, flow) impl -> edn value * (edn, flow) protocol =
+   fun ~name (module M) ->
+    let witness = Map0.Key.create name in
+    let flow = Flow.register (module M) in
+    let protocol = Ptr.inj (Protocol (witness, flow, (module M))) in
+    witness, { flow; protocol }
+
+  let repr t = Flow.repr t.flow
 
   type error = [ `Msg of string | `Not_found ]
 
@@ -275,13 +311,12 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
     | `Msg err -> pf ppf "%s" err
     | `Not_found -> pf ppf "Not found"
 
-  let flow_of_info
-    : type v. v info -> v -> (flow, [> error ]) result io
+  let flow_of_value
+    : type edn. edn value -> edn -> (flow, [> error ]) result io
     = fun key v ->
     let rec go : Ptr.k list -> _ = function
       | [] -> return (Error `Not_found)
-      | Ptr.Key (Protocol (strat, (module Flow), (module Protocol))) :: r ->
-        let key' = Strat.key_of_strategy strat in
+      | Ptr.Key (Protocol (key', (module Flow), (module Protocol))) :: r ->
         ( match Map0.Key.(key == key') with
         | None -> go r
         | Some E1.Refl.Refl -> (
@@ -299,9 +334,9 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
     | Ok flow -> return (Ok flow)
     | Error err -> return (error_msgf "%a" Protocol.pp_error err)
 
-  type value = Value : 'v info * 'v -> value
+  type packed = Value : 'v value * 'v -> packed
 
-  let resolve : context -> value list io =
+  let resolve : context -> packed list io =
    fun m ->
     let rec go acc : Map1.v list -> _ = function
       | [] -> return (List.rev acc)
@@ -316,10 +351,10 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
   let create : context -> (flow, [> error ]) result io =
    fun m ->
     resolve m >>= fun l ->
-    let rec go : value list -> _ = function
+    let rec go : packed list -> _ = function
       | [] -> return (Error `Not_found)
       | Value (key, v) :: r -> (
-          flow_of_info key v >>= function
+          flow_of_value key v >>= function
           | Ok flow -> return (Ok flow)
           | Error _err -> go r) in
     go l
@@ -335,19 +370,17 @@ module Make (IO : IO) (Input : BUFFER) (Output : BUFFER)
     | Some protocol ->
         let (module Protocol) = protocol.protocol in
         let (module Flow) = protocol.flow in
-        match Protocol.witness with
-        | Protocol (Strat.Key key', _, _) ->
-          resolve m >>= fun l ->
-          let rec go : value list -> _ = function
-            | [] -> return (Error `Not_found)
-            | Value (key, edn) :: r -> match Map0.Key.(key == key') with
-              | None -> go r
-              | Some E1.Refl.Refl -> (
-                  flow_of_protocol protocol edn >>= function
-                  | Ok flow -> return (Ok (Flow.T flow))
-                  | Error _err -> go r) in
-          go l
-        | _ -> return (Error `Not_found)
+        let Protocol (key', _, _) = Protocol.witness in
+        resolve m >>= fun l ->
+        let rec go : packed list -> _ = function
+          | [] -> return (Error `Not_found)
+          | Value (key, edn) :: r -> match Map0.Key.(key == key') with
+            | None -> go r
+            | Some E1.Refl.Refl -> (
+                flow_of_protocol protocol edn >>= function
+                | Ok flow -> return (Ok (Flow.T flow))
+                | Error _err -> go r) in
+        go l
 
   let connect :
       type edn v. (edn, v) protocol -> edn -> (flow, [> error ]) result io =

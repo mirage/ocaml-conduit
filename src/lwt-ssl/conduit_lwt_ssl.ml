@@ -12,7 +12,7 @@ type ('edn, 'flow) endpoint = {
     Ssl.context -> 'flow -> (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t;
 }
 
-let endpoint ~file_descr ~context ?verify endpoint =
+let edn ~file_descr ~context ?verify edn =
   let verify =
     match verify with
     | Some verify -> verify
@@ -21,7 +21,7 @@ let endpoint ~file_descr ~context ?verify endpoint =
           let file_descr = file_descr flow in
           Lwt_ssl.ssl_connect file_descr ctx >>= fun v -> Lwt.return_ok v in
         verify in
-  { context; endpoint; verify }
+  { context; endpoint= edn; verify }
 
 let pf = Format.fprintf
 
@@ -67,11 +67,11 @@ end
 let protocol_with_ssl :
     type edn flow.
     (edn, flow) Conduit_lwt.protocol ->
-    ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt.protocol =
+    (edn, flow) endpoint Conduit_lwt.value * ((edn, flow) endpoint, Lwt_ssl.socket) Conduit_lwt.protocol =
  fun protocol ->
   let module Flow = (val Conduit_lwt.impl protocol) in
   let module M = Protocol (Flow) in
-  Conduit_lwt.register (module M)
+  Conduit_lwt.register ~name:"+ssl" (module M)
 
 type 't service = { service : 't; context : Ssl.context }
 
@@ -126,12 +126,6 @@ let service_with_ssl :
   Conduit_lwt.Service.register (module M) protocol
 
 module TCP = struct
-  let resolve ~port ~context ?verify domain_name =
-    let file_descr = Conduit_lwt.TCP.Protocol.file_descr in
-    Conduit_lwt.TCP.resolve ~port domain_name >|= function
-    | Some edn -> Some (endpoint ~context ~file_descr ?verify edn)
-    | None -> None
-
   let configuration ~context ?capacity sockaddr =
     (context, Conduit_lwt.TCP.configuration ?capacity sockaddr)
 
@@ -142,7 +136,20 @@ module TCP = struct
     Protocol.flow ->
     (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t
 
-  let protocol = protocol_with_ssl protocol
+  let endpoint, protocol = protocol_with_ssl protocol
+  let context : Ssl.context Conduit_lwt.value = Conduit_lwt.info ~name:"context"
+  let verify : verify Conduit_lwt.value = Conduit_lwt.info ~name:"verify"
+
+  let resolve ctx =
+    let ctx = resolve ctx in
+    let file_descr = Conduit_lwt.TCP.Protocol.file_descr in
+    Conduit_lwt.fold endpoint
+      Conduit_lwt.Fun.[ req $ context; opt $ verify; req $ Conduit_lwt.TCP.endpoint ]
+      ~f:(fun context verify v -> Lwt.return_some (edn ~context ~file_descr ?verify v))
+      ctx
+
+  let context cfg ctx = Conduit_lwt.add context cfg ctx
+  let verify check ctx = Conduit_lwt.add verify check ctx
 
   let service =
     service_with_ssl service ~file_descr:Protocol.file_descr protocol

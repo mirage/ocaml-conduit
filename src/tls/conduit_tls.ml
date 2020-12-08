@@ -422,7 +422,7 @@ struct
       type edn flow.
       ?host_of_endpoint:(edn -> string option) ->
       (edn, flow) Conduit.protocol ->
-      (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
+      (edn * Tls.Config.client) Conduit.value * (edn * Tls.Config.client, flow protocol_with_tls) Conduit.protocol =
    fun ?(host_of_endpoint = fun _ -> None) protocol ->
     let module Protocol0 = (val Conduit.impl protocol) in
     let module Protocol1 = struct
@@ -431,7 +431,9 @@ struct
       let host_of_endpoint = host_of_endpoint
     end in
     let module Protocol2 = Make1 (Protocol1) in
-    Conduit.register (module Protocol2)
+    Conduit.register ~name:"+tls" (module Protocol2)
+
+  let credentials : Tls.Config.client Conduit.value = Conduit.info ~name:"tls-credentials"
 
   type 't service_with_tls = 't * Tls.Config.server
 

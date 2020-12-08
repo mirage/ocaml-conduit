@@ -27,11 +27,11 @@ let send = Alcotest.int
 let error =
   let pp ppf = function
     | #Rresult.R.msg as v -> Rresult.R.pp_msg ppf v
-    | `Not_found edn -> Fmt.pf ppf "%a not found" Conduit.Endpoint.pp edn in
+    | `Not_found -> Fmt.pf ppf "not found" in
   let equal a b =
     match (a, b) with
     | `Msg a, `Msg b -> a = b
-    | `Not_found a, `Not_found b -> Conduit.Endpoint.equal a b
+    | `Not_found, `Not_found -> true
     | _ -> false in
   Alcotest.testable pp equal
 
@@ -84,7 +84,7 @@ module Memory_flow0 = struct
     Ok ()
 end
 
-let memory0 = Conduit.register (module Memory_flow0)
+let _edn0, memory0 = Conduit.register ~name:"memory0" (module Memory_flow0)
 
 let test_input_string =
   Alcotest.test_case "input string" `Quick @@ fun () ->
@@ -201,7 +201,7 @@ module Memory_flow1 = struct
     Ok ()
 end
 
-let memory1 = Conduit.register (module Memory_flow1)
+let _edn1, memory1 = Conduit.register ~name:"memory1" (module Memory_flow1)
 
 let test_input_strings =
   Alcotest.test_case "input strings" `Quick @@ fun () ->
@@ -294,7 +294,7 @@ module Dummy_service = struct
   let stop T = Ok ()
 end
 
-let dummy_protocol = Conduit.register (module Dummy_protocol)
+let _dummy_edn, dummy_protocol = Conduit.register ~name:"dummy" (module Dummy_protocol)
 
 let dummy_service =
   Conduit.Service.register (module Dummy_service) dummy_protocol

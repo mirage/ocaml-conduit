@@ -88,11 +88,11 @@ module Fake_protocol2 = struct
   let close _ = Ok ()
 end
 
-let fake0 = Tuyau.register (module Fake_protocol0)
+let edn0, fake0 = Tuyau.register ~name:"fake0" (module Fake_protocol0)
 
-let fake1 = Tuyau.register (module Fake_protocol1)
+let edn1, fake1 = Tuyau.register ~name:"fake1" (module Fake_protocol1)
 
-let fake2 = Tuyau.register (module Fake_protocol2)
+let edn2, fake2 = Tuyau.register ~name:"fake2" (module Fake_protocol2)
 
 module R0 = (val Tuyau.repr fake0)
 
@@ -172,7 +172,7 @@ let main json =
   match run json with
   | Ok v -> v
   | Error (`Msg err) -> Fmt.epr "%s: %s.\n%!" Sys.argv.(0) err
-  | Error (`Not_found _edn) -> assert false
+  | Error `Not_found -> assert false
 
 let cmd = (Term.(const main $ json), Term.info "run benchmarks")
 

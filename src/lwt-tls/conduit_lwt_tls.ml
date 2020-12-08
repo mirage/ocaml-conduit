@@ -17,18 +17,21 @@ let () = Mirage_crypto_rng_lwt.initialize ()
 module TCP = struct
   open Conduit_lwt.TCP
 
-  let protocol = protocol_with_tls protocol
+  let endpoint, protocol = protocol_with_tls protocol
 
   include (val Conduit_lwt.repr protocol)
 
   let service = service_with_tls service Conduit_lwt.TCP.protocol protocol
 
-  let resolve ~port ~config domain_name =
-    let open Lwt.Infix in
-    resolve ~port domain_name >|= function
-    | Some edn -> Some (edn, config)
-    | None -> None
-
   let configuration ~config:tls_config ?capacity sockaddr =
     (configuration ?capacity sockaddr, tls_config)
+
+  let resolve ctx =
+    let ctx = resolve ctx in
+    Conduit_lwt.fold endpoint
+      Conduit_lwt.Fun.[ req $ Conduit_lwt.TCP.endpoint; req $ credentials ]
+      ~f:(fun edn cfg -> Lwt.return (Some (edn, cfg))) ctx
+
+  let credentials cfg ctx = Conduit_lwt.add credentials cfg ctx
+  let endpoint edn cfg ctx = Conduit_lwt.add endpoint (edn, cfg) ctx
 end

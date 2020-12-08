@@ -21,18 +21,14 @@ let tls_protocol, tls_service =
 
 (* Resolution *)
 
-let resolve_ping_pong = Conduit_lwt.TCP.resolve ~port:4000
-
-let resolve_tls_ping_pong =
+let ctx = Conduit_lwt.empty
+let ctx = Conduit_lwt.TCP.resolve ctx
+let ctx =
   let null ~host:_ _ = Ok None in
-  let config = Tls.Config.client ~authenticator:null () in
-  Conduit_lwt_tls.TCP.resolve ~port:8000 ~config
-
-let resolvers =
-  let open Conduit_lwt in
-  empty
-  |> add ~priority:20 TCP.protocol resolve_ping_pong
-  |> add ~priority:10 tls_protocol resolve_tls_ping_pong
+  let cfg = Tls.Config.client ~authenticator:null () in
+  Conduit_lwt_tls.TCP.credentials cfg ctx
+let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
+let ctx = Conduit_lwt.TCP.domain_name localhost ctx
 
 (* Run *)
 
@@ -56,18 +52,20 @@ let config cert key =
 
 let run_with :
     type cfg s flow.
+    ctx:Conduit.context ->
     (cfg, s, flow) Conduit_lwt.Service.t -> cfg -> string list -> unit =
- fun service cfg clients ->
+ fun ~ctx service cfg clients ->
   let stop = Lwt_switch.create () in
   let main =
     server ~stop service cfg >>= fun (`Initialized server) ->
-    let clients = List.map (client ~resolvers) clients in
+    let clients = List.map (client ~resolvers:ctx) clients in
     let clients = Lwt.join clients >>= fun () -> Lwt_switch.turn_off stop in
     Lwt.join [ server; clients ] in
   Lwt_main.run main
 
 let run_with_tcp clients =
-  run_with Conduit_lwt.TCP.service
+  let ctx = Conduit_lwt.TCP.port 4000 ctx in
+  run_with ~ctx Conduit_lwt.TCP.service
     {
       Conduit_lwt.TCP.sockaddr = Unix.ADDR_INET (Unix.inet_addr_loopback, 4000);
       capacity = 40;
@@ -75,13 +73,14 @@ let run_with_tcp clients =
     clients
 
 let run_with_tls cert key clients =
-  let ctx = config cert key in
-  run_with tls_service
+  let ctx = Conduit_lwt.TCP.port 8000 ctx in
+  let ctx = Conduit_lwt_tls.TCP.resolve ctx in
+  run_with ~ctx tls_service
     ( {
         Conduit_lwt.TCP.sockaddr = Unix.ADDR_INET (Unix.inet_addr_loopback, 8000);
         capacity = 40;
       },
-      ctx )
+      config cert key )
     clients
 
 let () =

@@ -74,6 +74,7 @@ module TCP : sig
     val writer : flow -> Writer.t
   end
 
+  val endpoint : Protocol.endpoint value
   val protocol : (Protocol.endpoint, Protocol.flow) protocol
 
   type configuration =
@@ -88,5 +89,9 @@ module TCP : sig
   val configuration :
     ?backlog:int -> ('a, 'listening_on) Tcp.Where_to_listen.t -> configuration
 
-  val resolve : port:int -> endpoint resolver
+  val resolve : Conduit.context -> Conduit.context
+  val port : int -> Conduit.context -> Conduit.context
+  val domain_name : [ `host ] Domain_name.t -> Conduit.context -> Conduit.context
+  val inet : Socket.Address.Inet.t -> Conduit.context -> Conduit.context
+  val unix : Socket.Address.Unix.t -> Conduit.context -> Conduit.context
 end

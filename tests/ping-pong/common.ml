@@ -122,8 +122,8 @@ struct
 
   (* part *)
 
-  let client ~resolvers domain_name responses =
-    Conduit.resolve resolvers domain_name >>? fun flow ->
+  let client ~resolvers responses =
+    Conduit.resolve resolvers >>? fun flow ->
     let queue = Ke.Rke.create ~capacity:0x1000 Bigarray.char in
     let rec go = function
       | [] -> Conduit.close flow
@@ -143,7 +143,7 @@ struct
     let ic = open_in filename in
     let responses = go [] ic in
     close_in ic ;
-    client ~resolvers (Conduit.Endpoint.domain localhost) responses >>= function
+    client ~resolvers responses >>= function
     | Ok () -> IO.return ()
     | Error `Closed_by_peer -> IO.return ()
     | Error (#Conduit.error as err) ->

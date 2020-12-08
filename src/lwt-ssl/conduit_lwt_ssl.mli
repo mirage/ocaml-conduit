@@ -35,7 +35,7 @@ type ('edn, 'flow) endpoint = {
     Ssl.context -> 'flow -> (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t;
 }
 
-val endpoint :
+val edn :
   file_descr:('flow -> Lwt_unix.file_descr) ->
   context:Ssl.context ->
   ?verify:
@@ -54,7 +54,7 @@ val endpoint :
     {i hostname} with your peer. *)
 
 val protocol_with_ssl :
-  ('edn, 'flow) protocol -> (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
+  ('edn, 'flow) protocol -> ('edn, 'flow) endpoint value * (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
 (** [protocol_with_ssl ~key protocol] returns a representation of the given
     protocol with SSL. *)
 
@@ -91,11 +91,9 @@ module TCP : sig
     Protocol.flow ->
     (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t
 
-  val resolve :
-    port:int ->
-    context:Ssl.context ->
-    ?verify:verify ->
-    (Lwt_unix.sockaddr, Protocol.flow) endpoint resolver
+  val resolve : Conduit.context -> Conduit.context
+  val context : Ssl.context -> Conduit.context -> Conduit.context
+  val verify : verify -> Conduit.context -> Conduit.context
 
   val configuration :
     context:Ssl.context ->

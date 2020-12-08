@@ -114,19 +114,6 @@ end
 
 type ('a, 'b) refl = Refl : ('a, 'a) refl
 
-module type STRAT = sig
-  type 'a t
-  type 'a field
-
-  val req : 'a t -> 'a field
-  val opt : 'a t -> 'a option field
-  val dft : 'a t -> 'a -> 'a field
-
-  val obj1 : 'a field -> 'a t
-  val obj2 : 'a field -> 'b field -> ('a * 'b) t
-  val info : name:string -> 'a t
-end
-
 module type S = sig
   type input
   (** The type for payload inputs. *)
@@ -214,16 +201,14 @@ module type S = sig
       Endpoints allow users to create flows by either connecting directly to a
       remote server or by resolving domain names (with {!connect}). *)
 
-  type 'a strat
-
-  type 'v info
-  (** The type for a user-defined information. ['v] is the type of the
+  type 'edn value 
+  (** The type for a user-defined information. ['edn] is the type of the
       information. It permits to fill the context with values depending
       on your context. *)
 
-  val register : 'v strat -> ('v, 'flow) impl -> ('v, 'flow) protocol
-  (** [register strategy (module Protocol)] is the protocol. It requires a
-      resolution strategy to extract its required value to {i connect}/{i create}
+  val register : name:string -> ('edn, 'flow) impl -> 'edn value * ('edn, 'flow) protocol
+  (** [register strategy (module Protocol)] is the protocol. It creates a
+      {i metadata} witness required to {i connect}/{i create}
       a client flow from the {!context}. [(module Protocol)] must provide a
       [connect] function to allow client flows to be created.
 
@@ -240,8 +225,7 @@ module type S = sig
           val sockaddr : Unix.sockaddr value
           val t : (Unix.sockaddr, Unix.file_descr) protocol
         end = struct
-          let sockaddr = value ~name:"sockaddr"
-          let t = register info (module TCP)
+          let sockaddr, t = register ~name:"tcp" (module TCP)
         end
       ]}
 
@@ -256,12 +240,10 @@ module type S = sig
              and type flow = Unix.file_descr = struct ... end
 
         module Conduit_tcp_tls : sig
-          val sockaddr_and_credentials : (Unix.sockaddr * Tls.Config.client) strat
+          val sockaddr_and_credentials : (Unix.sockaddr * Tls.Config.client) value
           val t : (Unix.sockaddr * Tls.Config.client, Unix.file_descr) protocol
         end = struct
-          let credentials = value ~name:"credentials"
-          let sockaddr_and_credentials = Strat.(obj2 (req sockaddr) (req tls_config))
-          let t = register sockaddr_and_credentials (module TLS)
+          let sockaddr_and_credentials, t = register_with_tls ~name:"tcp+tls" TCP.protocol
         end
       ]}
 
@@ -345,12 +327,12 @@ module type S = sig
 
   type context
 
-  val info : name:string -> 'a info
+  val info : name:string -> 'a value
 
   val empty : context
   (** [empty] is equal to {!Conduit.empty}. *)
 
-  val add : 'edn info -> 'edn -> context -> context
+  val add : 'edn value -> 'edn -> context -> context
   (** [add info protocol context] adds a new information function
       [resolver] to [context].
 
@@ -369,14 +351,19 @@ module type S = sig
           |> add Conduit_tcp_ssl.t https_resolver ~priority:20
       ]} *)
 
-  type ('k, 'res) args =
-    | [] : ('res, 'res) args
-    | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
-  and 'v arg =
-    | Map : ('f, 'a) args * 'f -> 'a arg
-    | Const : 'a info -> 'a arg
+  module Fun : sig
+    type ('k, 'res) args =
+      | [] : ('res, 'res) args
+      | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+    and 'v arg
 
-  val fold : 'res strat -> ('k, 'res option io) args -> f:'k -> context -> context
+    val req : 'a value -> 'a arg
+    val opt : 'a value -> 'a option arg
+    val map : ('k, 'res) args -> 'k -> 'res arg
+    val ( $ ) : ('a -> 'b) -> 'a -> 'b
+  end
+
+  val fold : 'res value -> ('k, 'res option io) Fun.args -> f:'k -> context -> context
 
   val resolve :
     ?protocol:('v, 'flow) protocol ->
@@ -516,16 +503,11 @@ module type Conduit = sig
   type context
   (** Type for context map. *)
 
-  type 'a strat
-
-  module Strat : STRAT with type 'a t := 'a strat
-
   val empty : context
   (** [empty] is an empty {!context} map. *)
 
   module type S = sig
     include S with type context := context
-               and type 'a strat := 'a strat
     (** @inline *)
   end
 

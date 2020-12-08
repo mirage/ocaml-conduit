@@ -172,7 +172,6 @@ module TCP = struct
       let linger = Bytes.create io_buffer_size in
       let rec go () =
         let process () =
-          Format.printf ">>> connect.\n%!" ;
           Lwt_unix.connect socket sockaddr >>= fun () ->
           Lwt.return_ok { socket; sockaddr; linger; closed = false } in
         Lwt.catch process @@ function
@@ -202,11 +201,7 @@ module TCP = struct
         (* | ENOTSOCK: impossible *)
         (* | EBADF: impossible *)
         (* | EINPROGRESS: TODO *) in
-      go () >>= function
-      | Ok v -> Lwt.return_ok v
-      | Error err ->
-        Format.printf ">>> %a.\n%!" pp_error err ;
-        Lwt.return_error err
+      go ()
 
     let rec recv ({ socket; closed; _ } as t)
         ({ Cstruct.buffer; off; len } as raw) =
@@ -393,11 +388,10 @@ module TCP = struct
 
   let resolve ctx =
     let gethostbyname domain_name port =
-      Format.printf ">>> %a:%d.\n%!" Domain_name.pp domain_name port ;
       match Unix.gethostbyname (Domain_name.to_string domain_name) with
       | { Unix.h_addr_list; _ } ->
         if Array.length h_addr_list > 0
-        then ( Format.printf ">>> found.\n%!" ; Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port)) )
+        then Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
         else Lwt.return_none
       | exception _ -> Lwt.return_none in
     fold endpoint Fun.[ req $ domain_name; req $ port ] ~f:gethostbyname ctx

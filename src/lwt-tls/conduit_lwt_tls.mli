@@ -21,7 +21,8 @@ val handshake : 'flow protocol_with_tls -> bool
 val protocol_with_tls :
   ?host_of_endpoint:('edn -> string option) ->
   ('edn, 'flow) protocol ->
-  ('edn * Tls.Config.client) value * ('edn * Tls.Config.client, 'flow protocol_with_tls) protocol
+  ('edn * Tls.Config.client) value
+  * ('edn * Tls.Config.client, 'flow protocol_with_tls) protocol
 
 type 'service service_with_tls
 
@@ -57,6 +58,9 @@ module TCP : sig
     configuration * Tls.Config.server
 
   val resolve : Conduit.context -> Conduit.context
+
   val credentials : Tls.Config.client -> Conduit.context -> Conduit.context
-  val endpoint : Lwt_unix.sockaddr -> Tls.Config.client -> Conduit.context -> Conduit.context
+
+  val endpoint :
+    Lwt_unix.sockaddr -> Tls.Config.client -> Conduit.context -> Conduit.context
 end

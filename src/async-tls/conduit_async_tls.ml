@@ -31,8 +31,10 @@ module TCP = struct
     let ctx = resolve ctx in
     Conduit_async.fold endpoint
       Conduit_async.Fun.[ req $ Conduit_async.TCP.endpoint; req $ credentials ]
-      ~f:(fun edn cfg -> Async.return (Some (edn, cfg))) ctx
+      ~f:(fun edn cfg -> Async.return (Some (edn, cfg)))
+      ctx
 
   let credentials cfg ctx = Conduit_async.add credentials cfg ctx
+
   let endpoint edn cfg ctx = Conduit_async.add endpoint (edn, cfg) ctx
 end

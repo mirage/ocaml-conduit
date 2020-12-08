@@ -377,8 +377,11 @@ module TCP = struct
   end
 
   let endpoint, protocol = register ~name:"lwt-tcp" (module Protocol)
+
   let port : int Conduit.value = Conduit.info ~name:"lwt-port"
-  let domain_name : [ `host ] Domain_name.t Conduit.value = Conduit.info ~name:"lwt-domain-name"
+
+  let domain_name : [ `host ] Domain_name.t Conduit.value =
+    Conduit.info ~name:"lwt-domain-name"
 
   include (val repr protocol)
 
@@ -390,13 +393,17 @@ module TCP = struct
     let gethostbyname domain_name port =
       match Unix.gethostbyname (Domain_name.to_string domain_name) with
       | { Unix.h_addr_list; _ } ->
-        if Array.length h_addr_list > 0
-        then Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
-        else Lwt.return_none
+          if Array.length h_addr_list > 0
+          then Lwt.return_some (Unix.ADDR_INET (h_addr_list.(0), port))
+          else Lwt.return_none
       | exception _ -> Lwt.return_none in
     fold endpoint Fun.[ req $ domain_name; req $ port ] ~f:gethostbyname ctx
+
   let port v ctx = add port v ctx
+
   let domain_name v ctx = add domain_name v ctx
+
   let inet inet port ctx = add endpoint (Unix.ADDR_INET (inet, port)) ctx
+
   let unix unix ctx = add endpoint (Unix.ADDR_UNIX unix) ctx
 end

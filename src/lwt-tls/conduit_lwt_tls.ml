@@ -30,8 +30,10 @@ module TCP = struct
     let ctx = resolve ctx in
     Conduit_lwt.fold endpoint
       Conduit_lwt.Fun.[ req $ Conduit_lwt.TCP.endpoint; req $ credentials ]
-      ~f:(fun edn cfg -> Lwt.return (Some (edn, cfg))) ctx
+      ~f:(fun edn cfg -> Lwt.return (Some (edn, cfg)))
+      ctx
 
   let credentials cfg ctx = Conduit_lwt.add credentials cfg ctx
+
   let endpoint edn cfg ctx = Conduit_lwt.add endpoint (edn, cfg) ctx
 end

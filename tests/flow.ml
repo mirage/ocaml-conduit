@@ -294,7 +294,8 @@ module Dummy_service = struct
   let stop T = Ok ()
 end
 
-let _dummy_edn, dummy_protocol = Conduit.register ~name:"dummy" (module Dummy_protocol)
+let _dummy_edn, dummy_protocol =
+  Conduit.register ~name:"dummy" (module Dummy_protocol)
 
 let dummy_service =
   Conduit.Service.register (module Dummy_service) dummy_protocol

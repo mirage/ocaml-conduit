@@ -128,6 +128,7 @@ module TCP : sig
             | `Firewall_rules_forbid_connection ]
 
   val endpoint : Lwt_unix.sockaddr value
+
   val protocol : (Lwt_unix.sockaddr, Protocol.flow) protocol
 
   type flow += T of Protocol.flow
@@ -137,8 +138,13 @@ module TCP : sig
   val configuration : ?capacity:int -> Lwt_unix.sockaddr -> configuration
 
   val resolve : Conduit.context -> Conduit.context
+
   val port : int -> Conduit.context -> Conduit.context
-  val domain_name : [ `host ] Domain_name.t -> Conduit.context -> Conduit.context
+
+  val domain_name :
+    [ `host ] Domain_name.t -> Conduit.context -> Conduit.context
+
   val inet : Unix.inet_addr -> int -> Conduit.context -> Conduit.context
+
   val unix : string -> Conduit.context -> Conduit.context
 end

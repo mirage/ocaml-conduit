@@ -178,7 +178,8 @@ let protocol_with_ssl :
     reader:(flow -> Reader.t) ->
     writer:(flow -> Writer.t) ->
     (edn, flow) Conduit_async.protocol ->
-    (context * edn) Conduit_async.value * (context * edn, flow with_ssl) Conduit_async.protocol =
+    (context * edn) Conduit_async.value
+    * (context * edn, flow with_ssl) Conduit_async.protocol =
  fun ~reader ~writer protocol ->
   let module F = (val Conduit_async.impl protocol) in
   let module Flow = struct
@@ -309,16 +310,17 @@ module TCP = struct
   let configuration ~context ?backlog listen =
     (context, configuration ?backlog listen)
 
-  let context : context Conduit_async.value = Conduit_async.info ~name:"ssl-context"
+  let context : context Conduit_async.value =
+    Conduit_async.info ~name:"ssl-context"
 
   let resolve ctx =
     let ctx = resolve ctx in
-    Conduit_async.fold
-      endpoint
+    Conduit_async.fold endpoint
       Conduit_async.Fun.[ req $ Conduit_async.TCP.endpoint; req $ context ]
       ~f:(fun edn ctx -> Async.return (Some (ctx, edn)))
       ctx
 
   let context cfg ctx = Conduit_async.add context cfg ctx
+
   let endpoint cfg edn ctx = Conduit_async.add endpoint (cfg, edn) ctx
 end

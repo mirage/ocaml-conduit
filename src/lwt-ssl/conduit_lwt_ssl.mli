@@ -54,7 +54,9 @@ val edn :
     {i hostname} with your peer. *)
 
 val protocol_with_ssl :
-  ('edn, 'flow) protocol -> ('edn, 'flow) endpoint value * (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
+  ('edn, 'flow) protocol ->
+  ('edn, 'flow) endpoint value
+  * (('edn, 'flow) endpoint, Lwt_ssl.socket) protocol
 (** [protocol_with_ssl ~key protocol] returns a representation of the given
     protocol with SSL. *)
 
@@ -92,7 +94,9 @@ module TCP : sig
     (Lwt_ssl.socket, [ `Verify of string ]) result Lwt.t
 
   val resolve : Conduit.context -> Conduit.context
+
   val context : Ssl.context -> Conduit.context -> Conduit.context
+
   val verify : verify -> Conduit.context -> Conduit.context
 
   val configuration :

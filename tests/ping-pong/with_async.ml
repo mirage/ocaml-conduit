@@ -21,12 +21,16 @@ let tls_protocol, tls_service =
   (protocol, service)
 
 let ctx = Conduit_async.empty
+
 let ctx = Conduit_async.TCP.resolve ctx
+
 let ctx =
   let null ~host:_ _ = Ok None in
   let cfg = Tls.Config.client ~authenticator:null () in
   Conduit_async_tls.TCP.credentials cfg ctx
+
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
+
 let ctx = Conduit_async.TCP.domain_name localhost ctx
 
 let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
@@ -34,7 +38,10 @@ let failwith fmt = Format.kasprintf (fun err -> raise (Failure err)) fmt
 let run_with :
     type cfg service flow.
     ctx:Conduit.context ->
-    (cfg, service, flow) Conduit_async.Service.t -> cfg -> string list -> unit =
+    (cfg, service, flow) Conduit_async.Service.t ->
+    cfg ->
+    string list ->
+    unit =
  fun ~ctx service cfg clients ->
   let stop, signal_stop =
     let open Async.Ivar in
@@ -78,7 +85,8 @@ let run_with_tls cert key clients =
   let ctx = Conduit_async.TCP.port 9000 ctx in
   let ctx = Conduit_async_tls.TCP.resolve ctx in
   run_with ~ctx tls_service
-    (Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000), config cert key)
+    ( Conduit_async.TCP.Listen (None, Tcp.Where_to_listen.of_port 9000),
+      config cert key )
     clients
 
 let () =

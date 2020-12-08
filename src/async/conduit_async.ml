@@ -186,8 +186,11 @@ module TCP = struct
   end
 
   let endpoint, protocol = register ~name:"async-tcp" (module Protocol)
+
   let port : int value = info ~name:"async-port"
-  let domain_name : [ `host ] Domain_name.t value = info ~name:"async-domain-name"
+
+  let domain_name : [ `host ] Domain_name.t value =
+    info ~name:"async-domain-name"
 
   type configuration =
     | Listen : int option * ('a, 'b) Tcp.Where_to_listen.t -> configuration
@@ -261,15 +264,19 @@ module TCP = struct
     let gethostbyname port domain_name =
       Monitor.try_with (fun () ->
           Unix.Inet_addr.of_string_or_getbyname
-            (Domain_name.to_string domain_name)) >>= function
+            (Domain_name.to_string domain_name))
+      >>= function
       | Ok inet_addr ->
-        let inet = Socket.Address.Inet.create inet_addr ~port in
-        Async.return (Some (Inet inet))
+          let inet = Socket.Address.Inet.create inet_addr ~port in
+          Async.return (Some (Inet inet))
       | _ -> Async.return None in
     fold endpoint Fun.[ req $ port; req $ domain_name ] ~f:gethostbyname ctx
 
   let port v ctx = add port v ctx
+
   let domain_name v ctx = add domain_name v ctx
+
   let inet v ctx = add endpoint (Inet v) ctx
+
   let unix v ctx = add endpoint (Unix v) ctx
 end

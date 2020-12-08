@@ -76,6 +76,9 @@ module TCP : sig
     context * configuration
 
   val resolve : Conduit.context -> Conduit.context
+
   val context : context -> Conduit.context -> Conduit.context
-  val endpoint : context -> Conduit_async.TCP.endpoint -> Conduit.context -> Conduit.context
+
+  val endpoint :
+    context -> Conduit_async.TCP.endpoint -> Conduit.context -> Conduit.context
 end

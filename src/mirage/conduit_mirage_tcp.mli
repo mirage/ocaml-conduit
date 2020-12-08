@@ -18,6 +18,8 @@ type 'stack configuration = {
 module Make (StackV4 : Mirage_stack.V4) : sig
   type protocol
 
+  val endpoint : (StackV4.t, Ipaddr.V4.t) endpoint Conduit_mirage.value
+
   val protocol :
     ((StackV4.t, Ipaddr.V4.t) endpoint, protocol) Conduit_mirage.protocol
 

@@ -22,12 +22,16 @@ let tls_protocol, tls_service =
 (* Resolution *)
 
 let ctx = Conduit_lwt.empty
+
 let ctx = Conduit_lwt.TCP.resolve ctx
+
 let ctx =
   let null ~host:_ _ = Ok None in
   let cfg = Tls.Config.client ~authenticator:null () in
   Conduit_lwt_tls.TCP.credentials cfg ctx
+
 let localhost = Domain_name.(host_exn (of_string_exn "localhost"))
+
 let ctx = Conduit_lwt.TCP.domain_name localhost ctx
 
 (* Run *)
@@ -53,7 +57,10 @@ let config cert key =
 let run_with :
     type cfg s flow.
     ctx:Conduit.context ->
-    (cfg, s, flow) Conduit_lwt.Service.t -> cfg -> string list -> unit =
+    (cfg, s, flow) Conduit_lwt.Service.t ->
+    cfg ->
+    string list ->
+    unit =
  fun ~ctx service cfg clients ->
   let stop = Lwt_switch.create () in
   let main =

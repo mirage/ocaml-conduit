@@ -201,16 +201,17 @@ module type S = sig
       Endpoints allow users to create flows by either connecting directly to a
       remote server or by resolving domain names (with {!connect}). *)
 
-  type 'edn value 
+  type 'edn value
   (** The type for a user-defined information. ['edn] is the type of the
-      information. It permits to fill the context with values depending
-      on your context. *)
+      information. It permits to fill the context with values depending on your
+      context. *)
 
-  val register : name:string -> ('edn, 'flow) impl -> 'edn value * ('edn, 'flow) protocol
+  val register :
+    name:string -> ('edn, 'flow) impl -> 'edn value * ('edn, 'flow) protocol
   (** [register strategy (module Protocol)] is the protocol. It creates a
-      {i metadata} witness required to {i connect}/{i create}
-      a client flow from the {!context}. [(module Protocol)] must provide a
-      [connect] function to allow client flows to be created.
+      {i metadata} witness required to {i connect}/{i create} a client flow from
+      the {!context}. [(module Protocol)] must provide a [connect] function to
+      allow client flows to be created.
 
       For instance, on Unix, [Conduit] clients will use [Unix.sockaddr] as flow
       endpoints, while [Unix.file_descr] would be used for the flow transport.
@@ -248,7 +249,8 @@ module type S = sig
       ]}
 
       As a protocol implementer, you must {i register} your implementation and
-      you should expose the {i witness} of it. Then, users will be able to use it. *)
+      you should expose the {i witness} of it. Then, users will be able to use
+      it. *)
 
   (** {2 Injection and Extraction.}
 
@@ -274,6 +276,8 @@ module type S = sig
       - with the {i pattern-matching}
       - with {i first-class module}
       - with the function {!is} *)
+
+  val register_with : 'edn value -> ('edn, 'flow) impl -> ('edn, 'flow) protocol
 
   module type REPR = sig
     type t
@@ -333,8 +337,8 @@ module type S = sig
   (** [empty] is equal to {!Conduit.empty}. *)
 
   val add : 'edn value -> 'edn -> context -> context
-  (** [add info protocol context] adds a new information function
-      [resolver] to [context].
+  (** [add info protocol context] adds a new information function [resolver] to
+      [context].
 
       When the [resolver] is able to resolve the given domain name, it will try
       to connect to the specified client endpoint. Context are iterated in
@@ -354,21 +358,26 @@ module type S = sig
   module Fun : sig
     type ('k, 'res) args =
       | [] : ('res, 'res) args
-      | (::) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+      | ( :: ) : 'a arg * ('k, 'res) args -> ('a -> 'k, 'res) args
+
     and 'v arg
 
     val req : 'a value -> 'a arg
+
     val opt : 'a value -> 'a option arg
+
+    val dft : 'a * 'a value -> 'a arg
+
     val map : ('k, 'res) args -> 'k -> 'res arg
+
     val ( $ ) : ('a -> 'b) -> 'a -> 'b
   end
 
-  val fold : 'res value -> ('k, 'res option io) Fun.args -> f:'k -> context -> context
+  val fold :
+    'res value -> ('k, 'res option io) Fun.args -> f:'k -> context -> context
 
   val resolve :
-    ?protocol:('v, 'flow) protocol ->
-    context ->
-    (flow, [> error ]) result io
+    ?protocol:('v, 'flow) protocol -> context -> (flow, [> error ]) result io
   (** [resolve context domain_name] is the flow created by connecting to the
       domain name [domain_name], using the context [context]. Each resolver
       tries to resolve the given domain-name (they are ordered by the given

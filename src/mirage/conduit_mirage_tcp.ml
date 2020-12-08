@@ -204,7 +204,8 @@ module Make (StackV4 : Mirage_stack.V4) = struct
         StackV4.TCPV4.close t.flow >>= fun () -> Lwt.return_ok ())
   end
 
-  let protocol = Conduit_mirage.register (module Protocol)
+  let endpoint, protocol =
+    Conduit_mirage.register ~name:"mirage-tcpip" (module Protocol)
 
   type nonrec configuration = StackV4.t configuration
 

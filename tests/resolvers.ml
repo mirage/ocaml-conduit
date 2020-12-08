@@ -53,7 +53,8 @@ end)
 
 let edn_int, dummy_int = Conduit.register ~name:"int" (module Dummy_int)
 
-let edn_string, dummy_string = Conduit.register ~name:"string" (module Dummy_string)
+let edn_string, dummy_string =
+  Conduit.register ~name:"string" (module Dummy_string)
 
 let edn_unit, dummy_unit = Conduit.register ~name:"unit" (module Dummy_unit)
 
@@ -70,7 +71,7 @@ let all_resolvers =
   let string = "Hello World!" in
 
   let unit_called = ref true in
-  let unit  = () in
+  let unit = () in
 
   let resolvers =
     Conduit.empty
@@ -169,4 +170,4 @@ let only_one =
   Alcotest.(check bool) "call unit" !unit_called true
 *)
 
-let tests = [ ("resolvers", [ all_resolvers; ]) ]
+let tests = [ ("resolvers", [ all_resolvers ]) ]

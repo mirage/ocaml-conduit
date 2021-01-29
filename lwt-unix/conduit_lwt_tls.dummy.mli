@@ -1,5 +1,5 @@
 (*
- * Copyright (c) 2012-2014 Anil Madhavapeddy <anil@recoil.org>
+ * Copyright (c) 2014 Hannes Mehnert <hannes@mehnert.org>
  *
  * Permission to use, copy, modify, and distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -15,44 +15,43 @@
  *
  *)
 
-(** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
+(** TLS/SSL connections via OCaml-TLS *)
 
 module Client : sig
-  val default_ctx : Ssl.context
-
-  val create_ctx :
-    ?certfile:string ->
-    ?keyfile:string ->
-    ?password:(bool -> string) ->
-    unit -> Ssl.context
-
   val connect :
-    ?ctx:Ssl.context ->
     ?src:Lwt_unix.sockaddr ->
-    ?hostname:string ->
+    string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
-
 end
 
 module Server : sig
-  val default_ctx : Ssl.context
+  val init :
+    ?backlog:int ->
+    certfile:string ->
+    keyfile:string ->
+    ?stop:unit Lwt.t ->
+    ?timeout:int ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.sockaddr ->
+    Lwt_unix.file_descr ->
+    Lwt_io.input_channel ->
+    Lwt_io.output_channel ->
+    unit Lwt.t) ->
+    unit Lwt.t
 
-  val init
-    : ?ctx:Ssl.context
-    -> ?backlog:int
-    -> ?password:(bool -> string)
-    -> certfile:string
-    -> keyfile:string
-    -> ?stop:(unit Lwt.t)
-    -> ?timeout:int
-    -> Lwt_unix.sockaddr
-    -> (Lwt_unix.sockaddr
-        -> Lwt_unix.file_descr
-        -> Lwt_io.input_channel
-        -> Lwt_io.output_channel
-        -> unit Lwt.t)
-    -> unit Lwt.t
+  val init' :
+    ?backlog:int ->
+    ?stop:unit Lwt.t ->
+    ?timeout:int ->
+    'config ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.sockaddr ->
+    Lwt_unix.file_descr ->
+    Lwt_io.input_channel ->
+    Lwt_io.output_channel ->
+    unit Lwt.t) ->
+    unit Lwt.t
 end
 
 (**/**)

@@ -17,26 +17,27 @@
 
 (** Functorial interface for resolving URIs to endpoints. *)
 
-(** [static hosts] constructs a resolver that looks up any resolution
-    requests from the static [hosts] hashtable instead of using the
-    system resolver. *)
-val static : (string, (port:int -> Conduit.endp)) Hashtbl.t -> Resolver_lwt.t
+val static : (string, port:int -> Conduit.endp) Hashtbl.t -> Resolver_lwt.t
+(** [static hosts] constructs a resolver that looks up any resolution requests
+    from the static [hosts] hashtable instead of using the system resolver. *)
 
-(** [localhost] is a static resolver that has a single entry that
-    maps [localhost] to [127.0.0.1], and fails on all other hostnames. *)
 val localhost : Resolver_lwt.t
+(** [localhost] is a static resolver that has a single entry that maps
+    [localhost] to [127.0.0.1], and fails on all other hostnames. *)
 
-(** Provides a DNS-enabled {!Resolver_lwt} given a network stack.
-    See {!Make}.
-*)
-module Make_with_stack (R: Mirage_random.S) (T : Mirage_time.S) (C: Mirage_clock.MCLOCK) (S: Mirage_stack.V4) : sig
+(** Provides a DNS-enabled {!Resolver_lwt} given a network stack. See {!Make}. *)
+module Make_with_stack
+    (R : Mirage_random.S)
+    (T : Mirage_time.S)
+    (C : Mirage_clock.MCLOCK)
+    (S : Mirage_stack.V4) : sig
   include Resolver_lwt.S with type t = Resolver_lwt.t
 
   module R : sig
-    val register : ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:S.t -> Resolver_lwt.t -> unit
+    val register :
+      ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:S.t -> Resolver_lwt.t -> unit
 
+    val init : ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:S.t -> unit -> t
     (** [init ?ns ?ns_port ?stack ()] TODO *)
-    val init:
-      ?ns:Ipaddr.V4.t -> ?ns_port:int -> ?stack:S.t -> unit -> t
   end
 end

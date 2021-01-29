@@ -13,16 +13,16 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
 module IO = struct
   type 'a t = 'a Lwt.t
-  let (>>=) = Lwt.bind
+
+  let ( >>= ) = Lwt.bind
   let return = Lwt.return
 end
 
-module type S = Resolver.S
-  with type svc = Resolver.service
-  and  type 'a io = 'a Lwt.t
+module type S =
+  Resolver.S with type svc = Resolver.service and type 'a io = 'a Lwt.t
 
-include Resolver.Make(IO)
+include Resolver.Make (IO)

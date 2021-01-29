@@ -15,44 +15,44 @@
  *
  *)
 
-(** TLS/SSL connections via {{:http://www.openssl.org}OpenSSL} C bindings *)
+(** TLS/SSL connections via {{:http://www.openssl.org} OpenSSL} C bindings *)
 
 module Client : sig
-  val default_ctx : [`Ssl_not_available]
+  val default_ctx : Ssl.context
 
   val create_ctx :
     ?certfile:string ->
     ?keyfile:string ->
     ?password:(bool -> string) ->
-    unit -> [`Ssl_not_available]
+    unit ->
+    Ssl.context
 
   val connect :
-    ?ctx:[`Ssl_not_available] ->
+    ?ctx:Ssl.context ->
     ?src:Lwt_unix.sockaddr ->
     ?hostname:string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
-
 end
 
 module Server : sig
-  val default_ctx : [`Ssl_not_available]
+  val default_ctx : Ssl.context
 
-  val init
-    : ?ctx:[`Ssl_not_available]
-    -> ?backlog:int
-    -> ?password:(bool -> string)
-    -> certfile:string
-    -> keyfile:string
-    -> ?stop:(unit Lwt.t)
-    -> ?timeout:int
-    -> Lwt_unix.sockaddr
-    -> (Lwt_unix.sockaddr
-        -> Lwt_unix.file_descr
-        -> Lwt_io.input_channel
-        -> Lwt_io.output_channel
-        -> unit Lwt.t)
-    -> unit Lwt.t
+  val init :
+    ?ctx:Ssl.context ->
+    ?backlog:int ->
+    ?password:(bool -> string) ->
+    certfile:string ->
+    keyfile:string ->
+    ?stop:unit Lwt.t ->
+    ?timeout:int ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.sockaddr ->
+    Lwt_unix.file_descr ->
+    Lwt_io.input_channel ->
+    Lwt_io.output_channel ->
+    unit Lwt.t) ->
+    unit Lwt.t
 end
 
 (**/**)

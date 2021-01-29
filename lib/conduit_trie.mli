@@ -18,23 +18,21 @@
 
 (** Radix tree that can do longest-prefix searches on string keys *)
 
-(** Radix tree that maps [string] keys to ['a] values *)
 type 'a t [@@deriving sexp]
+(** Radix tree that maps [string] keys to ['a] values *)
 
-(** An empty tree *)
 val empty : 'a t
+(** An empty tree *)
 
-(** [insert key value tree] returns a new tree with the
-    mapping [key] to [value] *)
 val insert : string -> 'a -> 'a t -> 'a t
+(** [insert key value tree] returns a new tree with the mapping [key] to [value] *)
 
-(** [longest_prefix key tree] finds the key [k] which shares
-    the longest prefix with [key] and returns the associated
-    value. *)
 val longest_prefix : string -> 'a t -> 'a option
+(** [longest_prefix key tree] finds the key [k] which shares the longest prefix
+    with [key] and returns the associated value. *)
 
-(** [fold f initial t] folds [f] over all bindings in [t] *)
 val fold : (string -> 'a -> 'b -> 'b) -> 'b -> 'a t -> 'b
+(** [fold f initial t] folds [f] over all bindings in [t] *)
 
+val is_prefix : string -> string -> bool
 (** [is_prefix a b] returns true if [a] is a prefix of [b] *)
-val is_prefix: string -> string -> bool

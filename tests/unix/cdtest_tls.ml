@@ -13,7 +13,7 @@
  * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-*)
+ *)
 
 open Lwt.Infix
 
@@ -21,28 +21,32 @@ let port =
   Random.self_init ();
   16_384 + Random.int 10_000
 
-let config = `Crt_file_path "server.pem", `Key_file_path "server.key", `No_password, `Port port
+let config =
+  ( `Crt_file_path "server.pem",
+    `Key_file_path "server.key",
+    `No_password,
+    `Port port )
 
 let rec repeat n f =
-  if n = 0 then Lwt.return_unit
-  else f () >>= fun () -> repeat (n-1) f
+  if n = 0 then Lwt.return_unit else f () >>= fun () -> repeat (n - 1) f
 
 let perform () =
   let stop, do_stop = Lwt.wait () in
   Conduit_lwt_unix.init ~src:"::1" () >>= fun ctx ->
   let serve () =
-    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) begin fun _flow ic oc ->
-      Lwt_log.notice "Server: Callback started." >>= fun () ->
-      Lwt_io.read ~count:5 ic >>= fun msg ->
-      Lwt_log.notice "Server: read hello." >>= fun () ->
-      Lwt_io.write oc "foo"
-    end
+    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) (fun _flow ic oc ->
+        Lwt_log.notice "Server: Callback started." >>= fun () ->
+        Lwt_io.read ~count:5 ic >>= fun msg ->
+        Lwt_log.notice "Server: read hello." >>= fun () -> Lwt_io.write oc "foo")
   in
   let client_test () =
     (* connect using low-level operations to check what happens if client closes connection
        without calling ssl_shutdown (e.g. TCP connection is lost) *)
-    let client = `TLS (`Hostname "", `IP Ipaddr.(V6 V6.localhost), `Port port) in
-    Conduit_lwt_unix.(connect ~ctx:default_ctx client) >>= fun (_flow, ic, oc) ->
+    let client =
+      `TLS (`Hostname "", `IP Ipaddr.(V6 V6.localhost), `Port port)
+    in
+    Conduit_lwt_unix.(connect ~ctx:default_ctx client)
+    >>= fun (_flow, ic, oc) ->
     Lwt_log.notice "Connected!" >>= fun () ->
     Lwt_io.write oc "hello" >>= fun () ->
     Lwt_log.notice "Written hello." >>= fun () ->

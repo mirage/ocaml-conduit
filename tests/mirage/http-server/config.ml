@@ -1,7 +1,10 @@
 open Mirage
 
 let client =
-  foreign ~deps:[abstract nocrypto] "Unikernel.Client" @@ console @-> stackv4 @-> job
+  foreign ~deps:[ abstract nocrypto ] "Unikernel.Client"
+  @@ console
+  @-> stackv4
+  @-> job
 
 let () =
   register

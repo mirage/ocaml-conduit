@@ -13,17 +13,15 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
-(** Resolve URIs to endpoints using the
-    {{:http://ocsigen.org/lwt}Lwt} library *)
+(** Resolve URIs to endpoints using the {{:http://ocsigen.org/lwt} Lwt} library *)
 
-(** IO module compatible with {!Conduit.IO} that uses Lwt *)
 module IO : Conduit.IO with type 'a t = 'a Lwt.t
+(** IO module compatible with {!Conduit.IO} that uses Lwt *)
 
 (** Module type that specialises {!Conduit.RESOLVER} to use Lwt threads *)
-module type S = Resolver.S
-  with type svc = Resolver.service
-  and  type 'a io = 'a Lwt.t
+module type S =
+  Resolver.S with type svc = Resolver.service and type 'a io = 'a Lwt.t
 
 include S

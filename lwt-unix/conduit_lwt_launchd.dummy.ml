@@ -15,11 +15,4 @@
  *
  *)
 
-open Lwt.Infix
-
-let activate fn name =
-  Lwt_launchd.activate_socket name
-  >>= fun sockets ->
-  match (Launchd.error_to_msg sockets) with
-  | Ok sockets -> Lwt_list.iter_p fn sockets
-  | Error (`Msg m) -> Lwt.fail_with m
+let activate _fn _name = Lwt.fail_with "No Launchd support"

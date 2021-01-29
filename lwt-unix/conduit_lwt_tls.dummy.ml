@@ -1,6 +1,5 @@
 module X509 = struct
-  let private_of_pems ~cert:_ ~priv_key:_ =
-    Lwt.fail_with "Tls not available"
+  let private_of_pems ~cert:_ ~priv_key:_ = Lwt.fail_with "Tls not available"
 end
 
 module Client = struct

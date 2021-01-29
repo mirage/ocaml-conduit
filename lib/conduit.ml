@@ -13,23 +13,24 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
 open Sexplib.Std
 
-(** The resolver will return an [endp], which the Conduit
-    backend must interpret to make a connection. *)
-type endp = [
-  | `TCP of Ipaddr_sexp.t * int   (** ipaddr and dst port *)
-  | `Unix_domain_socket of string (** unix file path *)
-  | `Vchan_direct of int * string        (** domain id, port *)
+type endp =
+  [ `TCP of Ipaddr_sexp.t * int  (** ipaddr and dst port *)
+  | `Unix_domain_socket of string  (** unix file path *)
+  | `Vchan_direct of int * string  (** domain id, port *)
   | `Vchan_domain_socket of string * string
-  | `TLS of string * endp         (** wrap in a TLS channel, [hostname,endp] *)
-  | `Unknown of string            (** failed resolution *)
-] [@@deriving sexp]
+  | `TLS of string * endp  (** wrap in a TLS channel, [hostname,endp] *)
+  | `Unknown of string  (** failed resolution *) ]
+[@@deriving sexp]
+(** The resolver will return an [endp], which the Conduit backend must interpret
+    to make a connection. *)
 
 module type IO = sig
   type +'a t
-  val (>>=) : 'a t -> ('a -> 'b t) -> 'b t
+
+  val ( >>= ) : 'a t -> ('a -> 'b t) -> 'b t
   val return : 'a -> 'a t
 end

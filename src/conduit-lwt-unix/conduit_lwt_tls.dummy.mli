@@ -17,11 +17,14 @@
 
 (** TLS/SSL connections via OCaml-TLS *)
 
+module X509 : sig
+  val private_of_pems : cert:string -> priv_key:string -> 'a
+end
+
 module Client : sig
   val connect :
     ?src:Lwt_unix.sockaddr ->
-    ?certificates:Tls.Config.own_cert ->
-    string ->
+    ?certificates:'a ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end
@@ -45,7 +48,7 @@ module Server : sig
     ?backlog:int ->
     ?stop:unit Lwt.t ->
     ?timeout:int ->
-    Tls.Config.server ->
+    'config ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.sockaddr ->
     Lwt_unix.file_descr ->

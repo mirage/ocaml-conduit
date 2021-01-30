@@ -30,14 +30,18 @@ let config =
 let rec repeat n f =
   if n = 0 then Lwt.return_unit else f () >>= fun () -> repeat (n - 1) f
 
+let skip _ = ()
+
 let perform () =
   let stop, do_stop = Lwt.wait () in
   Conduit_lwt_unix.init ~src:"::1" () >>= fun ctx ->
   let serve () =
-    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) (fun _flow ic oc ->
+    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) ~on_exn:skip
+      (fun _flow ic oc ->
         Lwt_log.notice "Server: Callback started." >>= fun () ->
         Lwt_io.read ~count:5 ic >>= fun msg ->
-        Lwt_log.notice "Server: read hello." >>= fun () -> Lwt_io.write oc "foo")
+        Lwt_log.notice_f "Server: read %s." msg >>= fun () ->
+        Lwt_io.write oc "foo")
   in
   let client_test () =
     (* connect using low-level operations to check what happens if client closes connection
@@ -51,7 +55,7 @@ let perform () =
     Lwt_io.write oc "hello" >>= fun () ->
     Lwt_log.notice "Written hello." >>= fun () ->
     Lwt_io.read ic ~count:3 >>= fun msg ->
-    Lwt_log.notice "Got correct msg, disconnecting." >>= fun () ->
+    Lwt_log.notice_f "Got correct msg (%s), disconnecting." msg >>= fun () ->
     Lwt_io.close ic
   in
   Lwt.async serve;

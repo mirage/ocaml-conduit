@@ -15,10 +15,9 @@
  *
  *)
 
-open Core.Std
-open Async.Std
+open Async
 
-let handler sock ic oc =
+let handler _sock ic oc =
   Reader.pipe ic |> fun rd ->
   Writer.pipe oc |> fun wr -> Pipe.transfer_id rd wr
 
@@ -42,8 +41,8 @@ let start_server port host cert_file key_file () =
   Conduit_async.serve ~on_handler_error:`Raise mode listen_on handler
   >>= fun _ -> never ()
 
-let _ =
-  Command.async_basic ~summary:"Echo server over SSL"
+let () =
+  Command.async_spec ~summary:"Echo server over SSL"
     Command.Spec.(
       empty
       +> flag "-p"
@@ -52,7 +51,7 @@ let _ =
       +> flag "-s"
            (optional_with_default "0.0.0.0" string)
            ~doc:"address IP address to listen on"
-      +> flag "-cert-file" (optional file) ~doc:"file Certificate file"
-      +> flag "-key-file" (optional file) ~doc:"File Private key file")
+      +> flag "-cert-file" (optional string) ~doc:"file Certificate file"
+      +> flag "-key-file" (optional string) ~doc:"File Private key file")
     start_server
   |> Command.run

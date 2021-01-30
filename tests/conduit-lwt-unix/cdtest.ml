@@ -29,11 +29,14 @@ let config =
 let rec repeat n f =
   if n = 0 then Lwt.return_unit else f () >>= fun () -> repeat (n - 1) f
 
+let skip _ = ()
+
 let perform () =
   let stop, do_stop = Lwt.wait () in
   Conduit_lwt_unix.init ~src:"127.0.0.1" () >>= fun ctx ->
   let _ =
-    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) (fun _ ic oc ->
+    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TLS config) ~on_exn:skip
+      (fun _ ic oc ->
         Lwt_io.read ic >>= fun _ ->
         Lwt_io.write oc "foo" >>= fun () -> Lwt_io.flush oc)
   in
@@ -50,7 +53,7 @@ let perform () =
         Lwt.finalize
           (fun () ->
             Lwt_unix.connect s sa >>= fun () ->
-            Lwt_ssl.ssl_connect s ctx >>= fun ss ->
+            Lwt_ssl.ssl_connect s ctx >>= fun _ss ->
             incr active;
             Lwt_condition.signal cond ();
             wait)

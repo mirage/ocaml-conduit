@@ -18,6 +18,9 @@ depends: [
   "uri" {>= "1.9.4"}
   "ipaddr" {>= "4.0.0"}
   "ipaddr-sexp"
+  "lwt_log" {with-test}
+  "ssl" {with-test}
+  "lwt_ssl" {with-test}
 ]
 depopts: ["tls" "lwt_ssl" "launchd"]
 conflicts: [

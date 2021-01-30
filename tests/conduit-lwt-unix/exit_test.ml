@@ -16,14 +16,18 @@
 
 open Lwt.Infix
 
+let skip _ = ()
+
 let perform () =
   let stop, do_stop = Lwt.wait () in
   Conduit_lwt_unix.init ~src:"::1" () >>= fun ctx ->
   let serve () =
     let callback _flow ic oc =
-      Lwt_io.read ~count:5 ic >>= fun msg -> Lwt_io.write oc "foo"
+      Lwt_io.read ~count:5 ic >>= fun _msg -> Lwt_io.write oc "foo"
     in
-    Conduit_lwt_unix.serve ~stop ~ctx ~mode:(`TCP (`Port 8080)) callback
+    Conduit_lwt_unix.serve ~stop ~ctx
+      ~mode:(`TCP (`Port 8080))
+      ~on_exn:skip callback
   in
   let handle = serve () in
   Lwt.async (fun () -> Lwt_unix.sleep 0.2 >|= Lwt.wakeup do_stop);

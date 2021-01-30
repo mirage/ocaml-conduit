@@ -257,13 +257,7 @@ let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
 
-let client_of_bytes _ =
-  (* an https:// request doesn't need client-side authentication *)
-  let authenticator ~host:_ _ = Ok None in
-  Tls.Config.client ~authenticator ()
-
 let server_of_bytes str = Tls.Config.server_of_sexp (Sexplib.Sexp.of_string str)
-let tls_client c x = Lwt.return (`TLS (client_of_bytes c, x))
 let tls_server s x = Lwt.return (`TLS (server_of_bytes s, x))
 
 module TLS = struct
@@ -310,13 +304,26 @@ module type S = sig
   val listen : t -> server -> callback -> unit Lwt.t
 end
 
-let rec client (e : Conduit.endp) : client Lwt.t =
-  match e with
-  | `TCP (x, y) -> tcp_client x y
-  | `Unix_domain_socket _ -> err_domain_sockets_not_supported "client"
-  | (`Vchan_direct _ | `Vchan_domain_socket _) as x -> vchan_client x
-  | `TLS (x, y) -> client y >>= fun c -> tls_client x c
-  | `Unknown s -> err_unknown s
+module Client (P : Mirage_clock.PCLOCK) = struct
+  module Ca_certs = Ca_certs_nss.Make (P)
+
+  let default_authenticator =
+    match Ca_certs.authenticator () with
+    | Ok a -> a
+    | Error (`Msg msg) -> failwith msg
+
+  let tls_client ~authenticator x = `TLS (Tls.Config.client ~authenticator (), x)
+
+  let rec resolve ?(tls_authenticator = default_authenticator) e =
+    match e with
+    | `TCP (x, y) -> tcp_client x y
+    | `Unix_domain_socket _ -> err_domain_sockets_not_supported "client"
+    | (`Vchan_direct _ | `Vchan_domain_socket _) as x -> vchan_client x
+    | `TLS (_, y) ->
+        resolve ~tls_authenticator y
+        >|= tls_client ~authenticator:tls_authenticator
+    | `Unknown s -> err_unknown s
+end
 
 let rec server (e : Conduit.endp) : server Lwt.t =
   match e with

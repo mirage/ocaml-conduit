@@ -19,16 +19,22 @@ open Lwt.Infix
 
 module X509 = struct
   let private_of_pems ~cert ~priv_key = X509_lwt.private_of_pems ~cert ~priv_key
+
+  type authenticator = X509.Authenticator.t
+
+  let default_authenticator =
+    match Ca_certs.authenticator () with
+    | Ok a -> a
+    | Error (`Msg msg) -> failwith msg
 end
 
 module Client = struct
-  let connect ?src ?certificates host sa =
+  let connect ?src ?certificates ~authenticator host sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
         | None -> Lwt.return_unit
         | Some src_sa -> Lwt_unix.bind fd src_sa)
         >>= fun () ->
-        let authenticator ~host:_ _ = Ok None in
         let config = Tls.Config.client ~authenticator ?certificates () in
         Lwt_unix.connect fd sa >>= fun () ->
         Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->

@@ -18,13 +18,19 @@
 (** TLS/SSL connections via OCaml-TLS *)
 
 module X509 : sig
-  val private_of_pems : cert:string -> priv_key:string -> 'a
+  val private_of_pems : cert:string -> priv_key:string -> 'a Lwt.t
+
+  type authenticator = unit
+
+  val default_authenticator : authenticator
 end
 
 module Client : sig
   val connect :
     ?src:Lwt_unix.sockaddr ->
     ?certificates:'a ->
+    authenticator:X509.authenticator ->
+    string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end

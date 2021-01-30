@@ -19,12 +19,17 @@
 
 module X509 : sig
   val private_of_pems : cert:string -> priv_key:string -> X509_lwt.priv Lwt.t
+
+  type authenticator = X509.Authenticator.t
+
+  val default_authenticator : authenticator
 end
 
 module Client : sig
   val connect :
     ?src:Lwt_unix.sockaddr ->
     ?certificates:Tls.Config.own_cert ->
+    authenticator:X509.authenticator ->
     string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t

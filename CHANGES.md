@@ -1,3 +1,8 @@
+## v2.2.3 (unreleased)
+
+* add client-side TLS certificate validation using OS trust anchors for
+  `conduit-lwt-unix` and Mozilla's NSS for `conduit-mirage` (#375, @samoht)
+
 ## v2.2.2 (2020-06-14)
 
 * conduit-lwt-unix no longer calls Mirage_crypto_rng_unix.initialize, and is

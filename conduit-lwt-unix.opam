@@ -18,6 +18,7 @@ depends: [
   "uri" {>= "1.9.4"}
   "ipaddr" {>= "4.0.0"}
   "ipaddr-sexp"
+  "ca-certs"
   "lwt_log" {with-test}
   "ssl" {with-test}
   "lwt_ssl" {with-test}

@@ -93,8 +93,15 @@ type server = [ tcp_server | vchan_server | server tls_server ]
 [@@deriving sexp]
 (** The type for server configuration values. *)
 
-val client : Conduit.endp -> client Lwt.t
-(** Resolve a conduit endpoint into a client configuration. *)
+module Client (P : Mirage_clock.PCLOCK) : sig
+  val resolve :
+    ?tls_authenticator:X509.Authenticator.t -> Conduit.endp -> client Lwt.t
+  (** Resolve a conduit endpoint into a client configuration.
+
+      The certificate is validated using [tls_authenticator]. By default, the
+      validation is using the {{:https://github.com/mirage/ca-certs-nss} trust
+      anchors extracted from Mozilla's NSS}. *)
+end
 
 val server : Conduit.endp -> server Lwt.t
 (** Resolve a confuit endpoint into a server configuration. *)

@@ -18,43 +18,41 @@
 (** TLS/SSL connections via OCaml-TLS *)
 
 module Client : sig
-
   val connect :
     ?src:Lwt_unix.sockaddr ->
     ?certificates:Tls.Config.own_cert ->
     string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
-
 end
 
 module Server : sig
-  val init
-    : ?backlog:int
-    -> certfile:string
-    -> keyfile:string
-    -> ?stop:(unit Lwt.t)
-    -> ?timeout:int
-    -> Lwt_unix.sockaddr
-    -> ( Lwt_unix.sockaddr
-        -> Lwt_unix.file_descr
-        -> Lwt_io.input_channel
-        -> Lwt_io.output_channel
-        -> unit Lwt.t)
-    -> unit Lwt.t
+  val init :
+    ?backlog:int ->
+    certfile:string ->
+    keyfile:string ->
+    ?stop:unit Lwt.t ->
+    ?timeout:int ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.sockaddr ->
+    Lwt_unix.file_descr ->
+    Lwt_io.input_channel ->
+    Lwt_io.output_channel ->
+    unit Lwt.t) ->
+    unit Lwt.t
 
-  val init'
-    : ?backlog:int
-    -> ?stop:(unit Lwt.t)
-    -> ?timeout:int
-    -> Tls.Config.server
-    -> Lwt_unix.sockaddr
-    -> (Lwt_unix.sockaddr
-        -> Lwt_unix.file_descr
-        -> Lwt_io.input_channel
-        -> Lwt_io.output_channel
-        -> unit Lwt.t)
-    -> unit Lwt.t
+  val init' :
+    ?backlog:int ->
+    ?stop:unit Lwt.t ->
+    ?timeout:int ->
+    Tls.Config.server ->
+    Lwt_unix.sockaddr ->
+    (Lwt_unix.sockaddr ->
+    Lwt_unix.file_descr ->
+    Lwt_io.input_channel ->
+    Lwt_io.output_channel ->
+    unit Lwt.t) ->
+    unit Lwt.t
 end
 
 (**/**)

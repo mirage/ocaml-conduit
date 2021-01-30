@@ -13,15 +13,16 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
-*)
+ *)
 
 (** Establish Vchans via named endpoints in XenStore *)
 
-type direct = [`Direct of int * Vchan.Port.t]
+type direct = [ `Direct of int * Vchan.Port.t ]
 
-module Make (Xs: Xs_client_lwt.S): sig
+module Make (Xs : Xs_client_lwt.S) : sig
   type t
-  val register: string -> t Lwt.t
-  val listen: t -> direct Lwt_stream.t Lwt.t
-  val connect: t -> remote_name:string -> port:Vchan.Port.t -> direct Lwt.t
+
+  val register : string -> t Lwt.t
+  val listen : t -> direct Lwt_stream.t Lwt.t
+  val connect : t -> remote_name:string -> port:Vchan.Port.t -> direct Lwt.t
 end

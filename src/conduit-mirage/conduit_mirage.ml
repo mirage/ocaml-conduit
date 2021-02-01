@@ -31,173 +31,68 @@ let err_vchan_not_supported = fail "%s: VCHAN is not supported"
 let err_unknown = fail "%s: unknown endpoint type"
 let err_ipv6 = fail "%s: IPv6 is not supported"
 
-module Flow = struct
-  type error = [ `Msg of string ]
-  type write_error = [ Mirage_flow.write_error | error ]
+let err_not_supported = function
+  | `TLS _ -> err_tls_not_supported
+  | `TCP _ -> err_tcp_not_supported
+  | `Vchan _ -> err_vchan_not_supported
 
-  let pp_error ppf (`Msg s) = Fmt.string ppf s
+type client =
+  [ `TCP of Ipaddr_sexp.t * int
+  | `TLS of Tls.Config.client * client
+  | `Vchan of
+    [ `Direct of int * Vchan.Port.t | `Domain_socket of string * Vchan.Port.t ]
+  ]
+[@@deriving sexp]
 
-  let pp_write_error ppf = function
-    | #Mirage_flow.write_error as e -> Mirage_flow.pp_write_error ppf e
-    | #error as e -> pp_error ppf e
+type server =
+  [ `TCP of int
+  | `TLS of Tls.Config.server * server
+  | `Vchan of [ `Direct of int * Vchan.Port.t | `Domain_socket ] ]
+[@@deriving sexp]
 
-  open Mirage_flow_combinators
-
-  type flow = Flow : (module CONCRETE with type flow = 'a) * 'a -> flow
-
-  let create (type a) (module M : Mirage_flow.S with type flow = a) t =
-    let m = (module Concrete (M) : CONCRETE with type flow = a) in
-    Flow (m, t)
-
-  let read (Flow ((module F), flow)) = F.read flow
-  let write (Flow ((module F), flow)) b = F.write flow b
-  let writev (Flow ((module F), flow)) b = F.writev flow b
-  let close (Flow ((module F), flow)) = F.close flow
-end
-
-type callback = Flow.flow -> unit Lwt.t
-
-module type Handler = sig
+module type S = sig
   type t
-  (** Runtime handler *)
+  type flow
 
-  type client [@@deriving sexp]
-  type server [@@deriving sexp]
+  module Flow : Mirage_flow.S with type flow = flow
 
-  val connect : t -> client -> Flow.flow Lwt.t
-  val listen : t -> server -> callback -> unit Lwt.t
+  val connect : t -> client -> flow Lwt.t
+  val listen : t -> server -> (flow -> unit Lwt.t) -> unit Lwt.t
 end
 
-type tcp_client = [ `TCP of Ipaddr_sexp.t * int ] [@@deriving sexp]
-type tcp_server = [ `TCP of int ] [@@deriving sexp]
-type 'a stackv4 = (module Mirage_stack.V4 with type t = 'a)
-
-let stackv4 x = x
-
-module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
-module type XS = Xs_client_lwt.S
-
-type vchan_client =
-  [ `Vchan of
-    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
-    | `Domain_socket of string * Vchan.Port.t  (** Vchan Xen domain socket *)
-    ] ]
-[@@deriving sexp]
-
-type vchan_server =
-  [ `Vchan of
-    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
-    | `Domain_socket  (** Vchan Xen domain socket *) ] ]
-[@@deriving sexp]
-
-type vchan = (module VCHAN)
-type xs = (module XS)
-
-let vchan x = x
-let xs x = x
-
-type 'a tls_client = [ `TLS of Tls.Config.client * 'a ] [@@deriving sexp]
-type 'a tls_server = [ `TLS of Tls.Config.server * 'a ] [@@deriving sexp]
-
-type client = [ tcp_client | vchan_client | client tls_client ]
-[@@deriving sexp]
-
-type server = [ tcp_server | vchan_server | server tls_server ]
-[@@deriving sexp]
-
-type tls_client' = client tls_client [@@deriving sexp]
-type tls_server' = server tls_server [@@deriving sexp]
-
-type ('c, 's) handler =
-  | S :
-      (module Handler with type t = 'a and type client = 'c and type server = 's)
-      * 'a
-      -> ('c, 's) handler
-
+(* TCP *)
 let tcp_client i p = Lwt.return (`TCP (i, p))
 let tcp_server _ p = Lwt.return (`TCP p)
 
-type t = {
-  tcp : (tcp_client, tcp_server) handler option;
-  tls : (tls_client', tls_server') handler option;
-  vchan : (vchan_client, vchan_server) handler option;
-}
-
-let empty = { tcp = None; tls = None; vchan = None }
-
-let connect t (c : client) =
-  match c with
-  | `TCP _ as x -> (
-      match t.tcp with
-      | None -> err_tcp_not_supported "connect"
-      | Some (S ((module S), t)) -> S.connect t x)
-  | `Vchan _ as x -> (
-      match t.vchan with
-      | None -> err_vchan_not_supported "connect"
-      | Some (S ((module S), t)) -> S.connect t x)
-  | `TLS _ as x -> (
-      match t.tls with
-      | None -> err_tls_not_supported "connect"
-      | Some (S ((module S), t)) -> S.connect t x)
-
-let listen t (s : server) f =
-  match s with
-  | `TCP _ as x -> (
-      match t.tcp with
-      | None -> err_tcp_not_supported "listen"
-      | Some (S ((module S), t)) -> S.listen t x f)
-  | `Vchan _ as x -> (
-      match t.vchan with
-      | None -> err_vchan_not_supported "listen"
-      | Some (S ((module S), t)) -> S.listen t x f)
-  | `TLS _ as x -> (
-      match t.tls with
-      | None -> err_tls_not_supported "listen"
-      | Some (S ((module S), t)) -> S.listen t x f)
-
-(******************************************************************************)
-(*                         Implementation of handlers                         *)
-(******************************************************************************)
-
-(* TCP *)
-
 module TCP (S : Mirage_stack.V4) = struct
+  module Flow = S.TCPV4
+
+  type flow = Flow.flow
   type t = S.t
-  type client = tcp_client [@@deriving sexp]
-  type server = tcp_server [@@deriving sexp]
 
   let err_tcp e =
     Lwt.fail
     @@ Failure (Format.asprintf "TCP connection failed: %a" S.TCPV4.pp_error e)
 
-  let connect t (`TCP (ip, port) : client) =
-    match Ipaddr.to_v4 ip with
-    | None -> err_ipv6 "connect"
-    | Some ip -> (
-        S.TCPV4.create_connection (S.tcpv4 t) (ip, port) >>= function
-        | Error e -> err_tcp e
-        | Ok flow ->
-            let flow = Flow.create (module S.TCPV4) flow in
-            Lwt.return flow)
+  let connect (t : t) (c : client) =
+    match c with
+    | `TCP (ip, port) -> (
+        match Ipaddr.to_v4 ip with
+        | None -> err_ipv6 "connect"
+        | Some ip -> (
+            S.TCPV4.create_connection (S.tcpv4 t) (ip, port) >>= function
+            | Error e -> err_tcp e
+            | Ok flow -> Lwt.return flow))
+    | _ -> err_not_supported c "connect"
 
-  let listen t (`TCP port : server) fn =
-    let s, _u = Lwt.task () in
-    S.listen_tcpv4 t ~port (fun flow ->
-        let f = Flow.create (module S.TCPV4) flow in
-        fn f);
-    s
+  let listen (t : t) (s : server) fn =
+    match s with
+    | `TCP port ->
+        let s, _u = Lwt.task () in
+        S.listen_tcpv4 t ~port (fun flow -> fn flow);
+        s
+    | _ -> err_not_supported s "listen"
 end
-
-module With_tcp (S : Mirage_stack.V4) = struct
-  module M = TCP (S)
-
-  let handler stack = Lwt.return (S ((module M), stack))
-  let connect stack t = handler stack >|= fun x -> { t with tcp = Some x }
-end
-
-let with_tcp (type t) t (module S : Mirage_stack.V4 with type t = t) stack =
-  let module M = With_tcp (S) in
-  M.connect stack t
 
 (* VCHAN *)
 
@@ -217,139 +112,143 @@ let vchan_server = function
   | `Vchan_direct (i, p) -> port p >|= fun p -> `Vchan (`Direct (i, p))
   | `Vchan_domain_socket _ -> Lwt.return (`Vchan `Domain_socket)
 
-module Vchan (Xs : Xs_client_lwt.S) (V : VCHAN) = struct
+module Vchan
+    (Xs : Xs_client_lwt.S)
+    (V : Vchan.S.ENDPOINT with type port = Vchan.Port.t) =
+struct
+  module Flow = V
   module XS = Conduit_xenstore.Make (Xs)
 
+  type flow = Flow.flow
   type t = XS.t
-  type client = vchan_client [@@deriving sexp]
-  type server = vchan_server [@@deriving sexp]
 
   let register = XS.register
 
-  let rec connect t (c : vchan_client) =
+  let rec connect (t : t) (c : client) =
     match c with
     | `Vchan (`Domain_socket (uid, port)) ->
         XS.connect t ~remote_name:uid ~port >>= fun endp ->
-        connect t (`Vchan endp :> vchan_client)
-    | `Vchan (`Direct (domid, port)) ->
-        V.client ~domid ~port () >>= fun flow ->
-        Lwt.return (Flow.create (module V) flow)
+        connect t (`Vchan endp :> client)
+    | `Vchan (`Direct (domid, port)) -> V.client ~domid ~port ()
+    | _ -> err_not_supported c "connect"
 
-  let listen (t : t) (server : vchan_server) fn =
-    match server with
-    | `Vchan (`Direct (domid, port)) ->
-        V.server ~domid ~port () >>= fun t -> fn (Flow.create (module V) t)
+  let listen (t : t) (s : server) fn =
+    match s with
+    | `Vchan (`Direct (domid, port)) -> V.server ~domid ~port () >>= fn
     | `Vchan `Domain_socket ->
         XS.listen t >>= fun conns ->
         Lwt_stream.iter_p
-          (function
-            | `Direct (domid, port) ->
-                V.server ~domid ~port () >>= fun t ->
-                fn (Flow.create (module V) t))
+          (function `Direct (domid, port) -> V.server ~domid ~port () >>= fn)
           conns
+    | _ -> err_not_supported s "listen"
 end
-
-let mk_vchan (module X : XS) (module V : VCHAN) t =
-  let module V = Vchan (X) (V) in
-  V.register t >|= fun t -> S ((module V), t)
-
-let with_vchan t x y z = mk_vchan x y z >|= fun x -> { t with vchan = Some x }
 
 (* TLS *)
 
-let server_of_bytes str = Tls.Config.server_of_sexp (Sexplib.Sexp.of_string str)
-let tls_server s x = Lwt.return (`TLS (server_of_bytes s, x))
+let tls_client ~authenticator x = `TLS (Tls.Config.client ~authenticator (), x)
+let tls_server ~authenticator x = `TLS (Tls.Config.server ~authenticator (), x)
 
-module TLS = struct
-  module TLS = Tls_mirage.Make (Flow)
+module TLS (S : S) = struct
+  module TLS = Tls_mirage.Make (S.Flow)
+
+  type flow = TLS of TLS.flow | Clear of S.flow
+  type t = S.t
+
+  module Flow = struct
+    type nonrec flow = flow
+    type error = [ `Flow of S.Flow.error | `TLS of TLS.error ]
+
+    type write_error =
+      [ Mirage_flow.write_error
+      | `Flow of S.Flow.write_error
+      | `TLS of TLS.write_error ]
+
+    let pp_error ppf = function
+      | `Flow e -> S.Flow.pp_error ppf e
+      | `TLS e -> TLS.pp_error ppf e
+
+    let pp_write_error ppf = function
+      | #Mirage_flow.write_error as e -> Mirage_flow.pp_write_error ppf e
+      | `Flow e -> S.Flow.pp_write_error ppf e
+      | `TLS e -> TLS.pp_write_error ppf e
+
+    let tls_err = function Ok _ as x -> x | Error e -> Error (`TLS e)
+    let flow_err = function Ok _ as x -> x | Error e -> Error (`Flow e)
+
+    let tls_write_err = function
+      | Ok _ as x -> x
+      | Error `Closed as x -> x
+      | Error e -> Error (`TLS e)
+
+    let flow_write_err = function
+      | Ok _ as x -> x
+      | Error `Closed as x -> x
+      | Error e -> Error (`Flow e)
+
+    let read = function
+      | TLS f -> TLS.read f >|= tls_err
+      | Clear f -> S.Flow.read f >|= flow_err
+
+    let write t x =
+      match t with
+      | TLS f -> TLS.write f x >|= tls_write_err
+      | Clear f -> S.Flow.write f x >|= flow_write_err
+
+    let writev t x =
+      match t with
+      | TLS f -> TLS.writev f x >|= tls_err
+      | Clear f -> S.Flow.writev f x >|= flow_err
+
+    let close = function TLS f -> TLS.close f | Clear f -> S.Flow.close f
+  end
 
   let err_flow_write m e = fail "%s: %a" m TLS.pp_write_error e
 
-  type x = t
-  type t = x
-  type client = tls_client' [@@deriving sexp]
-  type server = tls_server' [@@deriving sexp]
+  let connect (t : t) (c : client) =
+    match c with
+    | `TLS (c, x) -> (
+        S.connect t x >>= fun flow ->
+        TLS.client_of_flow c flow >>= function
+        | Error e -> err_flow_write "connect" e
+        | Ok flow -> Lwt.return (TLS flow))
+    | _ -> S.connect t c >|= fun t -> Clear t
 
-  let connect (t : t) (`TLS (c, x) : client) =
-    connect t x >>= fun flow ->
-    TLS.client_of_flow c flow >>= function
-    | Error e -> err_flow_write "connect" e
-    | Ok flow -> Lwt.return (Flow.create (module TLS) flow)
-
-  let listen (t : t) (`TLS (c, x) : server) fn =
-    listen t x (fun flow ->
-        TLS.server_of_flow c flow >>= function
-        | Error e -> err_flow_write "listen" e
-        | Ok flow -> fn (Flow.create (module TLS) flow))
+  let listen (t : t) (s : server) fn =
+    match s with
+    | `TLS (c, x) ->
+        S.listen t x (fun flow ->
+            TLS.server_of_flow c flow >>= function
+            | Error e -> err_flow_write "listen" e
+            | Ok flow -> fn (TLS flow))
+    | _ -> S.listen t s (fun f -> fn (Clear f))
 end
 
-let tls t = Lwt.return (S ((module TLS), t))
-let with_tls t = tls t >|= fun x -> { t with tls = Some x }
-
-type conduit = t
-
-module type S = sig
-  type t = conduit
-
-  val empty : t
-
-  module With_tcp (S : Mirage_stack.V4) : sig
-    val connect : S.t -> t -> t Lwt.t
-  end
-
-  val with_tcp : t -> 'a stackv4 -> 'a -> t Lwt.t
-  val with_tls : t -> t Lwt.t
-  val with_vchan : t -> xs -> vchan -> string -> t Lwt.t
-  val connect : t -> client -> Flow.flow Lwt.t
-  val listen : t -> server -> callback -> unit Lwt.t
-end
-
-module Client (P : Mirage_clock.PCLOCK) = struct
+module Endpoint (P : Mirage_clock.PCLOCK) = struct
   module Ca_certs = Ca_certs_nss.Make (P)
 
-  let default_authenticator =
+  let nss_authenticator =
     match Ca_certs.authenticator () with
     | Ok a -> a
     | Error (`Msg msg) -> failwith msg
 
-  let tls_client ~authenticator x = `TLS (Tls.Config.client ~authenticator (), x)
-
-  let rec resolve ?(tls_authenticator = default_authenticator) e =
+  let rec client ?(tls_authenticator = nss_authenticator) e =
     match e with
     | `TCP (x, y) -> tcp_client x y
     | `Unix_domain_socket _ -> err_domain_sockets_not_supported "client"
     | (`Vchan_direct _ | `Vchan_domain_socket _) as x -> vchan_client x
-    | `TLS (_, y) ->
-        resolve ~tls_authenticator y
+    | `TLS (_host, y) ->
+        client ~tls_authenticator y
         >|= tls_client ~authenticator:tls_authenticator
     | `Unknown s -> err_unknown s
-end
 
-let rec server (e : Conduit.endp) : server Lwt.t =
-  match e with
-  | `TCP (x, y) -> tcp_server x y
-  | `Unix_domain_socket _ -> err_domain_sockets_not_supported "server"
-  | (`Vchan_direct _ | `Vchan_domain_socket _) as x -> vchan_server x
-  | `TLS (x, y) -> server y >>= fun s -> tls_server x s
-  | `Unknown s -> err_unknown s
+  let ok_authenticator ~host:_ _ = Ok None
 
-module Context
-    (R : Mirage_random.S)
-    (T : Mirage_time.S)
-    (C : Mirage_clock.MCLOCK)
-    (S : Mirage_stack.V4) =
-struct
-  type t = Resolver_lwt.t * conduit
-
-  module RES = Resolver_mirage.Make_with_stack (R) (T) (C) (S)
-
-  let conduit = empty
-  let stackv4 = stackv4 (module S : Mirage_stack.V4 with type t = S.t)
-
-  let create ?(tls = false) stack =
-    let res = Resolver_lwt.init () in
-    RES.R.register ~stack res;
-    with_tcp conduit stackv4 stack >>= fun conduit ->
-    if tls then with_tls conduit >|= fun conduit -> (res, conduit)
-    else Lwt.return (res, conduit)
+  let rec server ?(tls_authenticator = ok_authenticator) e =
+    match e with
+    | `TCP (x, y) -> tcp_server x y
+    | `Unix_domain_socket _ -> err_domain_sockets_not_supported "server"
+    | (`Vchan_direct _ | `Vchan_domain_socket _) as x -> vchan_server x
+    | `TLS (_host, y) ->
+        server y >|= tls_server ~authenticator:tls_authenticator
+    | `Unknown s -> err_unknown s
 end

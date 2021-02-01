@@ -19,136 +19,87 @@
 (** Functorial connection establishment interface that is compatible with the
     Mirage libraries. *)
 
-module Flow : Mirage_flow.S
-(** Dynamic flows. *)
+type client =
+  [ `TCP of Ipaddr.t * int  (** address and destination port *)
+  | `TLS of Tls.Config.client * client
+  | `Vchan of
+    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
+    | `Domain_socket of string * Vchan.Port.t  (** Vchan Xen domain socket *)
+    ] ]
+[@@deriving sexp]
+(** The type for client configuration values. *)
 
-type callback = Flow.flow -> unit Lwt.t
-(** The type for callback values. *)
+type server =
+  [ `TCP of int  (** listening port *)
+  | `TLS of Tls.Config.server * server
+  | `Vchan of
+    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
+    | `Domain_socket  (** Vchan Xen domain socket *) ] ]
+[@@deriving sexp]
+(** The type for server configuration values. *)
 
-module type Handler = sig
-  (** The signature for runtime handlers *)
+module Endpoint (P : Mirage_clock.PCLOCK) : sig
+  val nss_authenticator : X509.Authenticator.t
+  (** [nss_authenticator] is the validator using the
+      {{:https://github.com/mirage/ca-certs-nss} trust anchors extracted from
+      Mozilla's NSS}. *)
+
+  val ok_authenticator : X509.Authenticator.t
+  (** [ok_authenticator] is the validator which accepts all certificates. *)
+
+  val client :
+    ?tls_authenticator:X509.Authenticator.t -> Conduit.endp -> client Lwt.t
+  (** [client] resolves a conduit endpoint into a client configuration.
+
+      The certificate is validated using [tls_authenticator]. By default, it is
+      [nss_authenticator] *)
+
+  val server :
+    ?tls_authenticator:X509.Authenticator.t -> Conduit.endp -> server Lwt.t
+  (** [server] resolves a confuit endpoint into a server configuration.
+
+      The certificate is validated using [tls_authenticator]. By default, it is
+      [ok_authenticator]. *)
+end
+
+module type S = sig
+  (** The signature for conduits *)
+
+  type flow
+  (** The type for networking flows. *)
 
   type t
-  (** The type for runtime handlers. *)
+  (** The type for handlers. *)
 
-  type client [@@deriving sexp]
-  (** The type for client configuration values. *)
+  module Flow : Mirage_flow.S with type flow = flow
+  (** The type for flows. *)
 
-  type server [@@deriving sexp]
-  (** The type for server configuration values. *)
-
-  val connect : t -> client -> Flow.flow Lwt.t
+  val connect : t -> client -> flow Lwt.t
   (** Connect a conduit using client configuration. *)
 
-  val listen : t -> server -> callback -> unit Lwt.t
+  val listen : t -> server -> (flow -> unit Lwt.t) -> unit Lwt.t
   (** Listen to a conduit using a server configuration. *)
 end
 
 (** {2 TCP} *)
 
-(** The type for client connections. *)
-
-type tcp_client = [ `TCP of Ipaddr.t * int ]
-(** address and destination port *)
-
-and tcp_server = [ `TCP of int ]
-(** listening port *)
-
-type 'a stackv4
-
-val stackv4 : (module Mirage_stack.V4 with type t = 'a) -> 'a stackv4
+module TCP (S : Mirage_stack.V4) :
+  S with type t = S.t and type flow = S.TCPV4.flow
 
 (** {2 VCHAN} *)
 
-type vchan_client =
-  [ `Vchan of
-    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
-    | `Domain_socket of string * Vchan.Port.t  (** Vchan Xen domain socket *)
-    ] ]
+module Vchan
+    (X : Xs_client_lwt.S)
+    (V : Vchan.S.ENDPOINT with type port = Vchan.Port.t) : sig
+  include S
 
-type vchan_server =
-  [ `Vchan of
-    [ `Direct of int * Vchan.Port.t  (** domain id, port *)
-    | `Domain_socket  (** Vchan Xen domain socket *) ] ]
-
-module type VCHAN = Vchan.S.ENDPOINT with type port = Vchan.Port.t
-module type XS = Xs_client_lwt.S
-
-type vchan
-type xs
-
-val vchan : (module VCHAN) -> vchan
-val xs : (module XS) -> xs
+  val register : string -> t Lwt.t
+end
 
 (** {2 TLS} *)
 
-type 'a tls_client = [ `TLS of Tls.Config.client * 'a ]
-type 'a tls_server = [ `TLS of Tls.Config.server * 'a ]
+module TLS (S : S) : sig
+  type flow = TLS of Tls_mirage.Make(S.Flow).flow | Clear of S.flow
 
-type client = [ tcp_client | vchan_client | client tls_client ]
-[@@deriving sexp]
-(** The type for client configuration values. *)
-
-type server = [ tcp_server | vchan_server | server tls_server ]
-[@@deriving sexp]
-(** The type for server configuration values. *)
-
-module Client (P : Mirage_clock.PCLOCK) : sig
-  val resolve :
-    ?tls_authenticator:X509.Authenticator.t -> Conduit.endp -> client Lwt.t
-  (** Resolve a conduit endpoint into a client configuration.
-
-      The certificate is validated using [tls_authenticator]. By default, the
-      validation is using the {{:https://github.com/mirage/ca-certs-nss} trust
-      anchors extracted from Mozilla's NSS}. *)
-end
-
-val server : Conduit.endp -> server Lwt.t
-(** Resolve a confuit endpoint into a server configuration. *)
-
-type conduit
-(** The type for conduit values. *)
-
-module type S = sig
-  (** The signature for Conduit implementations. *)
-
-  type t = conduit
-
-  val empty : t
-  (** The empty conduit. *)
-
-  module With_tcp (S : Mirage_stack.V4) : sig
-    val connect : S.t -> t -> t Lwt.t
-  end
-
-  val with_tcp : t -> 'a stackv4 -> 'a -> t Lwt.t
-  (** Extend a conduit with an implementation for TCP. *)
-
-  val with_tls : t -> t Lwt.t
-  (** Extend a conduit with an implementation for TLS. *)
-
-  val with_vchan : t -> xs -> vchan -> string -> t Lwt.t
-  (** Extend a conduit with an implementation for VCHAN. *)
-
-  val connect : t -> client -> Flow.flow Lwt.t
-  (** Connect a conduit using a client configuration value. *)
-
-  val listen : t -> server -> callback -> unit Lwt.t
-  (** Configure a server using a conduit configuration value. *)
-end
-
-include S
-
-(** {2 Context for MirageOS conduit resolvers} *)
-module Context
-    (R : Mirage_random.S)
-    (T : Mirage_time.S)
-    (C : Mirage_clock.MCLOCK)
-    (S : Mirage_stack.V4) : sig
-  type t = Resolver_lwt.t * conduit
-  (** The type for contexts of conduit resolvers. *)
-
-  val create : ?tls:bool -> S.t -> t Lwt.t
-  (** Create a new context. If [tls] is specified (by defaut, it is not), set-up
-      the conduit to accept TLS connections. *)
+  include S with type t = S.t and type flow := flow
 end

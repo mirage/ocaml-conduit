@@ -31,10 +31,10 @@
   (select
    conduit_lwt_tls.ml
    from
-   (tls.lwt -> conduit_lwt_tls.real.ml)
+   (tls.lwt ca-certs -> conduit_lwt_tls.real.ml)
    (-> conduit_lwt_tls.dummy.ml))
   (select
    conduit_lwt_tls.mli
    from
-   (tls.lwt -> conduit_lwt_tls.real.mli)
+   (tls.lwt ca-certs -> conduit_lwt_tls.real.mli)
    (-> conduit_lwt_tls.dummy.mli))))

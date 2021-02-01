@@ -1,9 +1,13 @@
 module X509 = struct
   let private_of_pems ~cert:_ ~priv_key:_ = Lwt.fail_with "Tls not available"
+
+  type authenticator = unit
+
+  let default_authenticator = ()
 end
 
 module Client = struct
-  let connect ?src:_ ?certificates:_ _host _sa =
+  let connect ?src:_ ?certificates:_ ~authenticator:_ _host _sa =
     Lwt.fail_with "Tls not available"
 end
 

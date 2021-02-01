@@ -103,7 +103,12 @@ type tls_own_key =
 [@@deriving sexp]
 
 type tls_server_key = tls_own_key [@@deriving sexp]
-type ctx = { src : Unix.sockaddr option; tls_own_key : tls_own_key }
+
+type ctx = {
+  src : Unix.sockaddr option;
+  tls_own_key : tls_own_key;
+  tls_authenticator : Conduit_lwt_tls.X509.authenticator;
+}
 
 let string_of_unix_sockaddr sa =
   let open Unix in
@@ -143,19 +148,23 @@ let flow_of_fd fd sa =
   | Unix.ADDR_INET (ip, port) ->
       TCP { fd; ip = Ipaddr_unix.of_inet_addr ip; port }
 
-let default_ctx = { src = None; tls_own_key = `None }
+let default_ctx =
+  {
+    src = None;
+    tls_own_key = `None;
+    tls_authenticator = Conduit_lwt_tls.X509.default_authenticator;
+  }
 
-let init ?src ?(tls_own_key = `None) ?(tls_server_key = `None) () =
-  let tls_own_key =
-    match tls_own_key with `None -> tls_server_key | _ -> tls_own_key
-  in
+let init ?src ?(tls_own_key = `None)
+    ?(tls_authenticator = Conduit_lwt_tls.X509.default_authenticator) () =
   match src with
-  | None -> Lwt.return { src = None; tls_own_key }
+  | None -> Lwt.return { src = None; tls_own_key; tls_authenticator }
   | Some host -> (
       let open Unix in
       Lwt_unix.getaddrinfo host "0" [ AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM ]
       >>= function
-      | { ai_addr; _ } :: _ -> Lwt.return { src = Some ai_addr; tls_own_key }
+      | { ai_addr; _ } :: _ ->
+          Lwt.return { src = Some ai_addr; tls_own_key; tls_authenticator }
       | [] -> Lwt.fail_with "Invalid conduit source address specified")
 
 module Sockaddr_io = struct
@@ -253,7 +262,8 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
       Conduit_lwt_tls.X509.private_of_pems ~cert ~priv_key
       >|= fun certificate -> Some (`Single certificate))
   >>= fun certificates ->
-  Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates hostname sa
+  Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates
+    ~authenticator:ctx.tls_authenticator hostname sa
   >|= fun (fd, ic, oc) ->
   let flow = TCP { fd; ip; port } in
   (flow, ic, oc)

@@ -1,5 +1,8 @@
-## v2.2.3 (unreleased)
+## v2.2.3 (2020-02-06)
 
+* conduit-mirage: simplify the API to not mix functors and first-class
+  modules anymore. We just use functors now and rely on the mirage tool
+  to apply them properly (#376, @samoht)
 * add client-side TLS certificate validation using OS trust anchors for
   `conduit-lwt-unix` and Mozilla's NSS for `conduit-mirage` (#375, @samoht)
 

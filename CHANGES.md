@@ -1,4 +1,4 @@
-## v2.2.3 (2020-02-06)
+## v2.3.0 (2020-02-06)
 
 * conduit-mirage: simplify the API to not mix functors and first-class
   modules anymore. We just use functors now and rely on the mirage tool

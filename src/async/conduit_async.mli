@@ -59,7 +59,10 @@ module TCP : sig
 
   module Service : SERVICE with type configuration = configuration
 
-  val service : (configuration, Service.t, Protocol.flow) service
+  val service :
+    ?listening_on:[ `Inet of int | `Unix of string ] Ivar.t ->
+    unit ->
+    (configuration, Service.t, Protocol.flow) service
 
   val configuration :
     ?backlog:int -> ('a, 'listening_on) Tcp.Where_to_listen.t -> configuration

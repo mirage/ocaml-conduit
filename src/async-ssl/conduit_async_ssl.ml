@@ -302,8 +302,8 @@ module TCP = struct
   let protocol =
     protocol_with_ssl ~reader:Protocol.reader ~writer:Protocol.writer protocol
 
-  let service =
-    service_with_ssl service ~reader:Protocol.reader ~writer:Protocol.writer
+  let service ?listening_on () =
+    service_with_ssl (service ?listening_on ()) ~reader:Protocol.reader ~writer:Protocol.writer
       protocol
 
   let configuration ~context ?backlog listen =

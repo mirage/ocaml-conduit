@@ -243,7 +243,31 @@ module TCP = struct
       Fd.close (Socket.fd socket) >>= fun () -> Async.return (Ok ())
   end
 
-  let service = S.register (module Service) protocol
+  let service ?listening_on () =
+    let service : (configuration, Service.t, Protocol.flow) S.impl =
+      (module struct
+        include Service
+        let init (Listen (backlog, where_to_listen)) =
+          let (Socket_type (socket_type, addr)) =
+            match Tcp.Where_to_listen.address where_to_listen with
+            | `Inet _ as addr -> Socket_type (Socket.Type.tcp, addr)
+            | `Unix _ as addr -> Socket_type (Socket.Type.unix, addr) in
+          let socket = Socket.create socket_type in
+          let f () =
+            let%map socket = Socket.bind socket addr >>| Socket.listen ?backlog in
+            Option.iter (fun listening_on ->
+              (match Socket.getsockname socket with
+              | `Inet (_, port) -> `Inet port
+              | `Unix _ as unix -> unix) |>
+              Ivar.fill listening_on
+            ) listening_on;
+            socket
+          in
+          close_socket_on_error ~process:`Make socket ~f >>? fun socket ->
+          Async.return (Ok (Socket (socket, addr)))
+      end)
+    in
+    S.register ~service
 
   let configuration ?backlog listen = Listen (backlog, listen)
 

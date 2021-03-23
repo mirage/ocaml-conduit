@@ -64,7 +64,7 @@ module TCP : sig
   val protocol : (context * endpoint, Protocol.flow with_ssl) protocol
 
   val service :
-    ?listening_on:[ `Inet of int | `Unix of string ] Ivar.t ->
+    ?listening_on:[ `Inet of int | `Unix of string ] Async.Ivar.t ->
     unit ->
     ( context * Service.configuration,
       context * Service.t,

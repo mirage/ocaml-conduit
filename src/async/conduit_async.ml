@@ -259,7 +259,7 @@ module TCP = struct
               (match Socket.getsockname socket with
               | `Inet (_, port) -> `Inet port
               | `Unix _ as unix -> unix) |>
-              Ivar.fill listening_on
+              Async.Ivar.fill listening_on
             ) listening_on;
             socket
           in

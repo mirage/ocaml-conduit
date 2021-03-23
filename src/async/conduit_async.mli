@@ -60,7 +60,7 @@ module TCP : sig
   module Service : SERVICE with type configuration = configuration
 
   val service :
-    ?listening_on:[ `Inet of int | `Unix of string ] Ivar.t ->
+    ?listening_on:[ `Inet of int | `Unix of string ] Async.Ivar.t ->
     unit ->
     (configuration, Service.t, Protocol.flow) service
 

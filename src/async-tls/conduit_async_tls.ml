@@ -22,7 +22,8 @@ module TCP = struct
 
   let protocol = protocol_with_tls protocol
 
-  let service = service_with_tls service Conduit_async.TCP.protocol protocol
+  let service ?listening_on () =
+    service_with_tls (service ?listening_on ()) Conduit_async.TCP.protocol protocol
 
   let configuration ~config:tls_config ?backlog listen =
     (configuration ?backlog listen, tls_config)

@@ -33,6 +33,8 @@ module TCP : sig
     (endpoint * Tls.Config.client, Protocol.flow protocol_with_tls) protocol
 
   val service :
+    ?listening_on:[ `Inet of int | `Unix of string ] Async.Ivar.t ->
+    unit ->
     ( configuration * Tls.Config.server,
       Service.t service_with_tls,
       Protocol.flow protocol_with_tls )

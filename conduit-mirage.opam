@@ -38,5 +38,8 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name] {with-test}
 ]
+pin-depends: [
+  "dns-client.dev" "git+https://github.com/mirage/ocaml-dns.git#cfec9fe8237d6c4b6e8465f5fbc3781ee0a0b7f5"
+]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
 synopsis: "A network connection establishment library for MirageOS"

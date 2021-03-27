@@ -29,7 +29,6 @@ let err_domain_sockets_not_supported =
 
 let err_vchan_not_supported = fail "%s: VCHAN is not supported"
 let err_unknown = fail "%s: unknown endpoint type"
-let err_ipv6 = fail "%s: IPv6 is not supported"
 
 let err_not_supported = function
   | `TLS _ -> err_tls_not_supported
@@ -64,32 +63,29 @@ end
 let tcp_client i p = Lwt.return (`TCP (i, p))
 let tcp_server _ p = Lwt.return (`TCP p)
 
-module TCP (S : Mirage_stack.V4) = struct
-  module Flow = S.TCPV4
+module TCP (S : Mirage_stack.V4V6) = struct
+  module Flow = S.TCP
 
   type flow = Flow.flow
   type t = S.t
 
   let err_tcp e =
     Lwt.fail
-    @@ Failure (Format.asprintf "TCP connection failed: %a" S.TCPV4.pp_error e)
+    @@ Failure (Format.asprintf "TCP connection failed: %a" S.TCP.pp_error e)
 
   let connect (t : t) (c : client) =
     match c with
     | `TCP (ip, port) -> (
-        match Ipaddr.to_v4 ip with
-        | None -> err_ipv6 "connect"
-        | Some ip -> (
-            S.TCPV4.create_connection (S.tcpv4 t) (ip, port) >>= function
-            | Error e -> err_tcp e
-            | Ok flow -> Lwt.return flow))
+        S.TCP.create_connection (S.tcp t) (ip, port) >>= function
+        | Error e -> err_tcp e
+        | Ok flow -> Lwt.return flow)
     | _ -> err_not_supported c "connect"
 
   let listen (t : t) (s : server) fn =
     match s with
     | `TCP port ->
         let s, _u = Lwt.task () in
-        S.listen_tcpv4 t ~port (fun flow -> fn flow);
+        S.listen_tcp t ~port (fun flow -> fn flow);
         s
     | _ -> err_not_supported s "listen"
 end

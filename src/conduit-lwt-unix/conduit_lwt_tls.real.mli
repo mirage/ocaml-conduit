@@ -18,7 +18,8 @@
 (** TLS/SSL connections via OCaml-TLS *)
 
 module X509 : sig
-  val private_of_pems : cert:string -> priv_key:string -> Tls.Config.certchain Lwt.t
+  val private_of_pems :
+    cert:string -> priv_key:string -> Tls.Config.certchain Lwt.t
 
   type authenticator = X509.Authenticator.t
 

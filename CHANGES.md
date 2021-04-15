@@ -1,3 +1,15 @@
+## v4.0.0 (2021-04-15)
+
+* conduit-mirage: replace the alias `X509_lwt.priv` by
+  `Tls.Config.certchain` (@dinosaure, @samoht, #381)
+* conduit-mirage: Upgrade to dns.5.0.0 and use `Mirage_stack.V4V6`
+  instead of `Mirage_stack.V4` - by this way, conduit-mirage supports
+  IPv6 connection
+* conduit.3.0.0 will be unavailable with this release. The design
+  discussion did not reach consensus and `conduit.3.0.0` is unmaintained.
+  We advise use to use `conduit.2.*` or `conduit.4.*` then and discard
+  the migration process between `conduit.2.*` and `conduit.3.*`.
+
 ## v2.3.0 (2020-02-06)
 
 * conduit-mirage: simplify the API to not mix functors and first-class

@@ -83,8 +83,8 @@ end
 
 (** {2 TCP} *)
 
-module TCP (S : Mirage_stack.V4) :
-  S with type t = S.t and type flow = S.TCPV4.flow
+module TCP (S : Mirage_stack.V4V6) :
+  S with type t = S.t and type flow = S.TCP.flow
 
 (** {2 VCHAN} *)
 

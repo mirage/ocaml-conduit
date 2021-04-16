@@ -34,7 +34,3 @@ build: [
 ]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
 synopsis: "A network connection establishment library for Lwt_unix"
-pin-depends: [
-  [ "tls.0.13.0" "git+https://github.com/mirleft/ocaml-tls.git#f9dd61f556d3f2790aa9eedcf2b6b3c8c99cb338" ]
-  [ "tls-mirage.0.13.0" "git+https://github.com/mirleft/ocaml-tls.git#f9dd61f556d3f2790aa9eedcf2b6b3c8c99cb338" ]
-]

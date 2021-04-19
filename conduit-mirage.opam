@@ -38,12 +38,5 @@ build: [
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name] {with-test}
 ]
-pin-depends: [
-  [ "dns-client.5.0.0" "git+https://github.com/mirage/ocaml-dns.git#29168a8c464796fda77b50d721176f122ee724ae" ]
-  [ "dns.5.0.0" "git+https://github.com/mirage/ocaml-dns.git#29168a8c464796fda77b50d721176f122ee724ae" ]
-  [ "x509.0.12.0" "git+https://github.com/mirleft/ocaml-x509.git#02f662eaf7a549ff071a939b86a2e0bfaabc5890" ]
-  [ "tls.0.13.0" "git+https://github.com/mirleft/ocaml-tls.git#f9dd61f556d3f2790aa9eedcf2b6b3c8c99cb338" ]
-  [ "tls-mirage.0.13.0" "git+https://github.com/mirleft/ocaml-tls.git#f9dd61f556d3f2790aa9eedcf2b6b3c8c99cb338" ]
-]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
 synopsis: "A network connection establishment library for MirageOS"

@@ -86,13 +86,13 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
       log_exn maybe_error;
       Lwt.return (`Accepted connections)
     in
-    Lwt.choose [ accepted; stop ] >>= function
-    | `Stop ->
-        Lwt.cancel accepted;
-        Lwt.return_unit
-    | `Accepted connections ->
-        Lwt.catch
-          (fun () ->
+    Lwt.catch
+      (fun () ->
+        Lwt.choose [ accepted; stop ] >>= function
+        | `Stop ->
+            Lwt.cancel accepted;
+            Lwt.return_unit
+        | `Accepted connections ->
             Lwt_list.iter_p
               (fun v ->
                 connected ();
@@ -100,11 +100,11 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
                 run_handler handler v;
                 Lwt.return_unit)
               connections)
-          (function
-            | Lwt.Canceled -> Lwt.return_unit
-            | ex ->
-                log_exn (Some ex);
-                Lwt.return_unit)
-        >>= fun () -> loop ()
+      (function
+        | Lwt.Canceled -> Lwt.return_unit
+        | ex ->
+            log_exn (Some ex);
+            Lwt.return_unit)
+    >>= fun () -> loop ()
   in
   Lwt.finalize loop (fun () -> Lwt_unix.close fd)

@@ -71,7 +71,7 @@ let run_handler handler v =
                   f "Uncaught exception in handler: %s" (Printexc.to_string ex)));
           Lwt.return_unit))
 
-let init ?(stop = fst (Lwt.wait ())) handler fd =
+let init ?(nconn=10_000) ?(stop = fst (Lwt.wait ())) handler fd =
   let stop = Lwt.map (fun () -> `Stop) stop in
   let log_exn = function
     | Some ex ->
@@ -82,7 +82,7 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
   in
   let rec loop () =
     let accepted =
-      Lwt_unix.accept_n fd 10000 >>= fun (connections, maybe_error) ->
+      Lwt_unix.accept_n fd nconn >>= fun (connections, maybe_error) ->
       log_exn maybe_error;
       Lwt.return (`Accepted connections)
     in

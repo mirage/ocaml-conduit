@@ -71,15 +71,15 @@ let run_handler handler v =
                   f "Uncaught exception in handler: %s" (Printexc.to_string ex)));
           Lwt.return_unit))
 
-let log_exn = function
-  | Some ex ->
-      Log.warn (fun f ->
-          f "Uncaught exception accepting connection: %s"
-            (Printexc.to_string ex))
-  | None -> ()
-
 let init ?(stop = fst (Lwt.wait ())) handler fd =
   let stop = Lwt.map (fun () -> `Stop) stop in
+  let log_exn = function
+    | Some ex ->
+        Log.warn (fun f ->
+            f "Uncaught exception accepting connection: %s"
+              (Printexc.to_string ex))
+    | None -> ()
+  in
   let rec loop () =
     let accepted =
       Lwt_unix.accept_n fd 10000 >>= fun (connections, maybe_error) ->
@@ -91,13 +91,20 @@ let init ?(stop = fst (Lwt.wait ())) handler fd =
         Lwt.cancel accepted;
         Lwt.return_unit
     | `Accepted connections ->
-        Lwt_list.iter_p
-          (fun v ->
-            connected ();
-            throttle () >>= fun () ->
-            run_handler handler v;
-            Lwt.return_unit)
-          connections
+        Lwt.catch
+          (fun () ->
+            Lwt_list.iter_p
+              (fun v ->
+                connected ();
+                throttle () >>= fun () ->
+                run_handler handler v;
+                Lwt.return_unit)
+              connections)
+          (function
+            | Lwt.Canceled -> Lwt.return_unit
+            | ex ->
+                log_exn (Some ex);
+                Lwt.return_unit)
         >>= fun () -> loop ()
   in
   Lwt.finalize loop (fun () -> Lwt_unix.close fd)

@@ -11,6 +11,7 @@ val process_accept :
 
 val init :
   ?stop:unit Lwt.t ->
+  ?nconn:int ->
   (Lwt_unix.file_descr * Lwt_unix.sockaddr -> unit Lwt.t) ->
   Lwt_unix.file_descr ->
   unit Lwt.t

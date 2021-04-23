@@ -15,6 +15,10 @@
  *
  *)
 
+module Ssl = struct
+  type context = unit
+end
+
 module Client = struct
   let default_ctx = `Ssl_not_available
   let create_ctx ?certfile:_ ?keyfile:_ ?password:_ () = default_ctx

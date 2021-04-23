@@ -19,6 +19,8 @@ open Lwt.Infix
 
 let () = Ssl.init ()
 
+module Ssl = Ssl
+
 let chans_of_fd sock =
   let is_open = ref true in
   let shutdown () =

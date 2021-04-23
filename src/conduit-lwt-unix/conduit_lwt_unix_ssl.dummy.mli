@@ -17,6 +17,10 @@
 
 (** TLS/SSL connections via {{:http://www.openssl.org} OpenSSL} C bindings *)
 
+module Ssl : sig
+  type context = unit
+end
+
 module Client : sig
   val default_ctx : [ `Ssl_not_available ]
 

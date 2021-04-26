@@ -15,6 +15,15 @@
  *
  *)
 
+module Overrides = struct
+  module Client = struct
+    type t = { ctx : [ `Ssl_not_available ] option; hostname : string option }
+  end
+
+  type t = { client : Client.t option }
+end
+
+
 module Client = struct
   let default_ctx = `Ssl_not_available
   let create_ctx ?certfile:_ ?keyfile:_ ?password:_ () = default_ctx

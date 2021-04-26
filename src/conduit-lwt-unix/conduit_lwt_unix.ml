@@ -108,6 +108,7 @@ type ctx = {
   src : Unix.sockaddr option;
   tls_own_key : tls_own_key;
   tls_authenticator : Conduit_lwt_tls.X509.authenticator;
+  openssl_overrides : Conduit_lwt_unix_ssl.Overrides.t option;
 }
 
 let string_of_unix_sockaddr sa =
@@ -154,19 +155,28 @@ let default_ctx =
       src = None;
       tls_own_key = `None;
       tls_authenticator = Lazy.force Conduit_lwt_tls.X509.default_authenticator;
+      openssl_overrides = None;
     }
 
 let init ?src ?(tls_own_key = `None)
     ?(tls_authenticator = Lazy.force Conduit_lwt_tls.X509.default_authenticator)
-    () =
+    ?openssl_overrides () =
   match src with
-  | None -> Lwt.return { src = None; tls_own_key; tls_authenticator }
+  | None ->
+      Lwt.return
+        { src = None; tls_own_key; tls_authenticator; openssl_overrides }
   | Some host -> (
       let open Unix in
       Lwt_unix.getaddrinfo host "0" [ AI_PASSIVE; AI_SOCKTYPE SOCK_STREAM ]
       >>= function
       | { ai_addr; _ } :: _ ->
-          Lwt.return { src = Some ai_addr; tls_own_key; tls_authenticator }
+          Lwt.return
+            {
+              src = Some ai_addr;
+              tls_own_key;
+              tls_authenticator;
+              openssl_overrides;
+            }
       | [] -> Lwt.fail_with "Invalid conduit source address specified")
 
 module Sockaddr_io = struct
@@ -283,6 +293,18 @@ let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
           Conduit_lwt_unix_ssl.Client.create_ctx ~certfile ~keyfile ?password ()
         in
         Some ctx_ssl
+  in
+  let hostname, ctx_ssl =
+    match ctx.openssl_overrides with
+    | None | Some { client = None } -> (hostname, ctx_ssl)
+    | Some { client = Some overrides } ->
+        let hostname =
+          match overrides.hostname with Some x -> x | None -> hostname
+        in
+        let ctx_ssl =
+          match overrides.ctx with Some x -> Some x | None -> ctx_ssl
+        in
+        (hostname, ctx_ssl)
   in
   Conduit_lwt_unix_ssl.Client.connect ?ctx:ctx_ssl ?src:ctx.src ~hostname sa
   >>= fun (fd, ic, oc) ->

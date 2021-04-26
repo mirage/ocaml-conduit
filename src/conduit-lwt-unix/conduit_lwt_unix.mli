@@ -161,6 +161,7 @@ val init :
   ?src:string ->
   ?tls_own_key:tls_own_key ->
   ?tls_authenticator:Conduit_lwt_tls.X509.authenticator ->
+  ?openssl_overrides:Conduit_lwt_unix_ssl.Overrides.t ->
   unit ->
   ctx io
 (** [init ?src ?tls_own_key ()] will initialize a Unix conduit that binds to the

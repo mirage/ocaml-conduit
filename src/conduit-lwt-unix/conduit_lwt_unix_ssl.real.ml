@@ -34,6 +34,14 @@ let chans_of_fd sock =
   let ic = Lwt_io.make ~mode:Lwt_io.input ~close (Lwt_ssl.read_bytes sock) in
   (Lwt_ssl.get_fd sock, ic, oc)
 
+module Overrides = struct
+  module Client = struct
+    type t = { ctx : Ssl.context option; hostname : string option }
+  end
+
+  type t = { client : Client.t option }
+end
+
 module Client = struct
   let create_ctx ?certfile ?keyfile ?password () =
     let ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context in

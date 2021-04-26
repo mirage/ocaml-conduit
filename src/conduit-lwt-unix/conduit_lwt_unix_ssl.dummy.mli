@@ -17,6 +17,14 @@
 
 (** TLS/SSL connections via {{:http://www.openssl.org} OpenSSL} C bindings *)
 
+module Overrides : sig
+  module Client : sig
+    type t = { ctx : [ `Ssl_not_available ] option; hostname : string option }
+  end
+
+  type t = { client : Client.t option }
+end
+
 module Client : sig
   val default_ctx : [ `Ssl_not_available ]
 

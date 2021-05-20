@@ -93,7 +93,7 @@ let init ?(nconn=10_000) ?(stop = fst (Lwt.wait ())) handler fd =
             Lwt.cancel accepted;
             Lwt.return_unit
         | `Accepted connections ->
-            Lwt_list.iter_p
+            Lwt_list.iter_s
               (fun v ->
                 connected ();
                 throttle () >>= fun () ->

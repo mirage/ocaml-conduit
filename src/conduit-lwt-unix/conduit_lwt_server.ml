@@ -71,7 +71,7 @@ let run_handler handler v =
                   f "Uncaught exception in handler: %s" (Printexc.to_string ex)));
           Lwt.return_unit))
 
-let init ?(nconn=10_000) ?(stop = fst (Lwt.wait ())) handler fd =
+let init ?(nconn = 10_000) ?(stop = fst (Lwt.wait ())) handler fd =
   let stop = Lwt.map (fun () -> `Stop) stop in
   let log_exn = function
     | Some ex ->

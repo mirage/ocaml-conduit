@@ -5,6 +5,8 @@
   (system interactions, logging) due to constructing these values at
   initialisation time. (@craigfe, #395)
 
+* Add missing `ipaddr-sexp` dependency on conduit-async (#385 @anmonteiro)
+
 ## v4.0.0 (2021-04-15)
 
 * conduit-mirage: replace the alias `X509_lwt.priv` by

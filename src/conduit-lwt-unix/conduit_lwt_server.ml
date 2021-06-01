@@ -100,11 +100,12 @@ let init ?(nconn = 10_000) ?(stop = fst (Lwt.wait ())) handler fd =
                 run_handler handler v;
                 Lwt.return_unit)
               connections
+              >>= Lwt.pause
             >>= loop)
       (function
         | Lwt.Canceled -> Lwt.return_unit
         | ex ->
             log_exn (Some ex);
-            Lwt.return_unit >>= loop)
+            Lwt.pause () >>= loop)
   in
   Lwt.finalize loop (fun () -> Lwt_unix.close fd)

@@ -1,10 +1,5 @@
 ## Unreleased
 
-* change the type of `Conduit_lwt_tls.X509.default_authenticator` and
-  `Conduit_lwt_unix.default_ctx` to be lazy, avoiding various side-effects
-  (system interactions, logging) due to constructing these values at
-  initialisation time. (@craigfe, #395)
-
 * Add missing `ipaddr-sexp` dependency on conduit-async (#385 @anmonteiro)
 
 ## v4.0.0 (2021-04-15)

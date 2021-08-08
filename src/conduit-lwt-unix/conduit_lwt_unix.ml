@@ -149,16 +149,14 @@ let flow_of_fd fd sa =
       TCP { fd; ip = Ipaddr_unix.of_inet_addr ip; port }
 
 let default_ctx =
-  lazy
-    {
-      src = None;
-      tls_own_key = `None;
-      tls_authenticator = Lazy.force Conduit_lwt_tls.X509.default_authenticator;
-    }
+  {
+    src = None;
+    tls_own_key = `None;
+    tls_authenticator = Conduit_lwt_tls.X509.default_authenticator;
+  }
 
 let init ?src ?(tls_own_key = `None)
-    ?(tls_authenticator = Lazy.force Conduit_lwt_tls.X509.default_authenticator)
-    () =
+    ?(tls_authenticator = Conduit_lwt_tls.X509.default_authenticator) () =
   match src with
   | None -> Lwt.return { src = None; tls_own_key; tls_authenticator }
   | Some host -> (
@@ -264,6 +262,15 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
       Conduit_lwt_tls.X509.private_of_pems ~cert ~priv_key
       >|= fun certificate -> Some (`Single certificate))
   >>= fun certificates ->
+  let hostname =
+    try Domain_name.(host_exn (of_string_exn hostname))
+    with Invalid_argument msg ->
+      let s =
+        Printf.sprintf "couldn't convert %s to a [`host] Domain_name.t: %s"
+          hostname msg
+      in
+      invalid_arg s
+  in
   Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates
     ~authenticator:ctx.tls_authenticator hostname sa
   >|= fun (fd, ic, oc) ->

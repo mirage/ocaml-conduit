@@ -23,10 +23,9 @@ module X509 = struct
   type authenticator = X509.Authenticator.t
 
   let default_authenticator =
-    lazy
-      (match Ca_certs.authenticator () with
-      | Ok a -> a
-      | Error (`Msg msg) -> failwith msg)
+    match Ca_certs.authenticator () with
+    | Ok a -> a
+    | Error (`Msg msg) -> failwith msg
 end
 
 module Client = struct

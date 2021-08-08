@@ -1,9 +1,11 @@
-## v4.0.1 (2021-08-06)
+## Unreleased
 
-* Add missing `ipaddr-sexp` dependency on conduit-async (#385, @anmonteiro)
-* Update the link of the documentation (959f57a & #398, reported by @misterfish, @zshipko, @dinosaure)
-* Gitignore `opam/` even if it is a symlink (#394, @CraigFe, @avsm)
-* Adapt `conduit-lwt-unix` to `tls.0.14.0` (#396, @hannesm, @dinosaure)
+* change the type of `Conduit_lwt_tls.X509.default_authenticator` and
+  `Conduit_lwt_unix.default_ctx` to be lazy, avoiding various side-effects
+  (system interactions, logging) due to constructing these values at
+  initialisation time. (@craigfe, #395)
+
+* Add missing `ipaddr-sexp` dependency on conduit-async (#385 @anmonteiro)
 
 ## v4.0.0 (2021-04-15)
 

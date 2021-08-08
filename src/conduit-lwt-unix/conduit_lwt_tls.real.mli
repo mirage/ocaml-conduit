@@ -23,7 +23,7 @@ module X509 : sig
 
   type authenticator = X509.Authenticator.t
 
-  val default_authenticator : authenticator
+  val default_authenticator : authenticator Lazy.t
 end
 
 module Client : sig
@@ -31,7 +31,7 @@ module Client : sig
     ?src:Lwt_unix.sockaddr ->
     ?certificates:Tls.Config.own_cert ->
     authenticator:X509.authenticator ->
-    [ `host ] Domain_name.t ->
+    string ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end

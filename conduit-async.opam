@@ -9,7 +9,7 @@ homepage: "https://github.com/mirage/ocaml-conduit"
 bug-reports: "https://github.com/mirage/ocaml-conduit/issues"
 depends: [
   "ocaml" {>= "4.03.0"}
-  "dune" {>= "2.0"}
+  "dune"
   "core"
   "uri" {>= "4.0.0"}
   "ppx_here" {>= "v0.9.0"}
@@ -25,7 +25,7 @@ conflicts: [
   "async_ssl" {< "v0.9.0"}
 ]
 build: [
-  ["dune" "subst"] {dev}
+  ["dune" "subst"] {pinned}
   ["dune" "build" "-p" name "-j" jobs]
 ]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"

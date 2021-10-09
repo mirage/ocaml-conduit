@@ -5,6 +5,13 @@
   (system interactions, logging) due to constructing these values at
   initialisation time. (@craigfe, #395)
 
+## v4.0.2 (2021-10-09)
+
+* Adapt conduit-mirage to tls 0.15.0 (@hannesm #404)
+* Remove Conduit_mirage.Endpoint.ok_authenticator (@hannesm #404)
+* Now Conduit_mirage.Endpoint.server does not use an authenticator - and thus
+  not request a client certificate (@hannesm #404)
+
 ## v4.0.1 (2021-08-06)
 
 * Add missing `ipaddr-sexp` dependency on conduit-async (#385, @anmonteiro)

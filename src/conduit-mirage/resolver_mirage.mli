@@ -34,6 +34,7 @@ module Make
     (R : Mirage_random.S)
     (T : Mirage_time.S)
     (C : Mirage_clock.MCLOCK)
+    (P : Mirage_clock.PCLOCK)
     (S : Mirage_stack.V4V6) : sig
   include S
 

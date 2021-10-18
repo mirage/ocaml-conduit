@@ -20,7 +20,7 @@ open Sexplib.Conv
 
 let ( >>= ) = Lwt.( >>= )
 let ( >|= ) = Lwt.( >|= )
-let fail fmt = Fmt.kstrf (fun s -> Lwt.fail (Failure s)) fmt
+let fail fmt = Fmt.kstr (fun s -> Lwt.fail (Failure s)) fmt
 let err_tcp_not_supported = fail "%s: TCP is not supported"
 let err_tls_not_supported = fail "%s: TLS is not supported"
 

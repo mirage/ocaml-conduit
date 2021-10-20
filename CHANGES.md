@@ -1,9 +1,12 @@
-## Unreleased
+## v5.0.0 (2021-10-20)
 
 * change the type of `Conduit_lwt_tls.X509.default_authenticator` and
   `Conduit_lwt_unix.default_ctx` to be lazy, avoiding various side-effects
   (system interactions, logging) due to constructing these values at
-  initialisation time. (@craigfe, #395)
+  initialisation time. (@craigfe, #395 #404)
+* Adapt conduit-mirage to dns-client 6.0.0 API (#406 @hannesm)
+* Use Lwt.pause instead of Lwt_unix.yield (#403 @MisterDA)
+* Avoid deprecated Fmt.kstrf (#407 @hannesm)
 
 ## v4.0.2 (2021-10-09)
 

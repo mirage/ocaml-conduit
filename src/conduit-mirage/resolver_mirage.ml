@@ -113,7 +113,7 @@ struct
 
   let register ?nameservers s res =
     (* DNS stub resolver *)
-    let nameservers = Option.map (fun ns -> `Tcp, ns) nameservers in
+    let nameservers = Option.map (fun ns -> (`Tcp, ns)) nameservers in
     let dns = DNS.create ?nameservers s in
     let f = dns_stub_resolver dns in
     Resolver_lwt.add_rewrite ~host:"" ~f res;

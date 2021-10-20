@@ -38,7 +38,12 @@ module Make
     (S : Mirage_stack.V4V6) : sig
   include S
 
-  val v : ?nameservers:[ `Plaintext of Ipaddr.t * int | `Tls of Tls.Config.client * Ipaddr.t * int ] list ->
-    S.t -> t
+  val v :
+    ?nameservers:
+      [ `Plaintext of Ipaddr.t * int
+      | `Tls of Tls.Config.client * Ipaddr.t * int ]
+      list ->
+    S.t ->
+    t
   (** [v ~nameservers stack ()] TODO *)
 end

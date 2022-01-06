@@ -22,6 +22,7 @@ let with_socket sockaddr f =
 let listen ?(backlog = 128) sa =
   with_socket sa (fun fd ->
       Lwt_unix.(setsockopt fd SO_REUSEADDR true);
+      Lwt_unix.(setsockopt fd SO_REUSEPORT true);
       Lwt_unix.bind fd sa >|= fun () ->
       Lwt_unix.listen fd backlog;
       Lwt_unix.set_close_on_exec fd;

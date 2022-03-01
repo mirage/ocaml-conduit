@@ -16,6 +16,9 @@
  *
  *)
 
+let src = Logs.Src.create "conduit_mirage" ~doc:"Conduit Mirage"
+module Log = (val Logs.src_log src : Logs.LOG)
+
 open Sexplib.Conv
 
 let ( >>= ) = Lwt.( >>= )
@@ -198,14 +201,12 @@ module TLS (S : S) = struct
     let close = function TLS f -> TLS.close f | Clear f -> S.Flow.close f
   end
 
-  let err_flow_write m e = fail "%s: %a" m TLS.pp_write_error e
-
   let connect (t : t) (c : client) =
     match c with
     | `TLS (c, x) -> (
         S.connect t x >>= fun flow ->
         TLS.client_of_flow c flow >>= function
-        | Error e -> err_flow_write "connect" e
+        | Error e -> fail "connect: %a" TLS.pp_write_error e
         | Ok flow -> Lwt.return (TLS flow))
     | _ -> S.connect t c >|= fun t -> Clear t
 
@@ -214,7 +215,9 @@ module TLS (S : S) = struct
     | `TLS (c, x) ->
         S.listen t x (fun flow ->
             TLS.server_of_flow c flow >>= function
-            | Error e -> err_flow_write "listen" e
+            | Error e ->
+              Log.info (fun m -> m "listen: %a" TLS.pp_write_error e);
+              Lwt.return_unit
             | Ok flow -> fn (TLS flow))
     | _ -> S.listen t s (fun f -> fn (Clear f))
 end

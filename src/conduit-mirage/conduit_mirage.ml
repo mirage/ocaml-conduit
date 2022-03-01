@@ -66,7 +66,7 @@ end
 let tcp_client i p = Lwt.return (`TCP (i, p))
 let tcp_server _ p = Lwt.return (`TCP p)
 
-module TCP (S : Mirage_stack.V4V6) = struct
+module TCP (S : Tcpip.Stack.V4V6) = struct
   module Flow = S.TCP
 
   type flow = Flow.flow
@@ -88,7 +88,7 @@ module TCP (S : Mirage_stack.V4V6) = struct
     match s with
     | `TCP port ->
         let s, _u = Lwt.task () in
-        S.listen_tcp t ~port (fun flow -> fn flow);
+        S.TCP.listen (S.tcp t) ~port (fun flow -> fn flow);
         s
     | _ -> err_not_supported s "listen"
 end

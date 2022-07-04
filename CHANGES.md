@@ -1,3 +1,9 @@
+## v5.1.1 (2022-07-04)
+
+* conduit-mirage: pass peer name to Tls.Config.client, fixes
+  mirleft/ocaml-tls#474 reported by @palainp (#414 @hannesm)
+* conduit-async: update to jane street v0.15 (#414 @hannesm)
+
 ## v5.1.0 (2022-03-02)
 
 * conduit-mirage: avoid exception in TLS.listen (#413 @hannesm)

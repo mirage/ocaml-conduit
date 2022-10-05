@@ -38,10 +38,7 @@ module Make
     (S : Tcpip.Stack.V4V6) : sig
   include S
 
-  val v :
-    ?nameservers:string list ->
-    S.t ->
-    (t, [> `Msg of string ]) result
+  val v : ?nameservers:string list -> S.t -> (t, [> `Msg of string ]) result
   (** [v ~nameservers stack ()] TODO. An error is returned if any of the
       nameserver specifications do not parse. *)
 end

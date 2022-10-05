@@ -39,11 +39,9 @@ module Make
   include S
 
   val v :
-    ?nameservers:
-      [ `Plaintext of Ipaddr.t * int
-      | `Tls of Tls.Config.client * Ipaddr.t * int ]
-      list ->
+    ?nameservers:string list ->
     S.t ->
-    t
-  (** [v ~nameservers stack ()] TODO *)
+    (t, [> `Msg of string ]) result
+  (** [v ~nameservers stack ()] TODO. An error is returned if any of the
+      nameserver specifications do not parse. *)
 end

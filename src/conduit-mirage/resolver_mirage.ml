@@ -118,7 +118,7 @@ struct
       Option.fold ~none:(Ok None)
         ~some:(fun nameservers ->
             List.fold_left (fun acc ns ->
-                let* acc in
+                let* acc = acc in
                 let* ns = DNS.nameserver_of_string ns in
                 Ok (ns :: acc))
               (Ok [])

@@ -1,3 +1,7 @@
+## v6.0.0 (2022-10-11)
+
+* conduit-mirage: delay parsing of nameservers (#415 @reynir, review by @dinosaure)
+
 ## v5.1.1 (2022-07-04)
 
 * conduit-mirage: pass peer name to Tls.Config.client, fixes

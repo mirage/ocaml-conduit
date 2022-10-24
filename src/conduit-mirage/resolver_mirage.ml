@@ -112,22 +112,8 @@ struct
     | Ok addr -> `TCP (Ipaddr.V4 addr, port)
 
   let register ?nameservers s res =
-    let ( let* ) = Result.bind in
     (* DNS stub resolver *)
-    let* nameservers =
-      Option.fold ~none:(Ok None)
-        ~some:(fun nameservers ->
-          List.fold_left
-            (fun acc ns ->
-              let* acc = acc in
-              let* ns = DNS.nameserver_of_string ns in
-              Ok (ns :: acc))
-            (Ok []) nameservers
-          |> Result.map Option.some)
-        nameservers
-      |> Result.map (Option.map (fun io -> (`Tcp, io)))
-    in
-    let dns = DNS.create ?nameservers s in
+    DNS.connect ?nameservers s >|= fun dns ->
     let f = dns_stub_resolver dns in
     Resolver_lwt.add_rewrite ~host:"" ~f res;
     let service = Resolver_lwt.(service res ++ static_service) in
@@ -139,7 +125,7 @@ struct
 
   let v ?nameservers stack =
     let res = Resolver_lwt.init () in
-    register ?nameservers stack res |> Result.map (fun () -> res)
+    register ?nameservers stack res >|= Result.map (fun () -> res)
 
   type t = Resolver_lwt.t
 end

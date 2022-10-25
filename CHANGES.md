@@ -1,3 +1,8 @@
+## v6.0.1 (2022-10-25)
+
+* conduit-mirage: adapt to dns 6.4.0 changes, Resolver_mirage.v is now in Lwt.t
+  monad (#416 @hannesm)
+
 ## v6.0.0 (2022-10-11)
 
 * conduit-mirage: delay parsing of nameservers (#415 @reynir, review by @dinosaure)

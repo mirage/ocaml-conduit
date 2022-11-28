@@ -282,8 +282,19 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let flow = TCP { fd; ip; port } in
   (flow, ic, oc)
 
-let connect_with_openssl ~ctx (`Hostname hostname, `IP ip, `Port port) =
+let connect_with_openssl ~ctx (`Hostname host_addr, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
+  let hostname =
+    try
+      let _ = Domain_name.(host_exn (of_string_exn host_addr)) in
+      host_addr
+    with Invalid_argument msg ->
+      let s =
+        Printf.sprintf "couldn't convert %s to a [`host] Domain_name.t: %s"
+          host_addr msg
+      in
+      invalid_arg s
+  in
   let ctx_ssl =
     match ctx.tls_own_key with
     | `None -> ctx.ssl_ctx

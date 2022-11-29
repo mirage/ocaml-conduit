@@ -20,6 +20,7 @@
 module Client : sig
   type verify = { hostname : bool; ip : bool }
 
+  val default_verify : verify
   val default_ctx : Ssl.context
 
   val create_ctx :

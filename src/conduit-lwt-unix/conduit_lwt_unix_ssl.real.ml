@@ -54,6 +54,8 @@ module Client = struct
 
   type verify = { hostname : bool; ip : bool }
 
+  let default_verify = { hostname = true; ip = false }
+
   let validate_hostname host_addr =
     try
       let _ = Domain_name.(host_exn (of_string_exn host_addr)) in
@@ -76,7 +78,7 @@ module Client = struct
         (hostname, ip)
 
   let connect ?(ctx = default_ctx) ?src ?hostname ?ip ?verify sa =
-    let verify = Option.value ~default:{ hostname = true; ip = false } verify in
+    let verify = Option.value ~default:default_verify verify in
     let to_verify = verification verify (hostname, ip) in
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with

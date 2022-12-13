@@ -95,21 +95,18 @@ module Client = struct
         let maybe_verify ssl = function
           | Some hostname, Some ip ->
               Ssl.set_hostflags ssl [ Ssl.No_partial_wildcards ];
+              Ssl.set_client_SNI_hostname ssl hostname;
               Ssl.set_host ssl hostname;
               Ssl.set_ip ssl (Ipaddr.to_string ip)
           | Some hostname, None ->
               Ssl.set_hostflags ssl [ Ssl.No_partial_wildcards ];
+              Ssl.set_client_SNI_hostname ssl hostname;
               Ssl.set_host ssl hostname
           | None, Some ip -> Ssl.set_ip ssl (Ipaddr.to_string ip)
           | None, None -> ()
         in
-        (match hostname with
-        | Some host ->
-            with_socket (fun ssl ->
-                Ssl.set_client_SNI_hostname ssl host;
-                maybe_verify ssl to_verify)
-        | None -> Lwt_ssl.ssl_connect fd ctx)
-        >>= fun sock -> Lwt.return (chans_of_fd sock))
+        with_socket (fun ssl -> maybe_verify ssl to_verify) >>= fun sock ->
+        Lwt.return (chans_of_fd sock))
 end
 
 module Server = struct

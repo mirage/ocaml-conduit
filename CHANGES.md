@@ -1,4 +1,4 @@
-## unreleased
+## v6.0.2 (2022-12-14)
 
 * conduit-lwt-unix-ssl: allow users to create a client ssl_context and use it for
   any connections. This allows users to manage the lifecycle of the context.

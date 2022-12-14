@@ -21,7 +21,10 @@ module Client : sig
   type verify = { hostname : bool; ip : bool }
 
   val default_verify : verify
-  val default_ctx : Ssl.context
+
+  type context = Ssl.context
+
+  val default_ctx : context
 
   val create_ctx :
     ?certfile:string ->
@@ -31,7 +34,7 @@ module Client : sig
     Ssl.context
 
   val connect :
-    ?ctx:Ssl.context ->
+    ?ctx:context ->
     ?src:Lwt_unix.sockaddr ->
     ?hostname:string ->
     ?ip:Ipaddr.t ->

@@ -19,7 +19,10 @@ module Client = struct
   type verify = { hostname : bool; ip : bool }
 
   let default_verify = { hostname = true; ip = true }
-  let default_ctx = `Ssl_not_available
+
+  type context = Ssl_not_available
+
+  let default_ctx = Ssl_not_available
   let create_ctx ?certfile:_ ?keyfile:_ ?password:_ () = default_ctx
 
   let connect ?(ctx = default_ctx) ?src:_ ?hostname:_ ?ip:_ ?verify:_ _sa =

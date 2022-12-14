@@ -18,6 +18,9 @@
 (** TLS/SSL connections via {{:http://www.openssl.org} OpenSSL} C bindings *)
 
 module Client : sig
+  type verify = { hostname : bool; ip : bool }
+
+  val default_verify : verify
   val default_ctx : [ `Ssl_not_available ]
 
   val create_ctx :
@@ -31,6 +34,8 @@ module Client : sig
     ?ctx:[ `Ssl_not_available ] ->
     ?src:Lwt_unix.sockaddr ->
     ?hostname:string ->
+    ?ip:Ipaddr.t ->
+    ?verify:verify ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end

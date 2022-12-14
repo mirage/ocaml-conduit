@@ -10,6 +10,8 @@
   by default.
 * conduit-lwt-unix-ssl: SNI is not sent when there isn't a domain name available
 
+all done by @psafont in #417
+
 ## v6.0.1 (2022-10-25)
 
 * conduit-mirage: adapt to dns 6.4.0 changes, Resolver_mirage.v is now in Lwt.t

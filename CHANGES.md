@@ -1,5 +1,6 @@
-## v6.0.2 (2022-12-14)
+## v6.1.0 (2022-12-15)
 
+done by @psafont in #417:
 * conduit-lwt-unix-ssl: allow users to create a client ssl_context and use it for
   any connections. This allows users to manage the lifecycle of the context.
 * conduit-lwt-unix-ssl: domain name verification can be disabled by users,
@@ -9,8 +10,7 @@
 * conduit-lwt-unix-ssl: IP verification can be enabled by users, it's disabled
   by default.
 * conduit-lwt-unix-ssl: SNI is not sent when there isn't a domain name available
-
-all done by @psafont in #417
+* conduit-lwt-unix: avoid direct use of Ssl in conduit_lwt_unix (#418 @psafont)
 
 ## v6.0.1 (2022-10-25)
 

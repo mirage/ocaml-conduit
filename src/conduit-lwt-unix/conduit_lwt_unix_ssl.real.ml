@@ -35,6 +35,8 @@ let chans_of_fd sock =
   (Lwt_ssl.get_fd sock, ic, oc)
 
 module Client = struct
+  type context = Ssl.context
+
   let create_ctx ?certfile ?keyfile ?password () =
     let ctx = Ssl.create_context Ssl.SSLv23 Ssl.Client_context in
     Ssl.disable_protocols ctx [ Ssl.SSLv23 ];

@@ -109,7 +109,7 @@ type ctx = {
   tls_own_key : tls_own_key;
   tls_authenticator : Conduit_lwt_tls.X509.authenticator;
   ssl_client_verify : Conduit_lwt_unix_ssl.Client.verify;
-  ssl_ctx : Ssl.context;
+  ssl_ctx : Conduit_lwt_unix_ssl.Client.context;
 }
 
 let string_of_unix_sockaddr sa =

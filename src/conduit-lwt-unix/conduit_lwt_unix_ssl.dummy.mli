@@ -21,17 +21,20 @@ module Client : sig
   type verify = { hostname : bool; ip : bool }
 
   val default_verify : verify
-  val default_ctx : [ `Ssl_not_available ]
+
+  type context = Ssl_not_available
+
+  val default_ctx : context
 
   val create_ctx :
     ?certfile:string ->
     ?keyfile:string ->
     ?password:(bool -> string) ->
     unit ->
-    [ `Ssl_not_available ]
+    context
 
   val connect :
-    ?ctx:[ `Ssl_not_available ] ->
+    ?ctx:context ->
     ?src:Lwt_unix.sockaddr ->
     ?hostname:string ->
     ?ip:Ipaddr.t ->

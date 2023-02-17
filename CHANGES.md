@@ -1,3 +1,8 @@
+## v6.2.0 (2023-02-17)
+
+* conduit-lwt-unix: adapt tls 0.16 split: tls.lwt is now tls-lwt (#419 @hannesm)
+* conduit-mirage: adapt dns-client 7.0.0 split: dns-client-mirage (#419 @hannesm)
+
 ## v6.1.0 (2022-12-15)
 
 done by @psafont in #417:

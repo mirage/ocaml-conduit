@@ -23,9 +23,9 @@ depends: [
   "ssl" {with-test}
   "lwt_ssl" {with-test}
 ]
-depopts: ["tls" "lwt_ssl" "launchd"]
+depopts: ["tls-lwt" "lwt_ssl" "launchd"]
 conflicts: [
-  "tls" {< "0.14.0"}
+  "tls-lwt" {< "0.16.0"}
   "ssl" {< "0.5.12"}
 ]
 build: [

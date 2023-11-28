@@ -16,8 +16,8 @@
  *
  *)
 
-(** Connection establishment using the {{:http://ocsigen.org/lwt/api/Lwt_unix}
-    Lwt_unix} library *)
+(** Connection establishment using the
+    {{:http://ocsigen.org/lwt/api/Lwt_unix} Lwt_unix} library *)
 
 (** {2 Core types} *)
 
@@ -171,8 +171,8 @@ val init :
     If TLS server connections are used, then [tls_own_key] must contain a valid
     certificate to be used to advertise a TLS connection. In TLS mode the
     certificate is validated using [tls_authenticator]. By default, the
-    validation is using the {{:https://github.com/mirage/ca-certs} OS trust
-    anchors}.
+    validation is using the
+    {{:https://github.com/mirage/ca-certs} OS trust anchors}.
 
     If SSL client connections are used, then [tls_own_key] may contain a valid
     certificate to be used to advertise a TLS connection. If it's not configured

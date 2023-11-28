@@ -40,14 +40,18 @@ let err_not_supported = function
 
 module Tls_config = struct
   type client = Tls.Config.client
+
   let sexp_of_client _ =
     failwith "converting a TLS client config into S-Expression not supported"
+
   let client_of_sexp _ =
     failwith "converting a S-Expression into a TLS client config not supported"
 
   type server = Tls.Config.server
+
   let sexp_of_server _ =
     failwith "converting a TLS server config into S-Expression not supported"
+
   let server_of_sexp _ =
     failwith "converting a S-Expression into a TLS server config not supported"
 end

@@ -1,7 +1,5 @@
 ## v6.2.1 (2023-11-28)
 
-This is only a conduit-mirage release
-
 * conduit-mirage: adapt to tls 0.17.0 API changes (no more sexplib converters)
   #421 @hannesm
 

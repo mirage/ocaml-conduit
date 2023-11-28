@@ -1,3 +1,10 @@
+## v6.2.1 (2023-11-28)
+
+This is only a conduit-mirage release
+
+* conduit-mirage: adapt to tls 0.17.0 API changes (no more sexplib converters)
+  #421 @hannesm
+
 ## v6.2.0 (2023-02-17)
 
 * conduit-lwt-unix: adapt tls 0.16 split: tls.lwt is now tls-lwt (#419 @hannesm)

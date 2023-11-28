@@ -38,9 +38,27 @@ let err_not_supported = function
   | `TCP _ -> err_tcp_not_supported
   | `Vchan _ -> err_vchan_not_supported
 
+module Tls_config = struct
+  type client = Tls.Config.client
+
+  let sexp_of_client _ =
+    failwith "converting a TLS client config into S-Expression not supported"
+
+  let client_of_sexp _ =
+    failwith "converting a S-Expression into a TLS client config not supported"
+
+  type server = Tls.Config.server
+
+  let sexp_of_server _ =
+    failwith "converting a TLS server config into S-Expression not supported"
+
+  let server_of_sexp _ =
+    failwith "converting a S-Expression into a TLS server config not supported"
+end
+
 type client =
   [ `TCP of Ipaddr_sexp.t * int
-  | `TLS of Tls.Config.client * client
+  | `TLS of Tls_config.client * client
   | `Vchan of
     [ `Direct of int * Vchan.Port.t | `Domain_socket of string * Vchan.Port.t ]
   ]
@@ -48,7 +66,7 @@ type client =
 
 type server =
   [ `TCP of int
-  | `TLS of Tls.Config.server * server
+  | `TLS of Tls_config.server * server
   | `Vchan of [ `Direct of int * Vchan.Port.t | `Domain_socket ] ]
 [@@deriving sexp]
 

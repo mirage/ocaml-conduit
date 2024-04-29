@@ -234,6 +234,10 @@ module TLS (S : S) = struct
       | Clear f -> S.Flow.writev f x >|= flow_err
 
     let close = function TLS f -> TLS.close f | Clear f -> S.Flow.close f
+
+    let shutdown f mode = match f with
+      | TLS f -> TLS.shutdown f mode
+      | Clear f -> S.Flow.shutdown f mode
   end
 
   let connect (t : t) (c : client) =

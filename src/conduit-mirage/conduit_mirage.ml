@@ -42,32 +42,44 @@ module Tls_config = struct
   type client = Tls.Config.client
 
   let sexp_of_client _ =
-    failwith "converting a TLS client config into S-Expression not supported"
+    failwith "converting a TLS client config into S-Expression is not supported"
 
   let client_of_sexp _ =
-    failwith "converting a S-Expression into a TLS client config not supported"
+    failwith
+      "converting a S-Expression into a TLS client config is not supported"
 
   type server = Tls.Config.server
 
   let sexp_of_server _ =
-    failwith "converting a TLS server config into S-Expression not supported"
+    failwith "converting a TLS server config into S-Expression is not supported"
 
   let server_of_sexp _ =
-    failwith "converting a S-Expression into a TLS server config not supported"
+    failwith
+      "converting a S-Expression into a TLS server config is not supported"
+end
+
+module Vchan_port = struct
+  type t = Vchan.Port.t
+
+  let sexp_of_t _ =
+    failwith "converting a vchan port into S-Expression is not supported"
+
+  let t_of_sexp _ =
+    failwith "converting a S-Expression into a vchant port is not supported"
 end
 
 type client =
   [ `TCP of Ipaddr_sexp.t * int
   | `TLS of Tls_config.client * client
   | `Vchan of
-    [ `Direct of int * Vchan.Port.t | `Domain_socket of string * Vchan.Port.t ]
+    [ `Direct of int * Vchan_port.t | `Domain_socket of string * Vchan_port.t ]
   ]
 [@@deriving sexp]
 
 type server =
   [ `TCP of int
   | `TLS of Tls_config.server * server
-  | `Vchan of [ `Direct of int * Vchan.Port.t | `Domain_socket ] ]
+  | `Vchan of [ `Direct of int * Vchan_port.t | `Domain_socket ] ]
 [@@deriving sexp]
 
 module type S = sig

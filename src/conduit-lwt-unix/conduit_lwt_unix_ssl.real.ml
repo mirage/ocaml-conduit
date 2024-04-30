@@ -14,6 +14,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  *
  *)
+[@@@alert "-deprecated"]
 
 open Lwt.Infix
 

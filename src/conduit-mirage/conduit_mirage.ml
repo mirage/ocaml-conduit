@@ -235,7 +235,8 @@ module TLS (S : S) = struct
 
     let close = function TLS f -> TLS.close f | Clear f -> S.Flow.close f
 
-    let shutdown f mode = match f with
+    let shutdown f mode =
+      match f with
       | TLS f -> TLS.shutdown f mode
       | Clear f -> S.Flow.shutdown f mode
   end

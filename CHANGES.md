@@ -1,3 +1,10 @@
+## v6.2.2 (2024-04-30)
+
+* conduit-mirage: IPv6 literal * DNS support for default resolver (#425 @Firobe)
+* conduit-mirage: adapt to mirage-flow 4 API, requiring tls 0.17.4, vchan 6.0.2
+  (#424 @hannesm)
+* conduit-lwt-unix: disable deprecation alert (#424 @hannesm)
+
 ## v6.2.1 (2023-11-28)
 
 * conduit-mirage: adapt to tls 0.17.0 API changes (no more sexplib converters)

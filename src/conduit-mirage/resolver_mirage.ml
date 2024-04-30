@@ -95,10 +95,21 @@ struct
 
   module DNS = Dns_client_mirage.Make (R) (T) (C) (P) (S)
 
+  let resolve_v4v6 dns host =
+    (* Try to resolve a host, default to IPv4 *)
+    DNS.gethostbyname dns host >>= function
+    | Ok addr -> Lwt.return (Ok (Ipaddr.V4 addr))
+    | Error (`Msg v4_err) -> (
+        DNS.gethostbyname6 dns host >|= function
+        | Ok addr -> Ok (Ipaddr.V6 addr)
+        | Error (`Msg v6_err) ->
+            let msg = Fmt.str "v4: %s; v6: %s" v4_err v6_err in
+            Error (`Msg msg))
+
   let dns_stub_resolver dns service uri : Conduit.endp Lwt.t =
     let hostn = get_host uri in
     let port = get_port service uri in
-    (match Ipaddr.V4.of_string hostn with
+    (match Ipaddr.of_string hostn with
     | Ok addr -> Lwt.return (Ok addr)
     | Error _ -> (
         match Domain_name.of_string hostn with
@@ -106,10 +117,10 @@ struct
         | Ok domain -> (
             match Domain_name.host domain with
             | Error (`Msg msg) -> Lwt.return (Error (`Msg msg))
-            | Ok host -> DNS.gethostbyname dns host)))
+            | Ok host -> resolve_v4v6 dns host)))
     >|= function
     | Error (`Msg err) -> `Unknown ("name resolution failed: " ^ err)
-    | Ok addr -> `TCP (Ipaddr.V4 addr, port)
+    | Ok addr -> `TCP (addr, port)
 
   let register ?nameservers s res =
     (* DNS stub resolver *)

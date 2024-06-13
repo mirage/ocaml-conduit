@@ -93,7 +93,8 @@ struct
         (Uri.to_string uri) remote_name;
       Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 
-  module DNS = Dns_client_mirage.Make (R) (T) (C) (P) (S)
+  module H = Happy_eyeballs_mirage.Make (T) (C) (S)
+  module DNS = Dns_client_mirage.Make (R) (T) (C) (P) (S) (H)
 
   let resolve_v4v6 dns host =
     (* Try to resolve a host, default to IPv4 *)
@@ -124,7 +125,8 @@ struct
 
   let register ?nameservers s res =
     (* DNS stub resolver *)
-    DNS.connect ?nameservers s >|= fun dns ->
+    H.connect_device s >>= fun he ->
+    DNS.connect ?nameservers (s, he) >|= fun dns ->
     let f = dns_stub_resolver dns in
     Resolver_lwt.add_rewrite ~host:"" ~f res;
     let service = Resolver_lwt.(service res ++ static_service) in

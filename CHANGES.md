@@ -1,3 +1,9 @@
+## v6.2.3 (2024-06-13)
+
+* conduit-mirage: adapt to dns-client 8.0.0 API changes (#426 @hannesm)
+* conduit-async: removed misplaced deprecation attribute
+  (OCaml 5 complains about) (#426 @hannesm)
+
 ## v6.2.2 (2024-04-30)
 
 * conduit-mirage: IPv6 literal * DNS support for default resolver (#425 @Firobe)

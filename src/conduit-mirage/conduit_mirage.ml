@@ -19,7 +19,7 @@
 let src = Logs.Src.create "conduit_mirage" ~doc:"Conduit Mirage"
 
 module Log = (val Logs.src_log src : Logs.LOG)
-open Sexplib.Conv
+open Sexplib0.Sexp_conv
 
 let ( >>= ) = Lwt.( >>= )
 let ( >|= ) = Lwt.( >|= )

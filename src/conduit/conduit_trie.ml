@@ -16,7 +16,7 @@
  *
  *)
 
-open Sexplib.Std
+open Sexplib0.Sexp_conv
 
 type 'a t = Node of string * 'a option * 'a t list [@@deriving sexp]
 

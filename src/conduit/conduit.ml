@@ -15,7 +15,7 @@
  *
  *)
 
-open Sexplib.Std
+open Sexplib0.Sexp_conv
 
 type endp =
   [ `TCP of Ipaddr_sexp.t * int  (** ipaddr and dst port *)

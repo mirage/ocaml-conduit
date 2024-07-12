@@ -33,6 +33,13 @@ module Client : sig
     [ `host ] Domain_name.t ->
     Lwt_unix.sockaddr ->
     (Lwt_unix.file_descr * Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
+
+  val tunnel :
+    ?certificates:'a ->
+    authenticator:X509.authenticator ->
+    [ `host ] Domain_name.t ->
+    Lwt_io.input_channel * Lwt_io.output_channel ->
+    (Lwt_io.input_channel * Lwt_io.output_channel) Lwt.t
 end
 
 module Server : sig

@@ -52,8 +52,8 @@ let () =
       (Sexplib0.Sexp.to_string (sexp_of_tls_lib !tls_library))
 
 type +'a io = 'a Lwt.t
-type ic = Lwt_io.input_channel
-type oc = Lwt_io.output_channel
+type ic = (Lwt_io.input_channel[@sexp.opaque]) [@@deriving sexp]
+type oc = (Lwt_io.output_channel[@sexp.opaque]) [@@deriving sexp]
 
 type client_tls_config =
   [ `Hostname of string ] * [ `IP of Ipaddr_sexp.t ] * [ `Port of int ]
@@ -61,6 +61,7 @@ type client_tls_config =
 
 type client =
   [ `TLS of client_tls_config
+  | `TLS_tunnel of [ `Hostname of string ] * ic * oc
   | `TLS_native of client_tls_config
   | `OpenSSL of client_tls_config
   | `TCP of [ `IP of Ipaddr_sexp.t ] * [ `Port of int ]
@@ -140,6 +141,7 @@ type vchan_flow = { domid : int; port : string } [@@deriving sexp]
 
 type flow =
   | TCP of tcp_flow
+  | Tunnel
   | Domain_socket of domain_flow
   | Vchan of vchan_flow
 [@@deriving sexp]
@@ -262,30 +264,40 @@ let set_max_active maxactive = Conduit_lwt_server.set_max_active maxactive
 
 (** TLS client connection functions *)
 
-let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
-  let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
-  (match ctx.tls_own_key with
+let certificates ~ctx =
+  match ctx.tls_own_key with
   | `None -> Lwt.return_none
   | `TLS (_, _, `Password _) ->
       failwith "OCaml-TLS cannot handle encrypted pem files"
   | `TLS (`Crt_file_path cert, `Key_file_path priv_key, `No_password) ->
       Conduit_lwt_tls.X509.private_of_pems ~cert ~priv_key
-      >|= fun certificate -> Some (`Single certificate))
-  >>= fun certificates ->
-  let hostname =
-    try Domain_name.(host_exn (of_string_exn hostname))
-    with Invalid_argument msg ->
-      let s =
-        Printf.sprintf "couldn't convert %s to a [`host] Domain_name.t: %s"
-          hostname msg
-      in
-      invalid_arg s
-  in
+      >|= fun certificate -> Some (`Single certificate)
+
+let domain_name hostname =
+  try Domain_name.(host_exn (of_string_exn hostname))
+  with Invalid_argument msg ->
+    let s =
+      Printf.sprintf "couldn't convert %s to a [`host] Domain_name.t: %s"
+        hostname msg
+    in
+    invalid_arg s
+
+let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
+  let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
+  certificates ~ctx >>= fun certificates ->
+  let hostname = domain_name hostname in
   Conduit_lwt_tls.Client.connect ?src:ctx.src ?certificates
     ~authenticator:ctx.tls_authenticator hostname sa
   >|= fun (fd, ic, oc) ->
   let flow = TCP { fd; ip; port } in
   (flow, ic, oc)
+
+let connect_with_tls_tunnel ~ctx (`Hostname hostname, ic, oc) =
+  certificates ~ctx >>= fun certificates ->
+  let hostname = domain_name hostname in
+  Conduit_lwt_tls.Client.tunnel ?certificates
+    ~authenticator:ctx.tls_authenticator hostname (ic, oc)
+  >|= fun (ic, oc) -> (Tunnel, ic, oc)
 
 let connect_with_openssl ~ctx (`Hostname host_addr, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
@@ -331,6 +343,7 @@ let connect ~ctx (mode : client) =
       let flow = Domain_socket { fd; path } in
       Lwt.return (flow, ic, oc)
   | `TLS c -> connect_with_default_tls ~ctx c
+  | `TLS_tunnel c -> connect_with_tls_tunnel ~ctx c
   | `OpenSSL c -> connect_with_openssl ~ctx c
   | `TLS_native c -> connect_with_tls_native ~ctx c
   | `Vchan_direct _ -> failwith "Vchan_direct not available on unix"
@@ -416,6 +429,7 @@ let serve ?backlog ?timeout ?stop ~on_exn ~(ctx : ctx) ~(mode : server) callback
 
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)
+  | Tunnel -> `Unknown "TLS tunnel"
   | Domain_socket { path; _ } -> `Unix_domain_socket path
   | Vchan { domid; port } -> `Vchan_direct (domid, port)
 

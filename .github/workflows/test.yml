@@ -3,26 +3,19 @@ on: [push, pull_request]
 jobs:
   tests:
     name: Tests
-    runs-on: ${{ matrix.operating-system }}
     strategy:
       matrix:
-        ocaml-version: [ '4.11.2', '4.12.1', '4.13.1', '4.14.0' ]
-        operating-system: [ ubuntu-latest ]
+        os: [ubuntu-latest, macos-latest]
+        ocaml-compiler: ["4.11", "4.12", "4.13", "4.14"]
+        exclude:
+          - os: macos-latest
+            ocaml-compiler: "4.11"
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: avsm/setup-ocaml@v1
-      with:
-        ocaml-version: ${{ matrix.ocaml-version }}
-    - name: Deps
-      run: |
-        opam pin add -n conduit.dev .
-        opam pin add -n conduit-lwt.dev .
-        opam pin add -n conduit-lwt-unix.dev .
-        opam pin add -n conduit-async.dev .
-        opam pin add -n conduit-mirage.dev .
-        opam depext -y conduit conduit-lwt conduit-lwt-unix conduit-async conduit-mirage
-        opam install --deps-only -t .
-    - name: Build
-      run: opam exec -- dune build
-    - name: Test
-      run: opam exec -- dune runtest --no-buffer --verbose -j 1
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: ${{ matrix.ocaml-compiler }}
+      - run: opam install . --deps-only --with-test
+      - run: opam exec -- dune build
+      - run: opam exec -- dune runtest

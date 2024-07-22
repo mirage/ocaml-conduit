@@ -22,7 +22,7 @@ type direct = [ `Direct of int * Vchan.Port.t ]
 
 let ( >>= ) = Lwt.( >>= )
 let ( / ) = Filename.concat
-let fail fmt = Printf.ksprintf (fun m -> Lwt.fail (Failure m)) fmt
+let fail fmt = Printf.ksprintf failwith fmt
 let err_peer_not_found = fail "Conduit_xenstore: %s peer not found"
 
 let err_no_entry_found () =

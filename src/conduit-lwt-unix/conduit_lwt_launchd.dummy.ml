@@ -15,4 +15,4 @@
  *
  *)
 
-let activate _fn _name = Lwt.fail_with "No Launchd support"
+let activate _fn _name = failwith "No Launchd support"

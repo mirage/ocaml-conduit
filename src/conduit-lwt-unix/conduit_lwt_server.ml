@@ -17,7 +17,7 @@ let with_socket sockaddr f =
     (fun () -> f fd)
     (fun e ->
       Lwt.catch (fun () -> Lwt_unix.close fd) (fun _ -> Lwt.return_unit)
-      >>= fun () -> Lwt.fail e)
+      >>= fun () -> Lwt.reraise e)
 
 let listen ?(backlog = 128) sa =
   with_socket sa (fun fd ->

@@ -23,7 +23,7 @@ open Sexplib.Conv
 
 let ( >>= ) = Lwt.( >>= )
 let ( >|= ) = Lwt.( >|= )
-let fail fmt = Fmt.kstr (fun s -> Lwt.fail (Failure s)) fmt
+let fail fmt = Fmt.failwith fmt
 let err_tcp_not_supported = fail "%s: TCP is not supported"
 let err_tls_not_supported = fail "%s: TLS is not supported"
 
@@ -103,8 +103,7 @@ module TCP (S : Tcpip.Stack.V4V6) = struct
   type t = S.t
 
   let err_tcp e =
-    Lwt.fail
-    @@ Failure (Format.asprintf "TCP connection failed: %a" S.TCP.pp_error e)
+    Format.kasprintf failwith "TCP connection failed: %a" S.TCP.pp_error e
 
   let connect (t : t) (c : client) =
     match c with

@@ -53,7 +53,7 @@ module Server = struct
               (fun t ->
                 let ic, oc = Tls_lwt.of_t t in
                 Lwt.return (fd, ic, oc))
-              (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.fail exn)
+              (fun exn -> Lwt_unix.close fd >>= fun () -> Lwt.reraise exn)
             >>= Conduit_lwt_server.process_accept ?timeout (callback addr))
 
   let init ?backlog ~certfile ~keyfile ?stop ?timeout sa callback =

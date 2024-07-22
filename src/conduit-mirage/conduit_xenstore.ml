@@ -48,9 +48,7 @@ module Make (Xs : Xs_client_lwt.S) = struct
   let readdir h d =
     Xs.(directory h d) >>= fun dirs ->
     let dirs = List.filter (fun p -> p <> "") dirs in
-    match dirs with
-    | [] -> Lwt.fail Xs_protocol.Eagain
-    | hd :: _ -> Lwt.return hd
+    match dirs with [] -> raise Xs_protocol.Eagain | hd :: _ -> Lwt.return hd
 
   let register name =
     Xs.make () >>= fun xs ->

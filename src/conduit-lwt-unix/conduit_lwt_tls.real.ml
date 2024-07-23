@@ -41,6 +41,11 @@ module Client = struct
         Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
         let ic, oc = Tls_lwt.of_t t in
         (fd, ic, oc))
+
+  let tunnel ?certificates ~authenticator host channels =
+    let config = Tls.Config.client ~authenticator ?certificates () in
+    Tls_lwt.Unix.client_of_channels config ~host channels >|= fun t ->
+    Tls_lwt.of_t t
 end
 
 module Server = struct

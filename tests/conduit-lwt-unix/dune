@@ -1,6 +1,6 @@
 (executables
  (libraries lwt_ssl ssl conduit-lwt-unix lwt_log)
- (names cdtest cdtest_tls exit_test))
+ (names cdtest cdtest_tls exit_test tls_over_tls))
 
 (rule
  (alias runtest)

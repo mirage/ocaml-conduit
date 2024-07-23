@@ -28,6 +28,8 @@ type client_tls_config =
 
 type client =
   [ `TLS of client_tls_config
+  | `TLS_tunnel of
+    [ `Hostname of string ] * Lwt_io.input_channel * Lwt_io.output_channel
   | `TLS_native of client_tls_config
     (** Force use of native OCaml TLS stack to connect.*)
   | `OpenSSL of client_tls_config
@@ -104,8 +106,8 @@ type server =
       documentation for more. *)
 
 type 'a io = 'a Lwt.t
-type ic = Lwt_io.input_channel
-type oc = Lwt_io.output_channel
+type ic = (Lwt_io.input_channel[@sexp.opaque]) [@@deriving sexp]
+type oc = (Lwt_io.output_channel[@sexp.opaque]) [@@deriving sexp]
 
 type tcp_flow = private {
   fd : Lwt_unix.file_descr; [@sexp.opaque]
@@ -129,6 +131,7 @@ type vchan_flow = private { domid : int; port : string } [@@deriving sexp_of]
     transport method. *)
 type flow = private
   | TCP of tcp_flow
+  | Tunnel
   | Domain_socket of domain_flow
   | Vchan of vchan_flow
 [@@deriving sexp_of]

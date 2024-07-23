@@ -9,6 +9,9 @@ end
 module Client = struct
   let connect ?src:_ ?certificates:_ ~authenticator:_ _host _sa =
     Lwt.fail_with "Tls not available"
+
+  let tunnel ?certificates:_ ~authenticator:_ _host _ioc =
+    Lwt.fail_with "Tls not available"
 end
 
 module Server = struct

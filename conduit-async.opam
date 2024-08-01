@@ -14,7 +14,7 @@ depends: [
   "uri" {>= "4.0.0"}
   "ppx_here" {>= "v0.9.0"}
   "ppx_sexp_conv" {>="v0.13.0"}
-  "sexplib"
+  "sexplib0"
   "conduit" {=version}
   "async" {>= "v0.15.0"}
   "ipaddr" {>= "3.0.0"}

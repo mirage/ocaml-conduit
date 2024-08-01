@@ -16,7 +16,7 @@
  *
  *)
 
-open Sexplib.Conv
+open Sexplib0.Sexp_conv
 
 type direct = [ `Direct of int * Vchan.Port.t ]
 

@@ -141,7 +141,7 @@ type vchan_flow = { domid : int; port : string } [@@deriving sexp]
 
 type flow =
   | TCP of tcp_flow
-  | Tunnel
+  | Tunnel of string * ic * oc
   | Domain_socket of domain_flow
   | Vchan of vchan_flow
 [@@deriving sexp]
@@ -294,10 +294,10 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
 
 let connect_with_tls_tunnel ~ctx (`Hostname hostname, ic, oc) =
   certificates ~ctx >>= fun certificates ->
-  let hostname = domain_name hostname in
+  let host = domain_name hostname in
   Conduit_lwt_tls.Client.tunnel ?certificates
-    ~authenticator:ctx.tls_authenticator hostname (ic, oc)
-  >|= fun (ic, oc) -> (Tunnel, ic, oc)
+    ~authenticator:ctx.tls_authenticator host (ic, oc)
+  >|= fun (ic', oc') -> (Tunnel (hostname, ic, oc), ic', oc')
 
 let connect_with_openssl ~ctx (`Hostname host_addr, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in
@@ -427,15 +427,17 @@ let serve ?backlog ?timeout ?stop ~on_exn ~(ctx : ctx) ~(mode : server) callback
       let fn s = Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback in
       Conduit_lwt_launchd.activate fn name
 
+type endp = [ Conduit.endp | `TLS_tunnel of string * ic * oc ] [@@deriving sexp]
+
 let endp_of_flow = function
   | TCP { ip; port; _ } -> `TCP (ip, port)
-  | Tunnel -> `Unknown "TLS tunnel"
+  | Tunnel (hostname, ic, oc) -> `TLS_tunnel (hostname, ic, oc)
   | Domain_socket { path; _ } -> `Unix_domain_socket path
   | Vchan { domid; port } -> `Vchan_direct (domid, port)
 
 (** Use the configuration of the server to interpret how to handle a particular
     endpoint from the resolver into a concrete implementation of type [client] *)
-let endp_to_client ~ctx:_ (endp : Conduit.endp) : client Lwt.t =
+let endp_to_client ~ctx:_ (endp : [< endp ]) : client Lwt.t =
   match endp with
   | `TCP (ip, port) -> Lwt.return (`TCP (`IP ip, `Port port))
   | `Unix_domain_socket file -> Lwt.return (`Unix_domain_socket (`File file))
@@ -449,6 +451,8 @@ let endp_to_client ~ctx:_ (endp : Conduit.endp) : client Lwt.t =
       Printf.ksprintf failwith
         "TLS to non-TCP currently unsupported: host=%s endp=%s" host
         (Sexplib0.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
+  | `TLS_tunnel (host, ic, oc) ->
+      Lwt.return (`TLS_tunnel (`Hostname host, ic, oc))
   | `Unknown err -> failwith ("resolution failed: " ^ err)
 
 let endp_to_server ~ctx (endp : Conduit.endp) =

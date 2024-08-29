@@ -29,8 +29,8 @@ let () =
 let return_endp name svc uri endp =
   if !debug then
     !debug_print "Resolver %s: %s %s -> %s\n%!" name (Uri.to_string uri)
-      (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service svc))
-      (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
+      (Sexplib0.Sexp.to_string_hum (Resolver.sexp_of_service svc))
+      (Sexplib0.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
   Lwt.return endp
 
 let is_tls_service =

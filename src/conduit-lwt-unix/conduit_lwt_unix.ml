@@ -17,7 +17,7 @@
  *)
 
 open Lwt.Infix
-open Sexplib.Conv
+open Sexplib0.Sexp_conv
 
 let debug = ref false
 let debug_print = ref Printf.eprintf
@@ -49,7 +49,7 @@ let tls_library = ref default_tls_library
 let () =
   if !debug then
     !debug_print "Selected TLS library: %s\n"
-      (Sexplib.Sexp.to_string (sexp_of_tls_lib !tls_library))
+      (Sexplib0.Sexp.to_string (sexp_of_tls_lib !tls_library))
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
@@ -426,7 +426,7 @@ let endp_to_client ~ctx:_ (endp : Conduit.endp) : client Lwt.t =
   | `TLS (host, endp) ->
       Printf.ksprintf failwith
         "TLS to non-TCP currently unsupported: host=%s endp=%s" host
-        (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
+        (Sexplib0.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
   | `Unknown err -> failwith ("resolution failed: " ^ err)
 
 let endp_to_server ~ctx (endp : Conduit.endp) =

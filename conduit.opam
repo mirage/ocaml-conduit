@@ -12,7 +12,7 @@ depends: [
   "ocaml" {>= "4.08.0"}
   "dune" {>= "2.0"}
   "ppx_sexp_conv" {>="v0.13.0"}
-  "sexplib"
+  "sexplib0"
   "astring"
   "uri"
   "logs" {>= "0.5.0"}

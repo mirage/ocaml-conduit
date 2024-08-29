@@ -47,7 +47,7 @@ let system_service name =
       let tls = is_tls_service name in
       let svc = { Resolver.name; port = s.Lwt_unix.s_port; tls } in
       Lwt.return (Some svc))
-    (function Not_found -> Lwt.return_none | e -> Lwt.fail e)
+    (function Not_found -> Lwt.return_none | e -> Lwt.reraise e)
 
 let static_service name =
   match Uri_services.tcp_port_of_service name with

@@ -16,13 +16,13 @@
  *
  *)
 
-open Sexplib.Conv
+open Sexplib0.Sexp_conv
 
 type direct = [ `Direct of int * Vchan.Port.t ]
 
 let ( >>= ) = Lwt.( >>= )
 let ( / ) = Filename.concat
-let fail fmt = Printf.ksprintf (fun m -> Lwt.fail (Failure m)) fmt
+let fail fmt = Printf.ksprintf failwith fmt
 let err_peer_not_found = fail "Conduit_xenstore: %s peer not found"
 
 let err_no_entry_found () =
@@ -48,9 +48,7 @@ module Make (Xs : Xs_client_lwt.S) = struct
   let readdir h d =
     Xs.(directory h d) >>= fun dirs ->
     let dirs = List.filter (fun p -> p <> "") dirs in
-    match dirs with
-    | [] -> Lwt.fail Xs_protocol.Eagain
-    | hd :: _ -> Lwt.return hd
+    match dirs with [] -> raise Xs_protocol.Eagain | hd :: _ -> Lwt.return hd
 
   let register name =
     Xs.make () >>= fun xs ->

@@ -15,7 +15,7 @@
  *
  *)
 
-open Sexplib.Std
+open Sexplib0.Sexp_conv
 open Astring
 
 type service = { name : string; port : int; tls : bool } [@@deriving sexp]

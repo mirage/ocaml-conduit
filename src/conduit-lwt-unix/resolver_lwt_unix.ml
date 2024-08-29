@@ -29,8 +29,8 @@ let () =
 let return_endp name svc uri endp =
   if !debug then
     !debug_print "Resolver %s: %s %s -> %s\n%!" name (Uri.to_string uri)
-      (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service svc))
-      (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
+      (Sexplib0.Sexp.to_string_hum (Resolver.sexp_of_service svc))
+      (Sexplib0.Sexp.to_string_hum (Conduit.sexp_of_endp endp));
   Lwt.return endp
 
 let is_tls_service =
@@ -47,7 +47,7 @@ let system_service name =
       let tls = is_tls_service name in
       let svc = { Resolver.name; port = s.Lwt_unix.s_port; tls } in
       Lwt.return (Some svc))
-    (function Not_found -> Lwt.return_none | e -> Lwt.fail e)
+    (function Not_found -> Lwt.return_none | e -> Lwt.reraise e)
 
 let static_service name =
   match Uri_services.tcp_port_of_service name with

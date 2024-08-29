@@ -17,7 +17,7 @@
  *)
 
 open Lwt.Infix
-open Sexplib.Conv
+open Sexplib0.Sexp_conv
 
 let debug = ref false
 let debug_print = ref Printf.eprintf
@@ -49,7 +49,7 @@ let tls_library = ref default_tls_library
 let () =
   if !debug then
     !debug_print "Selected TLS library: %s\n"
-      (Sexplib.Sexp.to_string (sexp_of_tls_lib !tls_library))
+      (Sexplib0.Sexp.to_string (sexp_of_tls_lib !tls_library))
 
 type +'a io = 'a Lwt.t
 type ic = Lwt_io.input_channel
@@ -175,7 +175,7 @@ let init ?src ?(tls_own_key = `None)
       >>= function
       | { ai_addr; _ } :: _ ->
           Lwt.return { no_source_ctx with src = Some ai_addr }
-      | [] -> Lwt.fail_with "Invalid conduit source address specified")
+      | [] -> failwith "Invalid conduit source address specified")
 
 module Sockaddr_io = struct
   let shutdown_no_exn fd mode =
@@ -267,7 +267,7 @@ let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   (match ctx.tls_own_key with
   | `None -> Lwt.return_none
   | `TLS (_, _, `Password _) ->
-      Lwt.fail_with "OCaml-TLS cannot handle encrypted pem files"
+      failwith "OCaml-TLS cannot handle encrypted pem files"
   | `TLS (`Crt_file_path cert, `Key_file_path priv_key, `No_password) ->
       Conduit_lwt_tls.X509.private_of_pems ~cert ~priv_key
       >|= fun certificate -> Some (`Single certificate))
@@ -312,7 +312,7 @@ let connect_with_default_tls ~ctx tls_client_config =
   | OpenSSL -> connect_with_openssl ~ctx tls_client_config
   | Native -> connect_with_tls_native ~ctx tls_client_config
   | No_tls ->
-      Lwt.fail_with
+      failwith
         "No SSL or TLS support compiled into Conduit. You must install it \
          through opam with one of these commands: `opam install lwt_ssl` or \
          `opam install tls-lwt`"
@@ -333,9 +333,8 @@ let connect ~ctx (mode : client) =
   | `TLS c -> connect_with_default_tls ~ctx c
   | `OpenSSL c -> connect_with_openssl ~ctx c
   | `TLS_native c -> connect_with_tls_native ~ctx c
-  | `Vchan_direct _ -> Lwt.fail_with "Vchan_direct not available on unix"
-  | `Vchan_domain_socket _uuid ->
-      Lwt.fail_with "Vchan_domain_socket not implemented"
+  | `Vchan_direct _ -> failwith "Vchan_direct not available on unix"
+  | `Vchan_domain_socket _uuid -> failwith "Vchan_domain_socket not implemented"
 
 let sockaddr_on_tcp_port ctx port =
   let open Unix in
@@ -358,7 +357,7 @@ let serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port
   let sockaddr, _ = sockaddr_on_tcp_port ctx port in
   (match pass with
   | `No_password -> Lwt.return ()
-  | `Password _ -> Lwt.fail_with "OCaml-TLS cannot handle encrypted pem files")
+  | `Password _ -> failwith "OCaml-TLS cannot handle encrypted pem files")
   >>= fun () ->
   Conduit_lwt_tls.Server.init ~certfile ~keyfile ?timeout ?stop sockaddr
     (fun addr fd ic oc -> callback (flow_of_fd fd addr) ic oc)
@@ -409,9 +408,8 @@ let serve ?backlog ?timeout ?stop ~on_exn ~(ctx : ctx) ~(mode : server) callback
       (`Crt_file_path certfile, `Key_file_path keyfile, pass, `Port port) ->
       serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port
         callback
-  | `Vchan_direct _ -> Lwt.fail_with "Vchan_direct not implemented"
-  | `Vchan_domain_socket _uuid ->
-      Lwt.fail_with "Vchan_domain_socket not implemented"
+  | `Vchan_direct _ -> failwith "Vchan_direct not implemented"
+  | `Vchan_domain_socket _uuid -> failwith "Vchan_domain_socket not implemented"
   | `Launchd name ->
       let fn s = Sockaddr_server.init ~on:(`Socket s) ?timeout ?stop callback in
       Conduit_lwt_launchd.activate fn name
@@ -434,23 +432,22 @@ let endp_to_client ~ctx:_ (endp : Conduit.endp) : client Lwt.t =
   | `TLS (host, `TCP (ip, port)) ->
       Lwt.return (`TLS (`Hostname host, `IP ip, `Port port))
   | `TLS (host, endp) ->
-      Lwt.fail_with
-        (Printf.sprintf "TLS to non-TCP currently unsupported: host=%s endp=%s"
-           host
-           (Sexplib.Sexp.to_string_hum (Conduit.sexp_of_endp endp)))
-  | `Unknown err -> Lwt.fail_with ("resolution failed: " ^ err)
+      Printf.ksprintf failwith
+        "TLS to non-TCP currently unsupported: host=%s endp=%s" host
+        (Sexplib0.Sexp.to_string_hum (Conduit.sexp_of_endp endp))
+  | `Unknown err -> failwith ("resolution failed: " ^ err)
 
 let endp_to_server ~ctx (endp : Conduit.endp) =
   match endp with
   | `Unix_domain_socket path -> Lwt.return (`Unix_domain_socket (`File path))
   | `TLS (_host, `TCP (_ip, port)) -> (
       match ctx.tls_own_key with
-      | `None -> Lwt.fail_with "No TLS server key configured"
+      | `None -> failwith "No TLS server key configured"
       | `TLS (`Crt_file_path crt, `Key_file_path key, pass) ->
           Lwt.return
             (`TLS (`Crt_file_path crt, `Key_file_path key, pass, `Port port)))
   | `TCP (_ip, port) -> Lwt.return (`TCP (`Port port))
   | `Vchan_direct _ as mode -> Lwt.return mode
   | `Vchan_domain_socket _ as mode -> Lwt.return mode
-  | `TLS (_host, _) -> Lwt.fail_with "TLS to non-TCP currently unsupported"
-  | `Unknown err -> Lwt.fail_with ("resolution failed: " ^ err)
+  | `TLS (_host, _) -> failwith "TLS to non-TCP currently unsupported"
+  | `Unknown err -> failwith ("resolution failed: " ^ err)

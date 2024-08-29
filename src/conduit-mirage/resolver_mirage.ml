@@ -89,7 +89,7 @@ struct
       (* Strip the tld from the hostname *)
       let remote_name = get_short_host uri in
       Printf.printf "vchan_lookup: %s %s -> normalizes to %s\n%!"
-        (Sexplib.Sexp.to_string_hum (Resolver.sexp_of_service service))
+        (Sexplib0.Sexp.to_string_hum (Resolver.sexp_of_service service))
         (Uri.to_string uri) remote_name;
       Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 

@@ -27,7 +27,7 @@ module Client = struct
 
   let connect ?(ctx = default_ctx) ?src:_ ?hostname:_ ?ip:_ ?verify:_ _sa =
     ignore ctx;
-    Lwt.fail_with "Ssl not available"
+    failwith "Ssl not available"
 end
 
 module Server = struct
@@ -36,7 +36,7 @@ module Server = struct
   let init ?(ctx = default_ctx) ?backlog:_ ?password:_ ~certfile:_ ~keyfile:_
       ?stop:_ ?timeout:_ _sa _cb =
     ignore ctx;
-    Lwt.fail_with "Ssl not available"
+    failwith "Ssl not available"
 end
 
 let available = false

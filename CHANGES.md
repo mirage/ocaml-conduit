@@ -1,3 +1,12 @@
+## v7.0.0 (2024-08-29)
+
+* adapt to TLS 1.0.0 API changes, bump OCaml lower bound to 4.13 (#432 @hannesm)
+* conduit-lwt-unix: improve the no TLS error message (#431 @filipeom)
+* Remove 4.12 CI runners, add 5.2 (#433 @art-w)
+* Update GitHub actions (#429 @smorimoto)
+* use failwith instead of Lwt.fail_with, use Lwt.reraise (#430 @MisterDA)
+* switch to sexplib0 instead of sexplib for lighter dependencies (#427 @emillon)
+
 ## v6.2.3 (2024-06-13)
 
 * conduit-mirage: adapt to dns-client 8.0.0 API changes (#426 @hannesm)

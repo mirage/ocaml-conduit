@@ -37,12 +37,12 @@ module Client = struct
         | Some src_sa -> Lwt_unix.bind fd src_sa)
         >>= fun () ->
         match Tls.Config.client ~authenticator ?certificates () with
-        | Error `Msg msg -> failwith ("tls configuration problem: " ^ msg)
+        | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
         | Ok config ->
-          Lwt_unix.connect fd sa >>= fun () ->
-          Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
-          let ic, oc = Tls_lwt.of_t t in
-          (fd, ic, oc))
+            Lwt_unix.connect fd sa >>= fun () ->
+            Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
+            let ic, oc = Tls_lwt.of_t t in
+            (fd, ic, oc))
 end
 
 module Server = struct
@@ -62,7 +62,7 @@ module Server = struct
     X509_lwt.private_of_pems ~cert:certfile ~priv_key:keyfile
     >>= fun certificate ->
     match Tls.Config.server ~certificates:(`Single certificate) () with
-    | Error `Msg msg -> failwith ("tls configuration problem: " ^ msg)
+    | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
     | Ok config -> init' ?backlog ?stop ?timeout config sa callback
 end
 

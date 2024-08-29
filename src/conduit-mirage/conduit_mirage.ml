@@ -178,12 +178,12 @@ let tls_client ~host ~authenticator x =
     Result.to_option (Result.bind (Domain_name.of_string host) Domain_name.host)
   in
   match Tls.Config.client ?peer_name ~authenticator () with
-  | Error `Msg msg -> failwith ("tls configuration problem: " ^ msg)
+  | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
   | Ok cfg -> `TLS (cfg, x)
 
 let tls_server ?authenticator x =
   match Tls.Config.server ?authenticator () with
-  | Error `Msg msg -> failwith ("tls configuration problem: " ^ msg)
+  | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
   | Ok cfg -> `TLS (cfg, x)
 
 module TLS (S : S) = struct

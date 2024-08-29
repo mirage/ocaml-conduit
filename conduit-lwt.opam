@@ -8,13 +8,13 @@ tags: "org:mirage"
 homepage: "https://github.com/mirage/ocaml-conduit"
 bug-reports: "https://github.com/mirage/ocaml-conduit/issues"
 depends: [
-  "ocaml" {>= "4.08.0"}
+  "ocaml" {>= "4.13.0"}
   "dune" {>= "2.0"}
   "base-unix"
   "ppx_sexp_conv" {>="v0.13.0"}
   "sexplib0"
   "conduit" {=version}
-  "lwt" {>= "3.0.0"}
+  "lwt" {>= "5.7.0"}
 ]
 build: [
   ["dune" "subst"] {dev}

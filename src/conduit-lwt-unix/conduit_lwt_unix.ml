@@ -311,7 +311,11 @@ let connect_with_default_tls ~ctx tls_client_config =
   match !tls_library with
   | OpenSSL -> connect_with_openssl ~ctx tls_client_config
   | Native -> connect_with_tls_native ~ctx tls_client_config
-  | No_tls -> failwith "No SSL or TLS support compiled into Conduit"
+  | No_tls ->
+      failwith
+        "No SSL or TLS support compiled into Conduit. You must install it \
+         through opam with one of these commands: `opam install lwt_ssl` or \
+         `opam install tls-lwt`"
 
 (** Main connection function *)
 
@@ -367,7 +371,11 @@ let serve_with_default_tls ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port
   | Native ->
       serve_with_tls_native ?timeout ?stop ~ctx ~certfile ~keyfile ~pass ~port
         callback
-  | No_tls -> failwith "No SSL or TLS support compiled into Conduit"
+  | No_tls ->
+      failwith
+        "No SSL or TLS support compiled into Conduit. You must install it \
+         through opam with one of these commands: `opam install lwt_ssl` or \
+         `opam install tls-lwt`"
 
 let serve ?backlog ?timeout ?stop ~on_exn ~(ctx : ctx) ~(mode : server) callback
     =

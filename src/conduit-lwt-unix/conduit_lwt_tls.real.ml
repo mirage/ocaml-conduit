@@ -30,19 +30,27 @@ module X509 = struct
 end
 
 module Client = struct
+  let config ?certificates authenticator =
+    match Tls.Config.client ~authenticator ?certificates () with
+    | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
+    | Ok config -> config
+
   let connect ?src ?certificates ~authenticator host sa =
     Conduit_lwt_server.with_socket sa (fun fd ->
         (match src with
         | None -> Lwt.return_unit
         | Some src_sa -> Lwt_unix.bind fd src_sa)
         >>= fun () ->
-        match Tls.Config.client ~authenticator ?certificates () with
-        | Error (`Msg msg) -> failwith ("tls configuration problem: " ^ msg)
-        | Ok config ->
-            Lwt_unix.connect fd sa >>= fun () ->
-            Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
-            let ic, oc = Tls_lwt.of_t t in
-            (fd, ic, oc))
+        let config = config ?certificates authenticator in
+        Lwt_unix.connect fd sa >>= fun () ->
+        Tls_lwt.Unix.client_of_fd config ~host fd >|= fun t ->
+        let ic, oc = Tls_lwt.of_t t in
+        (fd, ic, oc))
+
+  let tunnel ?certificates ~authenticator host channels =
+    let config = config ?certificates authenticator in
+    Tls_lwt.Unix.client_of_channels config ~host channels >|= fun t ->
+    Tls_lwt.of_t t
 end
 
 module Server = struct

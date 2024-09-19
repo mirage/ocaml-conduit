@@ -276,11 +276,12 @@ let certificates ~ctx =
 let domain_name hostname =
   try Domain_name.(host_exn (of_string_exn hostname))
   with Invalid_argument msg ->
-    let s =
+    let trace = Printexc.get_raw_backtrace () in
+    let msg =
       Printf.sprintf "couldn't convert %s to a [`host] Domain_name.t: %s"
         hostname msg
     in
-    invalid_arg s
+    Printexc.raise_with_backtrace (Invalid_argument msg) trace
 
 let connect_with_tls_native ~ctx (`Hostname hostname, `IP ip, `Port port) =
   let sa = Unix.ADDR_INET (Ipaddr_unix.to_inet_addr ip, port) in

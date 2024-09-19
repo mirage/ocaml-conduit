@@ -1,3 +1,7 @@
+## v7.1.0 (2024-09-19)
+
+* Support TLS tunnel over Lwt_io.channel (#428, @art-w)
+
 ## v7.0.0 (2024-08-29)
 
 * adapt to TLS 1.0.0 API changes, bump OCaml lower bound to 4.13 (#432 @hannesm)

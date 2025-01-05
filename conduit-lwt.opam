@@ -22,3 +22,4 @@ build: [
 ]
 dev-repo: "git+https://github.com/mirage/ocaml-conduit.git"
 synopsis: "A portable network connection establishment library using Lwt"
+x-maintenance-intent: [ "(latest)" ]

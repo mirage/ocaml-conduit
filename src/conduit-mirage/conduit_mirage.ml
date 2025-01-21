@@ -266,11 +266,9 @@ module TLS (S : S) = struct
     | _ -> S.listen t s (fun f -> fn (Clear f))
 end
 
-module Endpoint (P : Mirage_clock.PCLOCK) = struct
-  module Ca_certs = Ca_certs_nss.Make (P)
-
+module Endpoint = struct
   let nss_authenticator =
-    match Ca_certs.authenticator () with
+    match Ca_certs_nss.authenticator () with
     | Ok a -> a
     | Error (`Msg msg) -> failwith msg
 

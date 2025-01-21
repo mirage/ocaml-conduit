@@ -24,13 +24,7 @@ module type S = sig
   val localhost : t
 end
 
-module Make
-    (R : Mirage_crypto_rng_mirage.S)
-    (T : Mirage_time.S)
-    (C : Mirage_clock.MCLOCK)
-    (P : Mirage_clock.PCLOCK)
-    (S : Tcpip.Stack.V4V6) =
-struct
+module Make (S : Tcpip.Stack.V4V6) = struct
   include Resolver_lwt
 
   let is_tls_service =
@@ -93,8 +87,8 @@ struct
         (Uri.to_string uri) remote_name;
       Lwt.return (`Vchan_domain_socket (remote_name, service.Resolver.name))
 
-  module H = Happy_eyeballs_mirage.Make (T) (C) (S)
-  module DNS = Dns_client_mirage.Make (R) (T) (C) (P) (S) (H)
+  module H = Happy_eyeballs_mirage.Make (S)
+  module DNS = Dns_client_mirage.Make (S) (H)
 
   let resolve_v4v6 dns host =
     (* Try to resolve a host, default to IPv4 *)

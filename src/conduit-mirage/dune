@@ -5,7 +5,7 @@
   (pps ppx_sexp_conv))
  (modules conduit_mirage resolver_mirage conduit_xenstore)
  (wrapped false)
- (libraries conduit conduit-lwt tcpip mirage-mtime mirage-ptime mirage-crypto-rng-mirage2
+ (libraries conduit conduit-lwt tcpip mirage-mtime mirage-ptime mirage-crypto-rng
    mirage-sleep mirage-flow mirage-flow-combinators dns-client-mirage
    ipaddr-sexp vchan tls tls-mirage xenstore.client uri.services ca-certs-nss
    fmt))

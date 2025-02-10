@@ -12,19 +12,19 @@ depends: [
   "sexplib0"
   "uri" {>= "4.0.0"}
   "cstruct" {>= "3.0.0"}
-  "mirage-ptime" {>= "4.0.0"}
-  "mirage-mtime" {>= "4.0.0"}
+  "mirage-ptime" {>= "5.0.0"}
+  "mirage-mtime" {>= "5.0.0"}
   "mirage-flow" {>= "4.0.0"}
   "mirage-flow-combinators" {>= "2.0.0"}
   "mirage-crypto-rng" {>= "1.0.0"}
   "mirage-sleep" {>= "4.0.0"}
-  "dns-client-mirage" {>= "8.0.0"}
+  "dns-client-mirage" {>= "10.0.0"}
   "conduit-lwt" {=version}
   "vchan" {>= "5.0.0"}
   "xenstore"
-  "tls" {>= "1.0.0"}
-  "tls-mirage" {>= "1.0.0"}
-  "ca-certs-nss"
+  "tls" {>= "2.0.0"}
+  "tls-mirage" {>= "2.0.0"}
+  "ca-certs-nss" {>= "3.108-1"}
   "ipaddr" {>= "3.0.0"}
   "ipaddr-sexp"
   "tcpip" {>= "7.0.0"}

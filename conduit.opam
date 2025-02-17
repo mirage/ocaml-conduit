@@ -46,3 +46,4 @@ The useful opam packages available that extend this library are:
 - `conduit-async` the Jane Street Async implementation
 - `conduit-mirage`: the MirageOS compatible implementation
 """
+x-maintenance-intent: [ "(latest)" ]

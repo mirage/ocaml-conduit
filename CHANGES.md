@@ -1,3 +1,8 @@
+## v8.0.0 (2025-02-17)
+
+* Use the defunctorized dns-client-mirage, ca-certs-nss, happy-eyeballs
+  (#436 @hannesm)
+
 ## v7.1.0 (2024-09-19)
 
 * Support TLS tunnel over Lwt_io.channel (#428, @art-w)
